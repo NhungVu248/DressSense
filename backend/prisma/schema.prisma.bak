@@ -1,0 +1,225 @@
+// ============================================================
+//  DressSense - Prisma schema (MySQL)
+//  Mô hình dữ liệu cho hệ thống TMĐT thời trang cá nhân hóa AI
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Người dùng & phân quyền ----------
+enum Role {
+  CUSTOMER
+  SELLER
+  ADMIN
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  fullName  String
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile      CustomerProfile?
+  bodyProfiles BodyProfile[]
+  products     Product[]        @relation("SellerProducts")
+  cartItems    CartItem[]
+  orders       Order[]
+  reviews      Review[]
+  behaviors    UserBehavior[]
+}
+
+// ---------- Hồ sơ cá nhân hóa (FR1) ----------
+model CustomerProfile {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stylePreference String?  // phong cách yêu thích: casual, elegant, sporty...
+  colorPreference String?  // màu sắc ưa chuộng
+  occasion        String?  // dịp thường mặc
+  budgetMin       Int?     // ngân sách tối thiểu (VND)
+  budgetMax       Int?     // ngân sách tối đa (VND)
+  sizePreference  String?  // size quần áo: S, M, L...
+  updatedAt       DateTime @updatedAt
+}
+
+// ---------- Phân tích dáng người bằng AI (FR2) ----------
+enum BodyShape {
+  HOURGLASS
+  RECTANGLE
+  PEAR
+  APPLE
+  INVERTED_TRIANGLE
+}
+
+model BodyProfile {
+  id             Int        @id @default(autoincrement())
+  userId         Int
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bodyShape      BodyShape
+  shoulder       Float?     // số đo vai (cm)
+  waist          Float?     // số đo eo (cm)
+  hip            Float?     // số đo hông (cm)
+  height         Float?     // chiều cao (cm)
+  analysisResult Json?      // kết quả phân tích chi tiết + lời khuyên trang phục
+  createdAt      DateTime   @default(now())
+
+  @@index([userId])
+}
+
+// ---------- Danh mục & sản phẩm (FR3, FR6) ----------
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String
+  slug     String    @unique
+  products Product[]
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  sellerId    Int
+  seller      User     @relation("SellerProducts", fields: [sellerId], references: [id])
+  categoryId  Int
+  category    Category @relation(fields: [categoryId], references: [id])
+  name        String
+  description String?  @db.Text
+  price       Int      // giá bán (VND)
+
+  // Thuộc tính thời trang đa chiều (Fashion Intelligence - FR3)
+  color    String?
+  pattern  String?  // họa tiết: trơn, kẻ sọc, hoa...
+  material String?  // chất liệu
+  fit      String?  // kiểu dáng: slim, regular, oversize...
+  length   String?  // chiều dài
+  neckline String?  // kiểu cổ
+  sleeve   String?  // kiểu tay
+  style    String?  // phong cách
+  season   String?  // mùa phù hợp
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  images    ProductImage[]
+  variants  ProductVariant[]
+  cartItems CartItem[]
+  orderItems OrderItem[]
+  reviews   Review[]
+  behaviors UserBehavior[]
+
+  @@index([categoryId])
+  @@index([sellerId])
+}
+
+model ProductImage {
+  id        Int     @id @default(autoincrement())
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  isPrimary Boolean @default(false)
+}
+
+model ProductVariant {
+  id        Int     @id @default(autoincrement())
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String  // S, M, L, XL...
+  stock     Int     @default(0)
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@unique([productId, size])
+}
+
+// ---------- Giỏ hàng & đơn hàng (FR6) ----------
+model CartItem {
+  id        Int             @id @default(autoincrement())
+  userId    Int
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId Int?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  quantity  Int             @default(1)
+  createdAt DateTime        @default(now())
+
+  @@index([userId])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPING
+  COMPLETED
+  CANCELLED
+}
+
+model Order {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  user      User        @relation(fields: [userId], references: [id])
+  status    OrderStatus @default(PENDING)
+  total     Int         // tổng tiền (VND)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  items OrderItem[]
+
+  @@index([userId])
+}
+
+model OrderItem {
+  id        Int             @id @default(autoincrement())
+  orderId   Int
+  order     Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product         @relation(fields: [productId], references: [id])
+  variantId Int?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  quantity  Int
+  price     Int             // giá tại thời điểm mua (VND)
+}
+
+// ---------- Đánh giá ----------
+model Review {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  rating    Int      // 1..5
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+// ---------- Hành vi người dùng (FR5 - Business Intelligence) ----------
+enum BehaviorAction {
+  VIEW
+  WISHLIST
+  ADD_TO_CART
+  PURCHASE
+}
+
+model UserBehavior {
+  id        Int            @id @default(autoincrement())
+  userId    Int
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  action    BehaviorAction
+  createdAt DateTime       @default(now())
+
+  @@index([userId])
+  @@index([productId])
+  @@index([action])
+}

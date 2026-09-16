@@ -15,6 +15,21 @@ async function main() {
     update: {},
     create: { name: 'Áo', slug: 'top' },
   });
+  await prisma.category.upsert({
+    where: { slug: 'bottom' },
+    update: {},
+    create: { name: 'Quần', slug: 'bottom' },
+  });
+  await prisma.category.upsert({
+    where: { slug: 'shoes' },
+    update: {},
+    create: { name: 'Giày', slug: 'shoes' },
+  });
+  await prisma.category.upsert({
+    where: { slug: 'accessory' },
+    update: {},
+    create: { name: 'Phụ kiện', slug: 'accessory' },
+  });
 
   // Tài khoản người bán mẫu
   const sellerPass = await bcrypt.hash('123456', 10);
@@ -26,6 +41,20 @@ async function main() {
       password: sellerPass,
       fullName: 'Shop DressSense',
       role: 'SELLER',
+    },
+  });
+
+  // Tài khoản quản trị viên mẫu (UC1.7)
+  const adminPass = await bcrypt.hash('Admin@123', 10);
+  await prisma.user.upsert({
+    where: { email: 'admin@dresssense.vn' },
+    update: {},
+    create: {
+      email: 'admin@dresssense.vn',
+      password: adminPass,
+      fullName: 'Quản Trị Viên Hệ Thống',
+      role: 'ADMIN',
+      status: 'ACTIVE',
     },
   });
 
@@ -78,6 +107,7 @@ async function main() {
   });
 
   console.log('✅ Seed dữ liệu mẫu thành công!');
+  console.log('   Admin: admin@dresssense.vn / Admin@123');
   console.log('   Seller: seller@dresssense.vn / 123456');
   console.log('   Customer: customer@dresssense.vn / 123456');
 }

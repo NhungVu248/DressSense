@@ -13,7 +13,16 @@ export default function Navbar() {
           <Link to="/" className="hover:text-brand">Sản phẩm</Link>
           {user ? (
             <>
-              <span className="text-gray-600">Xin chào, {user.fullName}</span>
+              <Link to="/profile" className="flex items-center gap-2 hover:text-brand">
+                <img
+                  src={user.avatarUrl ? (import.meta.env.VITE_API_URL?.replace('/api', '') + user.avatarUrl) : 'https://via.placeholder.com/28'}
+                  alt="" className="w-7 h-7 rounded-full object-cover bg-gray-100"
+                />
+                {user.fullName}
+              </Link>
+              {user.role === 'ADMIN' && (
+                <Link to="/admin" className="text-indigo-600 hover:underline">Quản trị</Link>
+              )}
               <button onClick={logout} className="text-red-500 hover:underline">
                 Đăng xuất
               </button>

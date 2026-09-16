@@ -12,46 +12,221 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ---------- Người dùng & phân quyền ----------
+// ---------- Người dùng & phân quyền (UC1) ----------
 enum Role {
   CUSTOMER
   SELLER
   ADMIN
 }
 
+// Trạng thái tài khoản
+enum AccountStatus {
+  ACTIVE            // đã kích hoạt (Khách hàng sau xác thực)
+  PENDING_APPROVAL  // Người bán chờ Quản trị viên kiểm duyệt (UC16.3)
+  LOCKED            // tạm khóa (vd brute-force)
+  DISABLED          // vô hiệu hóa
+}
+
+// Phương thức xác thực
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
+  id        Int           @id @default(autoincrement())
+  email     String?       @unique
+  phone     String?       @unique
+  password  String?       // null nếu đăng nhập qua mạng xã hội (OAuth)
   fullName  String
-  role      Role     @default(CUSTOMER)
+  avatarUrl String?
+  role      Role          @default(CUSTOMER)
+  status    AccountStatus @default(ACTIVE)
+  provider  AuthProvider  @default(LOCAL)
+
+  // Cổng Người bán: tên gian hàng dự kiến khai báo khi đăng ký (UC1.1)
+  shopName  String?
+
+  // UC3.1 - Đồng ý xử lý dữ liệu cơ thể (informed consent), null = chưa đồng ý
+  bodyDataConsentAt DateTime?
+
+  // Chống dò mật khẩu (brute-force) - UC1.2
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   profile      CustomerProfile?
   bodyProfiles BodyProfile[]
+  bodyDataDeletionLogs BodyDataDeletionLog[]
   products     Product[]        @relation("SellerProducts")
   cartItems    CartItem[]
   orders       Order[]
   reviews      Review[]
   behaviors    UserBehavior[]
+  addresses    Address[]
+  roleLogsAsActor  RoleChangeLog[] @relation("AuditActor")
+  roleLogsAsTarget RoleChangeLog[] @relation("AuditTarget")
 }
 
-// ---------- Hồ sơ cá nhân hóa (FR1) ----------
+// ---------- Mã OTP xác thực (UC1.1 đăng ký, UC1.3 khôi phục MK) ----------
+enum OtpPurpose {
+  REGISTER
+  RESET_PASSWORD
+  CHANGE_CONTACT
+}
+
+model OtpCode {
+  id        Int        @id @default(autoincrement())
+  target    String     // email hoặc SĐT nhận mã
+  codeHash  String     // OTP được băm, không lưu dạng thuần
+  purpose   OtpPurpose
+  payload   Json?      // dữ liệu đăng ký tạm (chờ xác thực mới tạo tài khoản)
+  attempts  Int        @default(0) // số lần nhập sai
+  consumed  Boolean    @default(false)
+  expiresAt DateTime
+  createdAt DateTime   @default(now())
+
+  @@index([target, purpose])
+}
+
+// ---------- Sổ địa chỉ giao hàng (UC1.6) ----------
+model Address {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipientName String
+  phone         String
+  province      String   // tỉnh/thành
+  district      String   // quận/huyện
+  ward          String   // phường/xã
+  detail        String   // địa chỉ chi tiết
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ---------- Nhật ký phân quyền (UC1.7 - bắt buộc để truy vết/kiểm toán) ----------
+model RoleChangeLog {
+  id           Int           @id @default(autoincrement())
+  actorId      Int
+  actor        User          @relation("AuditActor", fields: [actorId], references: [id])
+  targetUserId Int
+  target       User          @relation("AuditTarget", fields: [targetUserId], references: [id])
+  roleBefore   Role
+  roleAfter    Role
+  statusBefore AccountStatus
+  statusAfter  AccountStatus
+  note         String?
+  createdAt    DateTime      @default(now())
+
+  @@index([targetUserId])
+  @@index([actorId])
+}
+
+// ---------- Hồ sơ cá nhân hóa (UC2) ----------
+
+// UC2.1c - Dịp sử dụng chuẩn (ánh xạ thuộc tính "dịp sử dụng" của sản phẩm - UC4, UC6)
+enum OccasionType {
+  WORK    // đi làm
+  SCHOOL  // đi học
+  STREET  // dạo phố
+  PARTY   // tiệc & sự kiện
+  SPORT   // thể thao
+  TRAVEL  // du lịch
+  CUSTOM  // dịp tùy chỉnh do khách hàng tự đặt (luồng 4e)
+}
+
+// UC2.1c - Mức độ thường xuyên sử dụng
+enum FrequencyLevel {
+  RARELY    // hiếm khi
+  SOMETIMES // thỉnh thoảng
+  OFTEN     // thường xuyên
+}
+
+// UC2.1 - Hồ sơ cá nhân hóa: sở thích/phong cách + ngân sách + dịp sử dụng
 model CustomerProfile {
-  id              Int      @id @default(autoincrement())
-  userId          Int      @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stylePreference String?  // phong cách yêu thích: casual, elegant, sporty...
-  colorPreference String?  // màu sắc ưa chuộng
-  occasion        String?  // dịp thường mặc
-  budgetMin       Int?     // ngân sách tối thiểu (VND)
-  budgetMax       Int?     // ngân sách tối đa (VND)
-  sizePreference  String?  // size quần áo: S, M, L...
-  updatedAt       DateTime @updatedAt
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // (a) Sở thích và phong cách - danh mục chuẩn hóa, lưu dạng JSON để linh hoạt nhiều lựa chọn
+  preferredStyles    Json?    // [{ style: string, priority: number }] - có ưu tiên (nhiều lựa chọn)
+  preferredColors    Json?    // string[] - màu ưa thích
+  avoidColors        Json?    // string[] - màu muốn tránh
+  preferredGarments  Json?    // string[] - kiểu trang phục thường mặc
+  avoidGarments      Json?    // string[] - kiểu trang phục không mặc
+  preferredMaterials Json?    // string[] - chất liệu ưu tiên
+  preferredBrands    Json?    // string[] - thương hiệu yêu thích (tùy chọn)
+  styleDeclaredAt    DateTime? // null = chưa khai báo -> luồng 4b dùng gợi ý mặc định
+
+  budgets   ProfileBudget[]   // (b) Ngân sách theo nhóm sản phẩm
+  occasions ProfileOccasion[] // (c) Dịp sử dụng thường xuyên
+
+  sizes CustomerSize[] // UC2.2 - thông tin size theo danh mục
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-// ---------- Phân tích dáng người bằng AI (FR2) ----------
+// UC2.1b - Ngân sách theo nhóm sản phẩm (đồng bộ danh mục với UC6)
+model ProfileBudget {
+  id         Int             @id @default(autoincrement())
+  profileId  Int
+  profile    CustomerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  categoryId Int
+  category   Category        @relation(fields: [categoryId], references: [id])
+  minPrice   Int             // VND, số không âm
+  maxPrice   Int             // VND, >= minPrice
+  updatedAt  DateTime        @updatedAt
+
+  @@unique([profileId, categoryId])
+  @@index([profileId])
+}
+
+// UC2.1c - Dịp sử dụng thường xuyên đã khai báo
+model ProfileOccasion {
+  id          Int             @id @default(autoincrement())
+  profileId   Int
+  profile     CustomerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  occasion    OccasionType
+  customLabel String?         // bắt buộc khi occasion = CUSTOM (luồng 4e)
+  frequency   FrequencyLevel  @default(SOMETIMES)
+  createdAt   DateTime        @default(now())
+
+  @@unique([profileId, occasion, customLabel])
+  @@index([profileId])
+}
+
+// UC2.2 - Hệ size khai báo
+enum SizeSystem {
+  STANDARD    // S/M/L/XL...
+  NUMERIC     // theo số (vd quần 29, giày EU 39)
+  MEASUREMENT // nhập số đo cơ thể, hệ thống quy đổi
+}
+
+// UC2.2 - Thông tin size của khách hàng theo từng danh mục sản phẩm
+model CustomerSize {
+  id           Int             @id @default(autoincrement())
+  profileId    Int
+  profile      CustomerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  categoryId   Int
+  category     Category        @relation(fields: [categoryId], references: [id])
+  sizeSystem   SizeSystem      @default(STANDARD)
+  sizeValue    String          // giá trị size cuối cùng (chuẩn hoặc suy ra từ số đo)
+  measurements Json?           // số đo cơ thể khi sizeSystem = MEASUREMENT
+  source       String          @default("MANUAL") // MANUAL | BODY_PROFILE (dành cho UC2.3 sau này)
+  updatedAt    DateTime        @updatedAt
+  createdAt    DateTime        @default(now())
+
+  @@unique([profileId, categoryId])
+  @@index([profileId])
+}
+
+// ---------- Phân tích dáng người bằng AI (UC3) ----------
 enum BodyShape {
   HOURGLASS
   RECTANGLE
@@ -60,17 +235,55 @@ enum BodyShape {
   INVERTED_TRIANGLE
 }
 
+// UC3.1/UC3.2 - Nguồn dữ liệu đầu vào để phân tích
+enum BodyProfileSource {
+  MANUAL // nhập số đo thủ công
+  PHOTO  // tải/chụp ảnh toàn thân (có AI hỗ trợ nhận diện dáng qua vai/hông)
+}
+
+// UC3.3 - Body Profile: mỗi lần phân tích tạo 1 bản ghi mới (lưu phiên bản, truy vết -
+// bản hiện hành = bản có createdAt lớn nhất của user). UC3.1 gọi include tới UC3.2 (xử lý)
+// và UC3.3 (sinh hồ sơ) để tạo ra bản ghi này.
 model BodyProfile {
-  id             Int        @id @default(autoincrement())
-  userId         Int
-  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bodyShape      BodyShape
-  shoulder       Float?     // số đo vai (cm)
-  waist          Float?     // số đo eo (cm)
-  hip            Float?     // số đo hông (cm)
-  height         Float?     // chiều cao (cm)
-  analysisResult Json?      // kết quả phân tích chi tiết + lời khuyên trang phục
-  createdAt      DateTime   @default(now())
+  id            Int               @id @default(autoincrement())
+  userId        Int
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bodyShape     BodyShape
+  source        BodyProfileSource @default(MANUAL)
+
+  height   Float? // cm
+  weight   Float? // kg
+  bust     Float? // vòng ngực (cm)
+  waist    Float? // vòng eo (cm)
+  hip      Float? // vòng hông (cm)
+  shoulder Float? // rộng vai ước lượng từ ảnh, nếu có (cm hoặc tỷ lệ px)
+
+  confidence    Float   @default(1) // độ tin cậy 0-1 (UC3.2 bước 6)
+  isPreliminary Boolean @default(false) // true nếu dưới ngưỡng tin cậy -> cần hiệu chỉnh (4a UC3.3)
+
+  photoUrl        String? // ảnh gốc; có thể bị xóa riêng theo nguyên tắc tối thiểu hóa dữ liệu (UC3.4 - 3a)
+  recommendations Json? // khuyến nghị trang phục nên/không nên mặc theo dáng người (UC3.3 bước 3)
+  suggestedSizes  Json? // gợi ý size sơ bộ theo danh mục, đồng bộ bảng quy đổi UC2.2 (UC3.3 bước 3)
+  analysisResult  Json? // dữ liệu thô bổ sung (vd. tỷ lệ vai/hông ước lượng từ ảnh)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// UC3.4 - Ghi nhận tối thiểu thao tác xóa dữ liệu cơ thể (không lưu lại nội dung đã xóa)
+enum BodyDataDeleteScope {
+  PHOTO_ONLY  // 3a: chỉ xóa ảnh, giữ Body Profile
+  PROFILE     // chỉ xóa Body Profile, giữ ảnh (hiếm dùng nhưng hỗ trợ "một phần")
+  ALL         // xóa toàn bộ dữ liệu cơ thể
+}
+
+model BodyDataDeletionLog {
+  id        Int                  @id @default(autoincrement())
+  userId    Int
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope     BodyDataDeleteScope
+  deletedAt DateTime             @default(now())
 
   @@index([userId])
 }
@@ -81,6 +294,10 @@ model Category {
   name     String
   slug     String    @unique
   products Product[]
+
+  // UC2.1b/UC2.2 - nhóm sản phẩm dùng để thiết lập ngân sách và size cá nhân hóa
+  budgets ProfileBudget[]
+  sizes   CustomerSize[]
 }
 
 model Product {
@@ -91,28 +308,27 @@ model Product {
   category    Category @relation(fields: [categoryId], references: [id])
   name        String
   description String?  @db.Text
-  price       Int      // giá bán (VND)
+  price       Int
 
-  // Thuộc tính thời trang đa chiều (Fashion Intelligence - FR3)
   color    String?
-  pattern  String?  // họa tiết: trơn, kẻ sọc, hoa...
-  material String?  // chất liệu
-  fit      String?  // kiểu dáng: slim, regular, oversize...
-  length   String?  // chiều dài
-  neckline String?  // kiểu cổ
-  sleeve   String?  // kiểu tay
-  style    String?  // phong cách
-  season   String?  // mùa phù hợp
+  pattern  String?
+  material String?
+  fit      String?
+  length   String?
+  neckline String?
+  sleeve   String?
+  style    String?
+  season   String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  images    ProductImage[]
-  variants  ProductVariant[]
-  cartItems CartItem[]
+  images     ProductImage[]
+  variants   ProductVariant[]
+  cartItems  CartItem[]
   orderItems OrderItem[]
-  reviews   Review[]
-  behaviors UserBehavior[]
+  reviews    Review[]
+  behaviors  UserBehavior[]
 
   @@index([categoryId])
   @@index([sellerId])
@@ -130,7 +346,7 @@ model ProductVariant {
   id        Int     @id @default(autoincrement())
   productId Int
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  size      String  // S, M, L, XL...
+  size      String
   stock     Int     @default(0)
 
   cartItems  CartItem[]
@@ -167,7 +383,7 @@ model Order {
   userId    Int
   user      User        @relation(fields: [userId], references: [id])
   status    OrderStatus @default(PENDING)
-  total     Int         // tổng tiền (VND)
+  total     Int
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
@@ -185,24 +401,22 @@ model OrderItem {
   variantId Int?
   variant   ProductVariant? @relation(fields: [variantId], references: [id])
   quantity  Int
-  price     Int             // giá tại thời điểm mua (VND)
+  price     Int
 }
 
-// ---------- Đánh giá ----------
 model Review {
   id        Int      @id @default(autoincrement())
   productId Int
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
-  rating    Int      // 1..5
+  rating    Int
   comment   String?  @db.Text
   createdAt DateTime @default(now())
 
   @@index([productId])
 }
 
-// ---------- Hành vi người dùng (FR5 - Business Intelligence) ----------
 enum BehaviorAction {
   VIEW
   WISHLIST
