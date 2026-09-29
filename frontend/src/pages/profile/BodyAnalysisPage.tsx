@@ -84,6 +84,10 @@ export default function BodyAnalysisPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // UC3.4 - xóa dữ liệu cơ thể
+  const [confirmScope, setConfirmScope] = useState<'PHOTO_ONLY' | 'ALL' | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const categoryName = useMemo(() => {
     const map: Record<number, string> = {};
     for (const c of categories) map[c.id] = c.name;
@@ -173,6 +177,30 @@ export default function BodyAnalysisPage() {
       setFormError(getErrorMessage(err)); // 5E/5F/6E/7E - dùng thông báo từ backend
     } finally {
       setAnalyzing(false);
+    }
+  }
+
+  // UC3.4 bước 6-9 - xác nhận cuối và xóa dữ liệu cơ thể theo phạm vi
+  async function confirmDelete() {
+    if (!confirmScope) return;
+    setError('');
+    setSuccess('');
+    setDeleting(true);
+    try {
+      const res = await api.delete('/body/data', { params: { scope: confirmScope } });
+      if (confirmScope === 'ALL') {
+        setProfile(null); // đã xóa toàn bộ -> quay về trạng thái chưa phân tích
+      } else {
+        // 3a - chỉ xóa ảnh: tải lại hồ sơ để phản ánh ảnh đã bị gỡ
+        const p = await api.get('/body/profile');
+        setProfile(p.data.profile ?? null);
+      }
+      setSuccess(res.data.message);
+      setConfirmScope(null);
+    } catch (err) {
+      setError(getErrorMessage(err)); // 2F (không có dữ liệu) / 7E (lỗi hệ thống)
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -270,6 +298,51 @@ export default function BodyAnalysisPage() {
             >
               {profile ? '+ Phân tích lại (tạo bản cập nhật)' : '+ Bắt đầu phân tích dáng người'}
             </button>
+          )}
+
+          {/* UC3.4 - Xóa dữ liệu cơ thể (quyền được xóa - right to erasure) */}
+          {profile && !showForm && (
+            <div className="bg-white rounded-xl border border-red-100 p-6 mt-5">
+              <h3 className="font-medium text-red-600 mb-1">Xóa dữ liệu cơ thể</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Bạn có thể xóa ảnh hoặc toàn bộ dữ liệu cơ thể bất kỳ lúc nào. Thao tác không thể
+                hoàn tác và sẽ ảnh hưởng tới đề xuất size (UC2.2) và gợi ý sản phẩm (UC5).
+              </p>
+
+              {confirmScope ? (
+                // bước 5-6 - xác nhận lần cuối, nêu rõ không thể hoàn tác
+                <div className="bg-red-50 rounded-lg p-4">
+                  <p className="text-sm text-red-700 mb-3">
+                    {confirmScope === 'ALL'
+                      ? 'Xóa toàn bộ dữ liệu cơ thể (ảnh, số đo và Body Profile). Thao tác KHÔNG THỂ hoàn tác. Bạn chắc chắn?'
+                      : 'Chỉ xóa ảnh đã tải lên, giữ lại Body Profile. Bạn chắc chắn?'}
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={confirmDelete}
+                      disabled={deleting}
+                      className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg"
+                    >
+                      {deleting ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
+                    </button>
+                    {/* 4a - hủy thao tác trước khi xác nhận */}
+                    <SecondaryButton type="button" onClick={() => setConfirmScope(null)}>Hủy</SecondaryButton>
+                  </div>
+                </div>
+              ) : (
+                // bước 3-4 - chọn phạm vi xóa
+                <div className="flex flex-wrap gap-2">
+                  {profile.photoUrl && (
+                    <SecondaryButton danger type="button" onClick={() => setConfirmScope('PHOTO_ONLY')}>
+                      Xóa ảnh (giữ hồ sơ)
+                    </SecondaryButton>
+                  )}
+                  <SecondaryButton danger type="button" onClick={() => setConfirmScope('ALL')}>
+                    Xóa toàn bộ dữ liệu cơ thể
+                  </SecondaryButton>
+                </div>
+              )}
+            </div>
           )}
         </>
       )}
