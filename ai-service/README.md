@@ -15,7 +15,7 @@ và trả JSON. Ảnh gốc có thể xóa ngay sau khi trích số đo (tối t
 | GĐ | Nội dung | Trạng thái |
 |----|----------|------------|
 | 1 | Thu thập & chuẩn bị dữ liệu (3 tầng A/B/C) | ✅ Tầng B: 1986 số đo NỮ THẬT (ANSUR II) + 600 synthetic; Tầng C: 14 SP đủ thuộc tính |
-| 2 | Pose Estimation (MediaPipe) | ⬜ Chưa |
+| 2 | Pose Estimation (MediaPipe) | 🟢 M1 xong — FastAPI + `/pose` (MediaPipe Pose Landmarker) + `/body-shape`; đã chạy & test |
 | 3 | Trích đặc trưng + phân loại dáng (rule → ML) | ⬜ Chưa (baseline rule-based đã có ở backend) |
 | 4 | Fashion Knowledge Base + điểm tương thích dáng–SP | ⬜ Chưa |
 | 5 | Recommendation engine (hybrid) + giải thích | ⬜ Chưa |
@@ -37,15 +37,49 @@ Các endpoint này sẽ thay dần phần đang tính tại Node (`classifyBodyS
 
 ```
 ai-service/
+├── app/                # FastAPI service (GĐ2)
+│   ├── main.py         #   endpoints: /health, /pose, /body-shape
+│   ├── pose.py         #   MediaPipe Pose Landmarker (tải model lúc chạy)
+│   ├── body_shape.py   #   luật phân loại dáng (port từ backend)
+│   └── schemas.py
 ├── data/               # 3 tầng dữ liệu (xem data/README.md)
 │   ├── body_shape/     # Tầng B - dataset dáng người có nhãn (đóng góp lõi)
 │   └── products/       # Tầng C - kho sản phẩm (dùng bảng Product của Prisma)
-└── scripts/            # tiện ích sinh/chuẩn bị dữ liệu
-    └── generate_body_shape_dataset.py
+├── scripts/            # tiện ích sinh/chuẩn bị dữ liệu
+├── models/             # model MediaPipe .task (tải lúc chạy, .gitignore)
+└── requirements.txt
 ```
 
-Chưa dựng runtime FastAPI ở giai đoạn này (đó là mốc M1 của GĐ2). Giai đoạn 1 chỉ tập
-trung vào **dữ liệu**.
+## Chạy AI service (GĐ2)
+
+```bash
+cd ai-service
+python -m venv .venv && .venv\Scripts\activate      # Windows (hoặc: source .venv/bin/activate)
+pip install -r requirements.txt
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Endpoints (đã test):
+
+```bash
+# Kiểm tra sống
+curl http://127.0.0.1:8000/health
+
+# Phân loại dáng từ số đo (đường chắc chắn)
+curl -X POST http://127.0.0.1:8000/body-shape -H "Content-Type: application/json" \
+  -d '{"measurements":{"bust":90,"waist":66,"hip":92}}'
+# -> {"bodyShape":"HOURGLASS","confidence":0.95,...}
+
+# Pose từ ảnh toàn thân -> 33 landmarks + confidence (tải model lần đầu ~vài giây)
+curl -X POST http://127.0.0.1:8000/pose -F "image=@fullbody.jpg"
+# ảnh không có người -> {"status":"NO_PERSON",...}
+```
+
+**Đã kiểm chứng:** `/health`, `/body-shape` (số đo), và `/pose` nạp model + chạy inference +
+trả `NO_PERSON` đúng cho ảnh không người. **Đường "có người"** (trả đủ 33 landmarks) đã hoàn
+thiện code nhưng cần **ảnh người thật đứng thẳng** để nghiệm thu đầy đủ (ảnh của nhóm hoặc từ
+dataset ảnh — xem `data/README.md`). Backend Express sẽ gọi các endpoint này thay dần phần
+đang tính tại Node ở các giai đoạn sau.
 
 ## Quyền riêng tư
 

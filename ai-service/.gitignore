@@ -12,3 +12,7 @@ data/**/real/
 
 # Dữ liệu gốc bên thứ ba (ANSUR II) - tải bằng scripts/download_ansur.py, KHÔNG commit
 data/body_shape/raw/
+
+# Model MediaPipe (.task) - tải lúc chạy, KHÔNG commit
+models/
+*.task

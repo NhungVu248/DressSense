@@ -1,0 +1,9 @@
+# DressSense AI Service (Python 3.11-3.13)
+fastapi>=0.111
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pydantic>=2.6
+mediapipe>=1.0.0      # Pose Landmarker (GĐ2). Cần Python có wheel tương thích
+opencv-python>=4.9
+numpy>=1.26
+pillow>=10
