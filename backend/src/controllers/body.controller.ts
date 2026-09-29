@@ -4,12 +4,11 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import {
   BODY_MEASUREMENT_RANGES,
-  CONFIDENCE_THRESHOLD,
-  classifyBodyShape,
   STYLE_RECOMMENDATIONS,
   suggestSizesByCategory,
 } from '../constants/body-analysis';
 import { deriveSizeFromMeasurements } from '../constants/personalization';
+import { processBodyAnalysis } from '../services/body-analysis.service';
 
 // ============================================================
 //  UC3.1 - PHÂN TÍCH DÁNG NGƯỜI (điểm vào cho người dùng)
@@ -109,12 +108,31 @@ export async function analyzeBody(req: Request, res: Response, next: NextFunctio
       }
     }
 
-    // UC3.2 - xử lý phân tích cơ thể: phân loại dáng người theo tỷ lệ (được include từ đây)
-    const classification = classifyBodyShape({ bust: data.bust, waist: data.waist, hip: data.hip });
-    const isPreliminary = classification.confidence < CONFIDENCE_THRESHOLD; // 6a/4a
+    // UC3.2 - include tới module xử lý phân tích cơ thể (số đo/ảnh -> tỷ lệ, dáng người, độ tin cậy)
+    const result = processBodyAnalysis({
+      source: data.source,
+      height: data.height,
+      weight: data.weight ?? null,
+      bust: data.bust,
+      waist: data.waist,
+      hip: data.hip,
+      shoulderHipRatio: data.shoulderHipRatio ?? null,
+      hasPhoto: !!req.file,
+    });
+
+    // 6E: UC3.2 xử lý thất bại (2E/3E/5E/7E) -> thông báo, cho phép thử lại hoặc nhập số đo thủ công
+    if (!result.ok || !result.bodyShape) {
+      if (req.file) fs.unlink(req.file.path, () => {});
+      return res.status(422).json({
+        message: `${result.note} Vui lòng thử lại hoặc nhập số đo thủ công.`,
+        code: 'ANALYSIS_FAILED',
+        status: result.status,
+      });
+    }
+    const bodyShape = result.bodyShape; // đã đảm bảo non-null sau guard trên
 
     // UC3.3 - sinh Body Profile: khuyến nghị trang phục + gợi ý size sơ bộ
-    const recommendations = STYLE_RECOMMENDATIONS[classification.bodyShape];
+    const recommendations = STYLE_RECOMMENDATIONS[bodyShape];
     const categories = await prisma.category.findMany();
     const suggestedSizes = suggestSizesByCategory(
       { bust: data.bust, waist: data.waist, hip: data.hip },
@@ -129,19 +147,25 @@ export async function analyzeBody(req: Request, res: Response, next: NextFunctio
       tx.bodyProfile.create({
         data: {
           userId,
-          bodyShape: classification.bodyShape,
+          bodyShape,
           source: data.source,
           height: data.height,
           weight: data.weight ?? null,
           bust: data.bust,
           waist: data.waist,
           hip: data.hip,
-          confidence: classification.confidence,
-          isPreliminary,
+          shoulder: result.measurements.shoulder,
+          confidence: result.confidence,
+          isPreliminary: result.isPreliminary,
           photoUrl,
           recommendations,
           suggestedSizes,
-          analysisResult: { note: classification.note, shoulderHipRatio: data.shoulderHipRatio ?? null },
+          analysisResult: {
+            status: result.status,
+            note: result.note,
+            ratios: result.ratios,
+            shoulderHipRatio: data.shoulderHipRatio ?? null,
+          },
         },
       })
     );
