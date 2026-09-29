@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Dữ liệu cơ thể/ảnh người thật - KHÔNG commit
+data/**/real/
+*.jpg
+*.jpeg
+*.png
