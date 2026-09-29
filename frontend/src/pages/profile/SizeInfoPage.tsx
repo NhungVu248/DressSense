@@ -47,18 +47,43 @@ export default function SizeInfoPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // UC2.2 luồng 4b - gợi ý size từ Body Profile (categoryId -> size chuẩn)
+  const [suggestions, setSuggestions] = useState<Record<number, string>>({});
+  const [hasBodyProfile, setHasBodyProfile] = useState(false);
+
   function load() {
-    Promise.all([api.get('/personalization/catalog'), api.get('/personalization/sizes')])
-      .then(([catalogRes, sizesRes]) => {
+    Promise.all([
+      api.get('/personalization/catalog'),
+      api.get('/personalization/sizes'),
+      api.get('/personalization/body-sync'), // UC2.3 -> lấy gợi ý size từ Body Profile (4b)
+    ])
+      .then(([catalogRes, sizesRes, syncRes]) => {
         setCatalog(catalogRes.data);
         const map: Record<number, SizeEntry> = {};
         for (const s of sizesRes.data.sizes as SizeEntry[]) map[s.categoryId] = s;
         setSizes(map);
+        const sug: Record<number, string> = {};
+        for (const s of (syncRes.data.latest?.suggestedSizes ?? []) as Array<{ categoryId: number; sizeValue: string }>) {
+          sug[s.categoryId] = s.sizeValue;
+        }
+        setSuggestions(sug);
+        setHasBodyProfile(!!syncRes.data.hasBodyProfile);
       })
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
+
+  // 4b - áp dụng gợi ý từ Body Profile vào form (khách xác nhận/chỉnh trước khi lưu)
+  function applySuggestion(categoryId: number, sizeValue: string) {
+    setEditingCategory(categoryId);
+    setFormError('');
+    setSuccess('');
+    setSystem('STANDARD');
+    setStandardValue(sizeValue);
+    setNumericValue('');
+    setMeasurements({ chest: '', waist: '', hip: '', length: '' });
+  }
 
   function openEdit(categoryId: number) {
     setEditingCategory(categoryId);
@@ -138,6 +163,13 @@ export default function SizeInfoPage() {
       <ErrorBox message={error} />
       <SuccessBox message={success} />
 
+      {/* 4b - có Body Profile -> hệ thống có thể gợi ý size cho từng danh mục */}
+      {hasBodyProfile && (
+        <div className="bg-indigo-50 text-indigo-700 text-sm rounded-lg px-4 py-3 mb-4">
+          Bạn đã có Body Profile — hệ thống gợi ý size cho một số danh mục bên dưới. Bạn xác nhận hoặc chỉnh sửa trước khi lưu.
+        </div>
+      )}
+
       <div className="space-y-3">
         {catalog.categories.map((c) => {
           const entry = sizes[c.id];
@@ -151,10 +183,25 @@ export default function SizeInfoPage() {
                     <p className="text-sm text-gray-500 mt-0.5">
                       Size <span className="font-medium text-gray-900">{entry.sizeValue}</span>
                       {' · '}{SYSTEM_LABEL[entry.sizeSystem]}
+                      {entry.source === 'BODY_PROFILE' && (
+                        <span className="ml-2 text-xs bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">
+                          Từ Body Profile · chưa xác nhận
+                        </span>
+                      )}
                     </p>
                   ) : (
                     <p className="text-sm text-gray-400 mt-0.5">Chưa khai báo</p>
                   )}
+                  {/* 4b - dòng gợi ý từ Body Profile khi chưa phải size do khách tự xác nhận */}
+                  {!isEditing && suggestions[c.id] &&
+                    !(entry?.source === 'MANUAL' && entry.sizeValue === suggestions[c.id]) && (
+                      <p className="text-xs text-indigo-600 mt-1">
+                        Gợi ý từ Body Profile: <span className="font-medium">{suggestions[c.id]}</span>
+                        <button onClick={() => applySuggestion(c.id, suggestions[c.id])} className="ml-2 underline hover:text-indigo-800">
+                          Dùng gợi ý
+                        </button>
+                      </p>
+                    )}
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   {!isEditing && (
