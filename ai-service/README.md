@@ -15,7 +15,7 @@ và trả JSON. Ảnh gốc có thể xóa ngay sau khi trích số đo (tối t
 | GĐ | Nội dung | Trạng thái |
 |----|----------|------------|
 | 1 | Thu thập & chuẩn bị dữ liệu (3 tầng A/B/C) | ✅ Tầng B: 1986 số đo NỮ THẬT (ANSUR II) + 600 synthetic; Tầng C: 14 SP đủ thuộc tính |
-| 2 | Pose Estimation (MediaPipe) | 🟢 M1 xong — FastAPI + `/pose` (MediaPipe Pose Landmarker) + `/body-shape`; đã chạy & test |
+| 2 | Pose Estimation (MediaPipe) | ✅ M1 xong — FastAPI + `/pose` + `/body-shape`; nghiệm thu trên ảnh người thật (6/6 phát hiện, tin cậy ~0.95) |
 | 3 | Trích đặc trưng + phân loại dáng (rule → ML) | ⬜ Chưa (baseline rule-based đã có ở backend) |
 | 4 | Fashion Knowledge Base + điểm tương thích dáng–SP | ⬜ Chưa |
 | 5 | Recommendation engine (hybrid) + giải thích | ⬜ Chưa |
@@ -75,11 +75,19 @@ curl -X POST http://127.0.0.1:8000/pose -F "image=@fullbody.jpg"
 # ảnh không có người -> {"status":"NO_PERSON",...}
 ```
 
-**Đã kiểm chứng:** `/health`, `/body-shape` (số đo), và `/pose` nạp model + chạy inference +
-trả `NO_PERSON` đúng cho ảnh không người. **Đường "có người"** (trả đủ 33 landmarks) đã hoàn
-thiện code nhưng cần **ảnh người thật đứng thẳng** để nghiệm thu đầy đủ (ảnh của nhóm hoặc từ
-dataset ảnh — xem `data/README.md`). Backend Express sẽ gọi các endpoint này thay dần phần
-đang tính tại Node ở các giai đoạn sau.
+**Đã kiểm chứng:**
+- `/health`, `/body-shape` (số đo → dáng người, HOURGLASS 0.95 đúng), `/pose` trả `NO_PERSON`
+  đúng cho ảnh không người.
+- **Đường "có người"**: nghiệm thu trên **6 ảnh người THẬT** (mẫu Kaggle *Body Measurements
+  Image Dataset*, front_img) → **6/6 phát hiện, đủ 33 landmarks, tin cậy TB 0.953**. Công cụ:
+  `scripts/validate_pose.py --dir <thư mục ảnh> --pattern front_img.jpg`.
+
+Lưu ý: MediaPipe cho landmark 2D, KHÔNG cho chu vi ngực/eo/hông — ước lượng số đo từ ảnh là
+bài toán Giai đoạn 3. Backend Express sẽ gọi các endpoint này thay dần phần đang tính tại Node
+ở các giai đoạn sau.
+
+Ảnh dùng để nghiệm thu là dữ liệu bên thứ ba (nhà bán unidpro), **không commit vào repo** và
+cần kiểm tra giấy phép trước khi trích số liệu cụ thể vào báo cáo — xem `data/README.md`.
 
 ## Quyền riêng tư
 

@@ -28,6 +28,18 @@ hàng Việt Nam), và nhãn do công thức sinh nên mô hình học trên đ�
 Muốn nhãn do **người thật gán** đúng dân số mục tiêu thì cần nhóm tự thu thập & gán nhãn
 (pipeline schema đã chừa sẵn ở `schema.md`, cột `source=real`).
 
+## Nguồn ảnh nghiệm thu pose (GĐ2)
+
+Để nghiệm thu đường "có người" của `/pose` trên ảnh THẬT, dùng mẫu **Body Measurements Image
+Dataset** (unidpro) trên Kaggle — 6 đối tượng có `front_img`/`side_img` + số đo (ngực/eo/hông,
+chiều cao, cân nặng). Kết quả: 6/6 phát hiện, đủ 33 landmarks, tin cậy TB 0.953
+(`scripts/validate_pose.py`).
+
+⚠️ **Giấy phép:** đây là dữ liệu của nhà bán thương mại; bản Kaggle có thể là mẫu. Thư mục
+tải về **không kèm file LICENSE** — cần kiểm tra điều khoản trên trang Kaggle trước khi trích
+số liệu cụ thể vào báo cáo. Vì vậy **không commit ảnh/dữ liệu gốc của bộ này** vào repo (dùng
+cục bộ để nghiệm thu). Quy mô 6 mẫu quá nhỏ để huấn luyện — chỉ dùng kiểm thử pipeline.
+
 ## Quyền riêng tư & nguồn
 
 Không commit ảnh người thật hay dữ liệu người dùng vào repo. Dữ liệu gốc ANSUR II để trong
