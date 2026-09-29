@@ -6,6 +6,9 @@ import {
   listSizes,
   upsertSize,
   deleteSize,
+  bodySyncStatus,
+  bodySync,
+  bodyAutoSync,
 } from '../controllers/personalization.controller';
 import { authenticate } from '../middlewares/auth';
 
@@ -24,5 +27,10 @@ router.put('/profile', updateProfile);
 router.get('/sizes', listSizes);
 router.put('/sizes/:categoryId', upsertSize);
 router.delete('/sizes/:categoryId', deleteSize);
+
+// UC2.3 - Đồng bộ Body Profile
+router.get('/body-sync', bodySyncStatus);
+router.post('/body-sync', bodySync);
+router.put('/body-sync/auto', bodyAutoSync);
 
 export default router;

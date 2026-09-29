@@ -168,6 +168,13 @@ model CustomerProfile {
 
   sizes CustomerSize[] // UC2.2 - thông tin size theo danh mục
 
+  // UC2.3 - Đồng bộ Body Profile: tham chiếu tới bản Body Profile mới nhất đã đồng bộ.
+  // onDelete SetNull -> tự hủy liên kết khi Body Profile bị xóa (UC3.4 b8).
+  bodyProfileId       Int?         @unique
+  bodyProfile         BodyProfile? @relation("SyncedBodyProfile", fields: [bodyProfileId], references: [id], onDelete: SetNull)
+  bodyProfileSyncedAt DateTime?    // thời điểm đồng bộ gần nhất (version lấy qua bodyProfile.version)
+  bodyProfileAutoSync Boolean      @default(false) // 2a - khách hàng bật tự đồng bộ khi có bản mới
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -268,6 +275,9 @@ model BodyProfile {
   analysisResult  Json? // dữ liệu thô bổ sung (vd. tỷ lệ vai/hông ước lượng từ ảnh)
 
   createdAt DateTime @default(now())
+
+  // UC2.3 - hồ sơ cá nhân hóa đang tham chiếu bản này (nếu đã đồng bộ)
+  syncedInProfile CustomerProfile? @relation("SyncedBodyProfile")
 
   @@index([userId])
 }

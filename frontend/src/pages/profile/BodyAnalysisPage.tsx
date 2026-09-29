@@ -41,6 +41,15 @@ interface BodyProfile {
 }
 interface Category { id: number; name: string; slug: string }
 
+// UC2.3 - trạng thái đồng bộ Body Profile vào hồ sơ cá nhân hóa
+interface SyncStatus {
+  hasBodyProfile: boolean;
+  autoSync: boolean;
+  synced: { bodyProfileId: number; syncedAt: string | null } | null;
+  needsSync: boolean;
+  latest: { id: number; version: number } | null;
+}
+
 const SHAPE_LABEL: Record<BodyShape, string> = {
   HOURGLASS: 'Đồng hồ cát',
   RECTANGLE: 'Chữ nhật',
@@ -88,6 +97,10 @@ export default function BodyAnalysisPage() {
   const [confirmScope, setConfirmScope] = useState<'PHOTO_ONLY' | 'ALL' | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // UC2.3 - đồng bộ Body Profile
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
   const categoryName = useMemo(() => {
     const map: Record<number, string> = {};
     for (const c of categories) map[c.id] = c.name;
@@ -100,16 +113,56 @@ export default function BodyAnalysisPage() {
       api.get('/body/consent'),
       api.get('/body/profile'),
       api.get('/categories'),
+      api.get('/personalization/body-sync'),
     ])
-      .then(([consentRes, profileRes, catRes]) => {
+      .then(([consentRes, profileRes, catRes, syncRes]) => {
         setConsented(!!consentRes.data.consented);
         setProfile(profileRes.data.profile ?? null);
         setCategories(catRes.data.categories ?? []);
+        setSyncStatus(syncRes.data);
       })
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
+
+  // UC2.3 - làm mới trạng thái đồng bộ
+  async function refreshSync() {
+    try {
+      const r = await api.get('/personalization/body-sync');
+      setSyncStatus(r.data);
+    } catch {
+      /* không chặn luồng chính */
+    }
+  }
+
+  // UC2.3 bước 5-8 - đồng bộ thủ công
+  async function doSync() {
+    setError('');
+    setSuccess('');
+    setSyncing(true);
+    try {
+      const res = await api.post('/personalization/body-sync');
+      setSuccess(
+        `${res.data.message}${res.data.appliedSizes ? ` Đã cập nhật ${res.data.appliedSizes} gợi ý size theo danh mục.` : ''}`
+      );
+      await refreshSync();
+    } catch (err) {
+      setError(getErrorMessage(err)); // 2F / 6E
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  // UC2.3 - 2a: bật/tắt tự đồng bộ
+  async function toggleAutoSync(enabled: boolean) {
+    try {
+      const res = await api.put('/personalization/body-sync/auto', { enabled });
+      setSyncStatus((s) => (s ? { ...s, autoSync: res.data.autoSync } : s));
+    } catch (err) {
+      setError(getErrorMessage(err));
+    }
+  }
 
   // b2 - khách hàng đồng ý điều khoản
   async function giveConsent() {
@@ -173,6 +226,7 @@ export default function BodyAnalysisPage() {
       setSuccess(res.data.profile.isPreliminary
         ? 'Đã phân tích xong. Độ tin cậy thấp nên kết quả chỉ mang tính sơ bộ — bạn nên hiệu chỉnh số đo.'
         : 'Phân tích dáng người thành công.');
+      refreshSync(); // UC2.3 - có bản mới -> cập nhật trạng thái đồng bộ (2a nếu bật tự đồng bộ)
     } catch (err) {
       setFormError(getErrorMessage(err)); // 5E/5F/6E/7E - dùng thông báo từ backend
     } finally {
@@ -197,6 +251,7 @@ export default function BodyAnalysisPage() {
       }
       setSuccess(res.data.message);
       setConfirmScope(null);
+      refreshSync(); // UC2.3 - liên kết đồng bộ đã tự hủy khi xóa Body Profile
     } catch (err) {
       setError(getErrorMessage(err)); // 2F (không có dữ liệu) / 7E (lỗi hệ thống)
     } finally {
@@ -236,6 +291,50 @@ export default function BodyAnalysisPage() {
         <>
           {/* b8 - Bản tóm tắt Body Profile hiện hành */}
           {profile && !showForm && <ProfileSummary profile={profile} categoryName={categoryName} />}
+
+          {/* UC2.3 - Đồng bộ Body Profile vào hồ sơ cá nhân hóa (b9 của UC3.1) */}
+          {profile && !showForm && syncStatus && (
+            <div className="bg-white rounded-xl border p-6 mb-5">
+              <h3 className="font-medium mb-1">Đồng bộ vào hồ sơ cá nhân hóa</h3>
+              <p className="text-sm text-gray-500 mb-3">
+                Đưa Body Profile mới nhất vào hồ sơ để hệ thống đề xuất size (UC2.2) và gợi ý sản phẩm,
+                tư vấn phong cách (UC5) theo dữ liệu cơ thể của bạn.
+              </p>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-sm">
+                  {syncStatus.synced ? (
+                    syncStatus.needsSync ? (
+                      <span className="text-amber-600">● Có bản phân tích mới chưa đồng bộ.</span>
+                    ) : (
+                      <span className="text-green-600">● Đã đồng bộ (bản v{profile.version}).</span>
+                    )
+                  ) : (
+                    <span className="text-gray-500">○ Chưa đồng bộ vào hồ sơ.</span>
+                  )}
+                </p>
+                {(syncStatus.needsSync || !syncStatus.synced) && (
+                  <PrimaryButton style={{ width: 'auto' }} onClick={doSync} disabled={syncing}>
+                    {syncing ? 'Đang đồng bộ...' : 'Đồng bộ ngay'}
+                  </PrimaryButton>
+                )}
+              </div>
+              <label className="flex items-center gap-2 mt-3 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={syncStatus.autoSync}
+                  onChange={(e) => toggleAutoSync(e.target.checked)}
+                />
+                Tự động đồng bộ khi có bản phân tích mới
+              </label>
+              {syncStatus.synced && !syncStatus.needsSync && (
+                <p className="text-xs text-gray-400 mt-2">
+                  {/* 7a - số đo mới có thể ảnh hưởng size */}
+                  Số đo có thể ảnh hưởng size — xem lại trong{' '}
+                  <Link to="/profile/sizes" className="underline">Thông tin size</Link> (UC2.2).
+                </p>
+              )}
+            </div>
+          )}
 
           {/* b3-b4 - Biểu mẫu chọn phương thức và nhập liệu */}
           {showForm ? (
@@ -423,18 +522,6 @@ function ProfileSummary({ profile, categoryName }: { profile: BodyProfile; categ
           <p className="text-xs text-gray-400 mt-2">Đồng bộ với bảng quy đổi size chuẩn (UC2.2). Bạn có thể chỉnh sửa trong mục Thông tin size.</p>
         </div>
       )}
-
-      {/* b9 - Đề xuất đồng bộ Body Profile vào hồ sơ cá nhân hóa (UC2.3) */}
-      <div className="mt-5 border-t pt-4 flex items-center justify-between gap-3">
-        <p className="text-sm text-gray-500">Đồng bộ kết quả vào hồ sơ cá nhân hóa để nâng độ chính xác của gợi ý (UC5).</p>
-        <button
-          disabled
-          title="Tính năng đồng bộ (UC2.3) sẽ khả dụng ở bước phát triển tiếp theo."
-          className="text-sm border border-gray-200 text-gray-400 rounded-lg px-4 py-2 cursor-not-allowed whitespace-nowrap"
-        >
-          Đồng bộ (sắp có)
-        </button>
-      </div>
     </div>
   );
 }

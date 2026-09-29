@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { BODY_MEASUREMENT_RANGES } from '../constants/body-analysis';
 import { processBodyAnalysis } from '../services/body-analysis.service';
 import { generateBodyProfile } from '../services/body-profile.service';
+import { syncBodyProfile } from '../services/body-sync.service';
 
 // ============================================================
 //  UC3.1 - PHÂN TÍCH DÁNG NGƯỜI (điểm vào cho người dùng)
@@ -142,11 +143,23 @@ export async function analyzeBody(req: Request, res: Response, next: NextFunctio
       processing: result,
     });
 
+    // UC2.3 - 2a: tự đồng bộ ngay nếu khách hàng đã bật chế độ tự đồng bộ
+    let autoSynced = false;
+    const cp = await prisma.customerProfile.findUnique({ where: { userId }, select: { bodyProfileAutoSync: true } });
+    if (cp?.bodyProfileAutoSync) {
+      try {
+        await syncBodyProfile(userId);
+        autoSynced = true;
+      } catch {
+        // đồng bộ tự động thất bại không làm hỏng kết quả phân tích; khách hàng có thể đồng bộ thủ công
+      }
+    }
+
     res.status(201).json({
       message: 'Phân tích dáng người thành công',
       profile: serializeProfile(profile),
-      // UC2.3 (đồng bộ vào hồ sơ cá nhân hóa) chưa được triển khai -> báo cho FE biết để tắt CTA tương ứng
-      canSyncToPersonalization: false,
+      canSyncToPersonalization: true, // UC2.3 đã sẵn sàng
+      autoSynced,
     });
   } catch (err) {
     if (req.file) fs.unlink(req.file.path, () => {});
@@ -207,12 +220,18 @@ export async function deleteBodyData(req: Request, res: Response, next: NextFunc
         await tx.bodyProfile.updateMany({ where: { userId }, data: { photoUrl: null } });
       } else {
         // PROFILE hoặc ALL: xóa toàn bộ các bản Body Profile (không thể tách "giữ ảnh, xóa hồ sơ"
-        // vì ảnh được lưu gắn theo từng bản ghi Body Profile trong mô hình dữ liệu hiện tại)
+        // vì ảnh được lưu gắn theo từng bản ghi Body Profile trong mô hình dữ liệu hiện tại).
+        // FK CustomerProfile.bodyProfileId (onDelete SetNull) tự hủy liên kết đồng bộ (UC2.3).
         await tx.bodyProfile.deleteMany({ where: { userId } });
+        // b8 - dọn các size đề xuất từ Body Profile để chức năng phụ thuộc (UC2.2/UC5) quay về
+        // thông tin thủ công/mặc định, không để lại tham chiếu mồ côi (bodyProfileId đã tự null qua FK)
+        const cp = await tx.customerProfile.findUnique({ where: { userId }, select: { id: true } });
+        if (cp) {
+          await tx.customerSize.deleteMany({ where: { profileId: cp.id, source: 'BODY_PROFILE' } });
+          await tx.customerProfile.update({ where: { id: cp.id }, data: { bodyProfileSyncedAt: null } });
+        }
       }
       await tx.bodyDataDeletionLog.create({ data: { userId, scope } });
-      // Lưu ý: UC2.3 (đồng bộ hồ sơ cá nhân hóa) chưa được triển khai nên chưa có liên kết
-      // cần hủy ở CustomerProfile - sẽ bổ sung bước hủy liên kết khi UC2.3 được xây dựng.
     });
 
     // Dọn file vật lý sau khi transaction DB thành công (best-effort, không ảnh hưởng tính nguyên tử của DB)

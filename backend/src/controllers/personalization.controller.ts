@@ -15,6 +15,7 @@ import {
   isValidOption,
   deriveSizeFromMeasurements,
 } from '../constants/personalization';
+import { getBodySyncStatus, syncBodyProfile, setBodyAutoSync, NoBodyProfileError } from '../services/body-sync.service';
 
 // ============================================================
 //  UC2.1 - THIẾT LẬP HỒ SƠ CÁ NHÂN HÓA
@@ -418,6 +419,47 @@ export async function deleteSize(req: Request, res: Response, next: NextFunction
 
     await prisma.customerSize.delete({ where: { id: existing.id } });
     res.json({ message: 'Đã xóa thông tin size' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ============================================================
+//  UC2.3 - ĐỒNG BỘ BODY PROFILE
+// ============================================================
+
+// GET /api/personalization/body-sync - trạng thái + xem trước (bước 2-4)
+export async function bodySyncStatus(req: Request, res: Response, next: NextFunction) {
+  try {
+    res.json(await getBodySyncStatus(req.user!.userId));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/personalization/body-sync - xác nhận đồng bộ (bước 5-8)
+export async function bodySync(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await syncBodyProfile(req.user!.userId);
+    res.json({ message: 'Đã đồng bộ Body Profile vào hồ sơ cá nhân hóa.', ...result });
+  } catch (err) {
+    // 2F - chưa có Body Profile -> điều hướng sang phân tích dáng người (UC3)
+    if (err instanceof NoBodyProfileError) {
+      return res.status(404).json({
+        message: 'Bạn chưa có Body Profile. Hãy phân tích dáng người trước khi đồng bộ.',
+        code: 'NO_BODY_PROFILE',
+      });
+    }
+    next(err); // 6E
+  }
+}
+
+// PUT /api/personalization/body-sync/auto - bật/tắt tự đồng bộ (2a)
+export async function bodyAutoSync(req: Request, res: Response, next: NextFunction) {
+  try {
+    const enabled = z.object({ enabled: z.boolean() }).safeParse(req.body);
+    if (!enabled.success) return res.status(400).json({ message: 'Giá trị không hợp lệ' });
+    res.json(await setBodyAutoSync(req.user!.userId, enabled.data.enabled));
   } catch (err) {
     next(err);
   }
