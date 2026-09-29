@@ -2,13 +2,9 @@ import type { Request, Response, NextFunction } from 'express';
 import fs from 'fs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import {
-  BODY_MEASUREMENT_RANGES,
-  STYLE_RECOMMENDATIONS,
-  suggestSizesByCategory,
-} from '../constants/body-analysis';
-import { deriveSizeFromMeasurements } from '../constants/personalization';
+import { BODY_MEASUREMENT_RANGES } from '../constants/body-analysis';
 import { processBodyAnalysis } from '../services/body-analysis.service';
+import { generateBodyProfile } from '../services/body-profile.service';
 
 // ============================================================
 //  UC3.1 - PHÂN TÍCH DÁNG NGƯỜI (điểm vào cho người dùng)
@@ -19,6 +15,7 @@ import { processBodyAnalysis } from '../services/body-analysis.service';
 function serializeProfile(p: any) {
   return {
     id: p.id,
+    version: p.version,
     bodyShape: p.bodyShape,
     source: p.source,
     height: p.height,
@@ -129,46 +126,21 @@ export async function analyzeBody(req: Request, res: Response, next: NextFunctio
         status: result.status,
       });
     }
-    const bodyShape = result.bodyShape; // đã đảm bảo non-null sau guard trên
-
-    // UC3.3 - sinh Body Profile: khuyến nghị trang phục + gợi ý size sơ bộ
-    const recommendations = STYLE_RECOMMENDATIONS[bodyShape];
-    const categories = await prisma.category.findMany();
-    const suggestedSizes = suggestSizesByCategory(
-      { bust: data.bust, waist: data.waist, hip: data.hip },
-      categories,
-      deriveSizeFromMeasurements
-    );
-
     const photoUrl = req.file ? `/uploads/body/${req.file.filename}` : null;
 
-    // 7E: bọc trong transaction để đảm bảo không lưu bản lỗi/dở dang
-    const profile = await prisma.$transaction((tx) =>
-      tx.bodyProfile.create({
-        data: {
-          userId,
-          bodyShape,
-          source: data.source,
-          height: data.height,
-          weight: data.weight ?? null,
-          bust: data.bust,
-          waist: data.waist,
-          hip: data.hip,
-          shoulder: result.measurements.shoulder,
-          confidence: result.confidence,
-          isPreliminary: result.isPreliminary,
-          photoUrl,
-          recommendations,
-          suggestedSizes,
-          analysisResult: {
-            status: result.status,
-            note: result.note,
-            ratios: result.ratios,
-            shoulderHipRatio: data.shoulderHipRatio ?? null,
-          },
-        },
-      })
-    );
+    // UC3.3 - include tới module sinh Body Profile (khuyến nghị + gợi ý size + lưu bản mới có phiên bản)
+    const profile = await generateBodyProfile({
+      userId,
+      source: data.source,
+      height: data.height,
+      weight: data.weight ?? null,
+      bust: data.bust,
+      waist: data.waist,
+      hip: data.hip,
+      shoulderHipRatio: data.shoulderHipRatio ?? null,
+      photoUrl,
+      processing: result,
+    });
 
     res.status(201).json({
       message: 'Phân tích dáng người thành công',

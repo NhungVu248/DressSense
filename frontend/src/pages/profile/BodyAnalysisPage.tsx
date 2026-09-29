@@ -24,6 +24,7 @@ interface SuggestedSize {
 }
 interface BodyProfile {
   id: number;
+  version: number;
   bodyShape: BodyShape;
   source: Source;
   height: number | null;
@@ -285,6 +286,7 @@ function ProfileSummary({ profile, categoryName }: { profile: BodyProfile; categ
           <p className="text-sm text-gray-400">Dáng người của bạn</p>
           <h2 className="text-xl font-bold">{SHAPE_LABEL[profile.bodyShape]}</h2>
           <p className="text-xs text-gray-400 mt-1">
+            Bản v{profile.version} ·{' '}
             Độ tin cậy {Math.round(profile.confidence * 100)}% ·{' '}
             {profile.source === 'PHOTO' ? 'Từ ảnh + số đo' : 'Từ số đo thủ công'} ·{' '}
             {new Date(profile.createdAt).toLocaleDateString('vi-VN')}

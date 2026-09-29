@@ -250,6 +250,7 @@ model BodyProfile {
   user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   bodyShape     BodyShape
   source        BodyProfileSource @default(MANUAL)
+  version       Int               @default(1) // UC3.3 - số phiên bản; mỗi lần sinh tạo bản mới để truy vết (5a)
 
   height   Float? // cm
   weight   Float? // kg
