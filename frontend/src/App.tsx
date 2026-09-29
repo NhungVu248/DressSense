@@ -18,6 +18,8 @@ import AddressBookPage from './pages/profile/AddressBookPage';
 // UC2.1/UC2.2 - Hồ sơ cá nhân hóa & thông tin size
 import PersonalizationPage from './pages/profile/PersonalizationPage';
 import SizeInfoPage from './pages/profile/SizeInfoPage';
+// UC3.1 - Phân tích dáng người bằng AI
+import BodyAnalysisPage from './pages/profile/BodyAnalysisPage';
 // UC1.7 - Quản trị phân quyền người dùng
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import RequireAuth from './components/RequireAuth';
@@ -58,6 +60,9 @@ export default function App() {
       {/* UC2.1/UC2.2 - Hồ sơ cá nhân hóa & thông tin size */}
       <Route path="/profile/personalization" element={<RequireAuth><ShopLayout><PersonalizationPage /></ShopLayout></RequireAuth>} />
       <Route path="/profile/sizes" element={<RequireAuth><ShopLayout><SizeInfoPage /></ShopLayout></RequireAuth>} />
+
+      {/* UC3.1 - Phân tích dáng người bằng AI */}
+      <Route path="/profile/body" element={<RequireAuth><ShopLayout><BodyAnalysisPage /></ShopLayout></RequireAuth>} />
 
       {/* UC1.7 - Phân quyền người dùng (chỉ ADMIN) */}
       <Route path="/admin" element={<RequireAuth roles={['ADMIN']}><ShopLayout><AdminUsersPage /></ShopLayout></RequireAuth>} />

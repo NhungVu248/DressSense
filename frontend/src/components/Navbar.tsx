@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { DEFAULT_AVATAR } from '../lib/placeholder';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -15,7 +16,7 @@ export default function Navbar() {
             <>
               <Link to="/profile" className="flex items-center gap-2 hover:text-brand">
                 <img
-                  src={user.avatarUrl ? (import.meta.env.VITE_API_URL?.replace('/api', '') + user.avatarUrl) : 'https://via.placeholder.com/28'}
+                  src={user.avatarUrl ? (import.meta.env.VITE_API_URL?.replace('/api', '') + user.avatarUrl) : DEFAULT_AVATAR}
                   alt="" className="w-7 h-7 rounded-full object-cover bg-gray-100"
                 />
                 {user.fullName}

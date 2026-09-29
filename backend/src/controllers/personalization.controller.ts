@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import {
   STYLE_OPTIONS,
@@ -372,13 +373,13 @@ export async function upsertSize(req: Request, res: Response, next: NextFunction
       });
       return tx.customerSize.upsert({
         where: { profileId_categoryId: { profileId: profile.id, categoryId } },
-        update: { sizeSystem: data.sizeSystem, sizeValue, measurements: measurements ?? null, source: 'MANUAL' },
+        update: { sizeSystem: data.sizeSystem, sizeValue, measurements: measurements ?? Prisma.JsonNull, source: 'MANUAL' },
         create: {
           profileId: profile.id,
           categoryId,
           sizeSystem: data.sizeSystem,
           sizeValue,
-          measurements: measurements ?? null,
+          measurements: measurements ?? Prisma.JsonNull,
           source: 'MANUAL',
         },
         include: { category: true },

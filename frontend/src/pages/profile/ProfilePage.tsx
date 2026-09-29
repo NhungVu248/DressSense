@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
 import { useAuth, type User } from '../../context/AuthContext';
+import { DEFAULT_AVATAR } from '../../lib/placeholder';
 
 interface ProfileData {
   user: User;
@@ -45,7 +46,7 @@ export default function ProfilePage() {
 
       <div className="bg-white rounded-xl border p-6 flex items-start gap-5 mb-5">
         <img
-          src={user.avatarUrl ? (import.meta.env.VITE_API_URL?.replace('/api', '') + user.avatarUrl) : 'https://via.placeholder.com/96'}
+          src={user.avatarUrl ? (import.meta.env.VITE_API_URL?.replace('/api', '') + user.avatarUrl) : DEFAULT_AVATAR}
           alt="avatar"
           className="w-20 h-20 rounded-full object-cover bg-gray-100"
         />
@@ -104,6 +105,15 @@ export default function ProfilePage() {
           <p className="text-sm text-gray-500 mt-0.5">Lưu size theo từng danh mục để đặt hàng nhanh và đúng kích cỡ.</p>
         </div>
         <Link to="/profile/sizes" className="text-sm text-indigo-600 hover:underline whitespace-nowrap">Quản lý →</Link>
+      </div>
+
+      {/* UC3.1 - Phân tích dáng người bằng AI */}
+      <div className="bg-white rounded-xl border p-6 flex items-center justify-between mt-5">
+        <div>
+          <h3 className="font-medium">Phân tích dáng người</h3>
+          <p className="text-sm text-gray-500 mt-0.5">AI xác định dáng người từ số đo/ảnh để gợi ý trang phục và size phù hợp.</p>
+        </div>
+        <Link to="/profile/body" className="text-sm text-indigo-600 hover:underline whitespace-nowrap">Phân tích →</Link>
       </div>
 
       {authUser?.role === 'SELLER' && (

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -84,7 +85,7 @@ async function main() {
       fit: 'Regular',
       style: 'Casual',
       season: 'Hè',
-      images: { create: [{ url: 'https://via.placeholder.com/400x500', isPrimary: true }] },
+      images: { create: [{ url: 'https://placehold.co/400x500?text=DressSense', isPrimary: true }] },
       variants: { create: [{ size: 'S', stock: 10 }, { size: 'M', stock: 15 }, { size: 'L', stock: 8 }] },
     },
   });
@@ -101,7 +102,7 @@ async function main() {
       fit: 'Slim',
       style: 'Office',
       season: 'Quanh năm',
-      images: { create: [{ url: 'https://via.placeholder.com/400x500', isPrimary: true }] },
+      images: { create: [{ url: 'https://placehold.co/400x500?text=DressSense', isPrimary: true }] },
       variants: { create: [{ size: 'M', stock: 20 }, { size: 'L', stock: 12 }] },
     },
   });

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { Field, PrimaryButton, SecondaryButton, ErrorBox, SuccessBox } from '../../components/ui';
+import { DEFAULT_AVATAR } from '../../lib/placeholder';
 
 // UC1.5 - Cập nhật hồ sơ
 export default function EditProfilePage() {
@@ -95,7 +96,7 @@ export default function EditProfilePage() {
 
         <div className="flex items-center gap-4 mb-5">
           <img
-            src={avatarPreview || (user.avatarUrl ? (import.meta.env.VITE_API_URL?.replace('/api', '') + user.avatarUrl) : 'https://via.placeholder.com/72')}
+            src={avatarPreview || (user.avatarUrl ? (import.meta.env.VITE_API_URL?.replace('/api', '') + user.avatarUrl) : DEFAULT_AVATAR)}
             alt="avatar" className="w-16 h-16 rounded-full object-cover bg-gray-100"
           />
           <div>

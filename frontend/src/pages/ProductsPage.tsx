@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../lib/api';
+import { PRODUCT_PLACEHOLDER } from '../lib/placeholder';
 
 interface Product {
   id: number;
@@ -33,8 +34,9 @@ export default function ProductsPage() {
             className="bg-white rounded-lg border overflow-hidden hover:shadow-md transition-shadow"
           >
             <img
-              src={p.images.find((i) => i.isPrimary)?.url || p.images[0]?.url}
+              src={p.images.find((i) => i.isPrimary)?.url || p.images[0]?.url || PRODUCT_PLACEHOLDER}
               alt={p.name}
+              onError={(e) => { e.currentTarget.src = PRODUCT_PLACEHOLDER; }}
               className="w-full aspect-[4/5] object-cover bg-gray-100"
             />
             <div className="p-3">
