@@ -9,3 +9,6 @@ data/**/real/
 *.jpg
 *.jpeg
 *.png
+
+# Dữ liệu gốc bên thứ ba (ANSUR II) - tải bằng scripts/download_ansur.py, KHÔNG commit
+data/body_shape/raw/

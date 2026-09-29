@@ -14,7 +14,7 @@ và trả JSON. Ảnh gốc có thể xóa ngay sau khi trích số đo (tối t
 
 | GĐ | Nội dung | Trạng thái |
 |----|----------|------------|
-| 1 | Thu thập & chuẩn bị dữ liệu (3 tầng A/B/C) | 🟡 Đang làm — Tầng B (dataset dáng người) đã có bản bootstrap; Tầng C cần làm giàu |
+| 1 | Thu thập & chuẩn bị dữ liệu (3 tầng A/B/C) | ✅ Tầng B: 1986 số đo NỮ THẬT (ANSUR II) + 600 synthetic; Tầng C: 14 SP đủ thuộc tính |
 | 2 | Pose Estimation (MediaPipe) | ⬜ Chưa |
 | 3 | Trích đặc trưng + phân loại dáng (rule → ML) | ⬜ Chưa (baseline rule-based đã có ở backend) |
 | 4 | Fashion Knowledge Base + điểm tương thích dáng–SP | ⬜ Chưa |
