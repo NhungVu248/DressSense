@@ -15,6 +15,7 @@ import numpy as np
 from fastapi import FastAPI, File, UploadFile
 from PIL import Image
 
+from . import model as ml_model
 from .body_shape import CONFIDENCE_THRESHOLD, classify_body_shape, compute_ratios
 from .schemas import BodyShapeRequest
 
@@ -51,14 +52,32 @@ def body_shape(req: BodyShapeRequest):
     Ưu tiên số đo (đường chắc chắn); nếu chỉ có landmarks thì trả ước lượng hạn chế."""
     m = req.measurements
     if m is not None:
+        ratios = compute_ratios(m.bust, m.waist, m.hip, m.shoulder)
+        # GĐ3 - dùng mô hình ML nếu được yêu cầu và đã có model; nếu không, fallback luật
+        if req.method == "ml" and ml_model.available():
+            r = ml_model.predict_shape(m.bust, m.waist, m.hip)
+            conf = r["confidence"] if r["confidence"] is not None else 1.0
+            return {
+                "status": "LOW_CONFIDENCE" if conf < CONFIDENCE_THRESHOLD else "OK",
+                "bodyShape": r["bodyShape"],
+                "confidence": r["confidence"],
+                "isPreliminary": conf < CONFIDENCE_THRESHOLD,
+                "ratios": ratios,
+                "method": "ml",
+                "model": r["model"],
+                "note": "Phân loại bằng mô hình ML (GĐ3).",
+                "measurementSource": "MANUAL",
+            }
+        # Baseline rule-based (mặc định, hoặc fallback khi chưa có model)
         shape, conf, note = classify_body_shape(m.bust, m.waist, m.hip)
         return {
             "status": "LOW_CONFIDENCE" if conf < CONFIDENCE_THRESHOLD else "OK",
             "bodyShape": shape,
             "confidence": conf,
             "isPreliminary": conf < CONFIDENCE_THRESHOLD,
-            "ratios": compute_ratios(m.bust, m.waist, m.hip, m.shoulder),
-            "note": note,
+            "ratios": ratios,
+            "method": "rule",
+            "note": note if req.method != "ml" else note + " (chưa có model ML, dùng luật).",
             "measurementSource": "MANUAL",
         }
 

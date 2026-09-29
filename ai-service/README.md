@@ -16,7 +16,7 @@ và trả JSON. Ảnh gốc có thể xóa ngay sau khi trích số đo (tối t
 |----|----------|------------|
 | 1 | Thu thập & chuẩn bị dữ liệu (3 tầng A/B/C) | ✅ Tầng B: 1986 số đo NỮ THẬT (ANSUR II) + 600 synthetic; Tầng C: 14 SP đủ thuộc tính |
 | 2 | Pose Estimation (MediaPipe) | ✅ M1 xong — FastAPI + `/pose` + `/body-shape`; nghiệm thu trên ảnh người thật (6/6 phát hiện, tin cậy ~0.95) |
-| 3 | Trích đặc trưng + phân loại dáng (rule → ML) | ⬜ Chưa (baseline rule-based đã có ở backend) |
+| 3 | Trích đặc trưng + phân loại dáng (rule → ML) | ✅ M2–M4 — huấn luyện/so sánh DT/RF/MLP/XGBoost trên ANSUR; `/body-shape?method=ml` (fallback rule) |
 | 4 | Fashion Knowledge Base + điểm tương thích dáng–SP | ⬜ Chưa |
 | 5 | Recommendation engine (hybrid) + giải thích | ⬜ Chưa |
 | 6 | Ghi nhận hành vi & cá nhân hóa | ⬜ Chưa |
@@ -82,9 +82,32 @@ curl -X POST http://127.0.0.1:8000/pose -F "image=@fullbody.jpg"
   Image Dataset*, front_img) → **6/6 phát hiện, đủ 33 landmarks, tin cậy TB 0.953**. Công cụ:
   `scripts/validate_pose.py --dir <thư mục ảnh> --pattern front_img.jpg`.
 
-Lưu ý: MediaPipe cho landmark 2D, KHÔNG cho chu vi ngực/eo/hông — ước lượng số đo từ ảnh là
-bài toán Giai đoạn 3. Backend Express sẽ gọi các endpoint này thay dần phần đang tính tại Node
-ở các giai đoạn sau.
+Lưu ý: MediaPipe cho landmark 2D, KHÔNG cho chu vi ngực/eo/hông. Backend Express sẽ gọi các
+endpoint này thay dần phần đang tính tại Node ở các giai đoạn sau.
+
+## Huấn luyện mô hình phân loại dáng (GĐ3)
+
+```bash
+cd ai-service/scripts
+python train_body_shape.py            # dùng body_shapes_ansur.csv (số đo thật)
+# -> models/body_shape_model.joblib (.gitignore) + data/body_shape/ml_report.md
+```
+
+So sánh trên 1986 số đo thật (đặc trưng: waist_hip, waist_bust, bust_hip):
+
+| Model | accuracy | macro-F1 | CV macro-F1 |
+|-------|----------|----------|-------------|
+| **DecisionTree** (chọn) | 0.935 | 0.956 | 0.884±0.065 |
+| RandomForest | 0.922 | 0.947 | 0.873±0.067 |
+| MLP | 0.930 | 0.953 | 0.898±0.067 |
+| XGBoost | 0.922 | 0.946 | 0.880±0.063 |
+
+Chi tiết (confusion matrix, feature importance) ở `data/body_shape/ml_report.md`. Dùng:
+`POST /body-shape` với `{"method":"ml", ...}` (chưa có model thì tự fallback về luật).
+
+⚠️ **Trung thực:** nhãn ở dataset do **luật** sinh nên điểm cao = mô hình học lại luật với độ
+trung thành cao, KHÔNG phải bằng chứng độ chính xác trên nhãn do người thật gán. Giá trị GĐ3:
+dựng pipeline huấn luyện/đánh giá + phân tích đặc trưng; khi có nhãn thật chỉ thay dữ liệu.
 
 Ảnh dùng để nghiệm thu là dữ liệu bên thứ ba (nhà bán unidpro), **không commit vào repo** và
 cần kiểm tra giấy phép trước khi trích số liệu cụ thể vào báo cáo — xem `data/README.md`.

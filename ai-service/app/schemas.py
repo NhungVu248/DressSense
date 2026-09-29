@@ -16,3 +16,4 @@ class BodyShapeRequest(BaseModel):
     # UC3.2: nhận số đo (đường chắc chắn) HOẶC landmarks (từ /pose)
     measurements: Optional[Measurements] = None
     landmarks: Optional[list] = None  # 33 điểm [{x,y,z,visibility}]
+    method: str = "rule"  # 'rule' (baseline) hoặc 'ml' (mô hình GĐ3, tự fallback về rule)

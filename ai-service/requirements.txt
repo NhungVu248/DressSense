@@ -7,3 +7,9 @@ mediapipe>=1.0.0      # Pose Landmarker (GĐ2). Cần Python có wheel tương t
 opencv-python>=4.9
 numpy>=1.26
 pillow>=10
+
+# GĐ3 - huấn luyện & phục vụ mô hình phân loại dáng người
+scikit-learn>=1.4
+joblib>=1.3
+pandas>=2.0
+xgboost>=2.0
