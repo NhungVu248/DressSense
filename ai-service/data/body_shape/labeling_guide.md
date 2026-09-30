@@ -29,8 +29,11 @@ Người gán nhìn **hình bóng** (và số đo tham khảo) rồi chọn, KH�
 ## 3. Quy trình gán nhãn
 
 1. Mỗi mẫu được **≥ 2 người** gán độc lập (không thấy nhãn của nhau, không thấy nhãn luật).
-2. Dùng công cụ `labeling_tool.html` (Artifact): hiện hình bóng + số đo/tỷ lệ, chọn 1 trong 5
-   dáng hoặc "không chắc"; công cụ tự lưu tiến độ và **xuất CSV** nhãn.
+2. Dùng công cụ gán nhãn trực quan (Artifact): hiện hình bóng dựng từ số đo + tỷ lệ, chọn 1
+   trong 5 dáng hoặc "không chắc" (phím tắt 1–5, U); tự lưu tiến độ trong trình duyệt theo tên
+   người gán; xuất nhãn bằng nút **Copy CSV** (dán vào file `a1.csv`…).
+   Link: https://claude.ai/artifact/KL2saExD28Gt7uNyJXxhwg
+   (Riêng tư — chỉ mở được bằng tài khoản của bạn; chia sẻ cho người gán khác qua menu Share.)
 3. **Hợp nhất:** nhãn cuối = khi các người gán trùng nhau; nếu lệch → người thứ 3 quyết định
    hoặc loại mẫu. Báo cáo **độ đồng thuận (Cohen's/Fleiss' kappa)** giữa các người gán.
 4. Loại các mẫu "không chắc" hoặc bất đồng khỏi tập huấn luyện chính (giữ lại để phân tích).
