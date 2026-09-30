@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api, { getErrorMessage } from '../lib/api';
+import api, { getErrorMessage, recordBehavior } from '../lib/api';
 import { PRODUCT_PLACEHOLDER } from '../lib/placeholder';
 
 // UC5 - Gợi ý sản phẩm cá nhân hóa + giải thích "Vì sao hợp với bạn"
@@ -29,6 +29,22 @@ const SHAPE_LABEL: Record<string, string> = {
   HOURGLASS: 'Đồng hồ cát', RECTANGLE: 'Chữ nhật', PEAR: 'Quả lê',
   APPLE: 'Quả táo', INVERTED_TRIANGLE: 'Tam giác ngược',
 };
+
+// Nút "Thích" -> ghi nhận hành vi WISHLIST (GĐ6), phản hồi lại gợi ý vòng sau
+function WishlistButton({ productId }: { productId: number }) {
+  const [liked, setLiked] = useState(false);
+  return (
+    <button
+      onClick={() => { setLiked(true); recordBehavior(productId, 'WISHLIST'); }}
+      className={`text-sm rounded-full border px-2.5 py-1 transition-colors ${
+        liked ? 'border-red-300 bg-red-50 text-red-500' : 'border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-500'
+      }`}
+      title="Thêm vào yêu thích"
+    >
+      {liked ? '♥ Đã thích' : '♡ Thích'}
+    </button>
+  );
+}
 
 export default function RecommendationsPage() {
   const [data, setData] = useState<RecResponse | null>(null);
@@ -83,7 +99,10 @@ export default function RecommendationsPage() {
               <div className="p-3 flex flex-col gap-1 flex-1">
                 <p className="text-xs text-gray-400">{it.product.category.name}</p>
                 <p className="font-medium text-sm line-clamp-2">{it.product.name}</p>
-                <p className="text-brand font-semibold">{it.product.price.toLocaleString('vi-VN')}₫</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-brand font-semibold">{it.product.price.toLocaleString('vi-VN')}₫</p>
+                  <WishlistButton productId={it.product.id} />
+                </div>
                 {/* WHY THIS SUITS YOU - điểm nhấn UX */}
                 <div className="mt-1 bg-gray-50 rounded-lg p-2.5">
                   <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-0.5">Vì sao hợp với bạn</p>

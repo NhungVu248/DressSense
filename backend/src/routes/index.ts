@@ -8,6 +8,7 @@ import personalizationRoutes from './personalization.routes';
 import categoryRoutes from './category.routes';
 import bodyRoutes from './body.routes';
 import recommendationRoutes from './recommendation.routes';
+import behaviorRoutes from './behavior.routes';
 
 const router = Router();
 router.use('/auth', authRoutes);
@@ -19,5 +20,6 @@ router.use('/admin', adminRoutes);    // UC1.7 - Phân quyền người dùng
 router.use('/personalization', personalizationRoutes); // UC2.1, UC2.2 - Hồ sơ cá nhân hóa & size
 router.use('/body', bodyRoutes); // UC3 - Phân tích dáng người bằng AI
 router.use('/recommendations', recommendationRoutes); // UC5 - Gợi ý sản phẩm cá nhân hóa
+router.use('/behaviors', behaviorRoutes); // UC5/GĐ6 - Ghi nhận hành vi người dùng
 
 export default router;

@@ -1,5 +1,6 @@
 import type { BodyShape } from '@prisma/client';
 import { prisma } from '../lib/prisma';
+import { getBehaviorAffinity, behaviorScoreForProduct } from './behavior.service';
 
 // ============================================================
 //  UC5 (GĐ5) - RECOMMENDATION ENGINE (Hybrid có trọng số) + GIẢI THÍCH
@@ -51,6 +52,9 @@ export async function recommendForUser(
   const budgetByCat = new Map<number, { min: number; max: number }>();
   for (const b of profile?.budgets ?? []) budgetByCat.set(b.categoryId, { min: b.minPrice, max: b.maxPrice });
 
+  // GĐ6 - ái lực hành vi (danh mục/phong cách) suy từ lịch sử tương tác
+  const affinity = await getBehaviorAffinity(userId);
+
   // Sản phẩm ứng viên (kèm điểm tương thích dáng - UC4)
   const products = await prisma.product.findMany({
     where: opts.categoryId ? { categoryId: opts.categoryId } : undefined,
@@ -97,8 +101,12 @@ export async function recommendForUser(
     if (bud) sub.push(p.price >= bud.min && p.price <= bud.max ? 1 : 0.3);
     if (sub.length) comps.preference = { value: sub.reduce((a, b) => a + b, 0) / sub.length, weight: WEIGHTS.preference, hasData: true };
 
-    // (5) BehaviorScore - GĐ6 (chưa ghi hành vi) -> tạm bỏ khỏi tổng
-    // comps.behavior = { value: 0.5, weight: WEIGHTS.behavior, hasData: false };
+    // (5) BehaviorScore - GĐ6: ái lực hành vi theo danh mục/phong cách
+    if (affinity.hasData) {
+      const bv = behaviorScoreForProduct(affinity, { categoryId: p.categoryId, style: p.style });
+      comps.behavior = { value: bv, weight: WEIGHTS.behavior, hasData: true };
+      if (bv >= 0.6) reasons.push(`Bạn hay quan tâm nhóm ${p.category.name}`);
+    }
 
     // Chuẩn hóa lại trên các thành phần có dữ liệu
     const active = Object.values(comps).filter((c) => c.hasData);

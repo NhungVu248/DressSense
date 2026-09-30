@@ -10,6 +10,12 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// UC5/GĐ6 - ghi nhận hành vi (fire-and-forget; bỏ qua lỗi, chỉ khi đã đăng nhập)
+export function recordBehavior(productId: number, action: 'VIEW' | 'WISHLIST' | 'ADD_TO_CART' | 'PURCHASE') {
+  if (!localStorage.getItem('token')) return;
+  api.post('/behaviors', { productId, action }).catch(() => {});
+}
+
 // Lấy thông báo lỗi thân thiện từ phản hồi API
 export function getErrorMessage(err: any): string {
   const data = err?.response?.data;

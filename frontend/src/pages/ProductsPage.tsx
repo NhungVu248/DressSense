@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import api from '../lib/api';
+import api, { recordBehavior } from '../lib/api';
 import { PRODUCT_PLACEHOLDER } from '../lib/placeholder';
 
 interface Product {
@@ -9,6 +10,22 @@ interface Product {
   price: number;
   images: { url: string; isPrimary: boolean }[];
   category: { name: string };
+}
+
+// Nút "Thích" trong thẻ Link -> chặn điều hướng, ghi hành vi WISHLIST (GĐ6)
+function WishlistButton({ productId }: { productId: number }) {
+  const [liked, setLiked] = useState(false);
+  return (
+    <button
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked(true); recordBehavior(productId, 'WISHLIST'); }}
+      className={`text-xs rounded-full border px-2 py-0.5 transition-colors ${
+        liked ? 'border-red-300 bg-red-50 text-red-500' : 'border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-500'
+      }`}
+      title="Thêm vào yêu thích"
+    >
+      {liked ? '♥' : '♡'}
+    </button>
+  );
 }
 
 export default function ProductsPage() {
@@ -42,9 +59,10 @@ export default function ProductsPage() {
             <div className="p-3">
               <p className="text-xs text-gray-400">{p.category.name}</p>
               <p className="font-medium text-sm line-clamp-2">{p.name}</p>
-              <p className="text-brand font-semibold mt-1">
-                {p.price.toLocaleString('vi-VN')}₫
-              </p>
+              <div className="flex items-center justify-between gap-2 mt-1">
+                <p className="text-brand font-semibold">{p.price.toLocaleString('vi-VN')}₫</p>
+                <WishlistButton productId={p.id} />
+              </div>
             </div>
           </Link>
         ))}
