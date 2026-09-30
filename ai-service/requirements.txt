@@ -3,12 +3,12 @@ fastapi>=0.111
 uvicorn[standard]>=0.30
 python-multipart>=0.0.9
 pydantic>=2.6
-mediapipe>=1.0.0      # Pose Landmarker (GĐ2). Cần Python có wheel tương thích
+mediapipe>=1.0.0      # Pose Landmarker (GD2); requires a Python with a compatible wheel
 opencv-python>=4.9
 numpy>=1.26
 pillow>=10
 
-# GĐ3 - huấn luyện & phục vụ mô hình phân loại dáng người
+# GD3 - train & serve the body-shape classifier
 scikit-learn>=1.4
 joblib>=1.3
 pandas>=2.0
