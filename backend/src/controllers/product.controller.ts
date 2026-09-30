@@ -12,7 +12,7 @@ export async function listProducts(req: Request, res: Response, next: NextFuncti
     const [items, total] = await Promise.all([
       prisma.product.findMany({
         where: categoryId ? { categoryId } : undefined,
-        include: { images: true, category: true },
+        include: { images: true, category: true, bodyFits: true }, // UC4 - điểm tương thích dáng
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
@@ -32,7 +32,10 @@ export async function getProduct(req: Request, res: Response, next: NextFunction
     const id = Number(req.params.id);
     const product = await prisma.product.findUnique({
       where: { id },
-      include: { images: true, variants: true, category: true, reviews: true },
+      include: {
+        images: true, variants: true, category: true, reviews: true,
+        bodyFits: { orderBy: { score: 'desc' } }, // UC4 - điểm tương thích dáng (cao->thấp)
+      },
     });
     if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
     res.json({ product });

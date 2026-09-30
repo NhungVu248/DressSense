@@ -340,9 +340,25 @@ model Product {
   orderItems OrderItem[]
   reviews    Review[]
   behaviors  UserBehavior[]
+  bodyFits   ProductBodyFit[] // UC4 - điểm tương thích theo từng dáng người
 
   @@index([categoryId])
   @@index([sellerId])
+}
+
+// UC4 (GĐ4) - Điểm tương thích giữa sản phẩm và từng dáng người, sinh từ Fashion
+// Knowledge Base (constants/fashion-kb.ts) áp lên thuộc tính sản phẩm.
+model ProductBodyFit {
+  id        Int       @id @default(autoincrement())
+  productId Int
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bodyShape BodyShape
+  score     Float     // 0..1 - càng cao càng hợp dáng
+  reasons   Json?     // các lý do khớp/không khớp (phục vụ giải thích ở UC5)
+  updatedAt DateTime  @updatedAt
+
+  @@unique([productId, bodyShape])
+  @@index([productId])
 }
 
 model ProductImage {

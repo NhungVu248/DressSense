@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { scoreProductAllShapes } from '../src/constants/fashion-kb';
 
 const prisma = new PrismaClient();
 
@@ -132,7 +133,19 @@ async function main() {
     });
   }
 
-  console.log(`✅ Seed dữ liệu mẫu thành công! (${products.length} sản phẩm)`);
+  // UC4 (GĐ4) - tính điểm tương thích dáng người cho từng sản phẩm từ Fashion KB
+  const allProducts = await prisma.product.findMany();
+  for (const pr of allProducts) {
+    for (const f of scoreProductAllShapes(pr)) {
+      await prisma.productBodyFit.upsert({
+        where: { productId_bodyShape: { productId: pr.id, bodyShape: f.bodyShape } },
+        update: { score: f.score, reasons: f.reasons },
+        create: { productId: pr.id, bodyShape: f.bodyShape, score: f.score, reasons: f.reasons },
+      });
+    }
+  }
+
+  console.log(`✅ Seed dữ liệu mẫu thành công! (${products.length} sản phẩm, ${allProducts.length * 5} điểm tương thích)`);
   console.log('   Admin: admin@dresssense.vn / Admin@123');
   console.log('   Seller: seller@dresssense.vn / 123456');
   console.log('   Customer: customer@dresssense.vn / 123456');
