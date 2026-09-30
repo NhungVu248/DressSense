@@ -6,6 +6,7 @@ import { BODY_MEASUREMENT_RANGES } from '../constants/body-analysis';
 import { processBodyAnalysis } from '../services/body-analysis.service';
 import { generateBodyProfile } from '../services/body-profile.service';
 import { syncBodyProfile } from '../services/body-sync.service';
+import { aiEnabled, aiClassify, aiPose } from '../services/ai-client';
 
 // ============================================================
 //  UC3.1 - PHÂN TÍCH DÁNG NGƯỜI (điểm vào cho người dùng)
@@ -129,6 +130,22 @@ export async function analyzeBody(req: Request, res: Response, next: NextFunctio
     }
     const photoUrl = req.file ? `/uploads/body/${req.file.filename}` : null;
 
+    // GĐ7 - nối AI service (nếu bật): chạy pose thật trên ảnh + phân loại bằng mô hình ML.
+    // Mọi lỗi/timeout tự fallback về kết quả luật Node (result) ở trên.
+    const analysisExtra: Record<string, unknown> = { engine: 'node-rule' };
+    if (aiEnabled()) {
+      if (req.file) {
+        const pose = await aiPose(req.file.path, req.file.filename);
+        if (pose) analysisExtra.pose = pose; // {status, confidence, numLandmarks}
+      }
+      const ai = await aiClassify({ bust: data.bust, waist: data.waist, hip: data.hip, shoulder: result.measurements.shoulder });
+      if (ai) {
+        result.bodyShape = ai.bodyShape as typeof result.bodyShape;
+        if (ai.confidence != null) result.confidence = ai.confidence;
+        analysisExtra.engine = 'ai-' + ai.method; // vd ai-ml
+      }
+    }
+
     // UC3.3 - include tới module sinh Body Profile (khuyến nghị + gợi ý size + lưu bản mới có phiên bản)
     const profile = await generateBodyProfile({
       userId,
@@ -141,6 +158,7 @@ export async function analyzeBody(req: Request, res: Response, next: NextFunctio
       shoulderHipRatio: data.shoulderHipRatio ?? null,
       photoUrl,
       processing: result,
+      analysisExtra,
     });
 
     // UC2.3 - 2a: tự đồng bộ ngay nếu khách hàng đã bật chế độ tự đồng bộ

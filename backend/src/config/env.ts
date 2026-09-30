@@ -9,6 +9,8 @@ export const env = {
   jwtRememberExpiresIn: process.env.JWT_REMEMBER_EXPIRES_IN || '30d',
   clientOrigin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+  // GĐ7 - AI service (Python/FastAPI). Trống -> tắt tích hợp, backend tự tính bằng luật Node.
+  aiServiceUrl: process.env.AI_SERVICE_URL || '',
 };
 
 export const isDev = env.nodeEnv !== 'production';

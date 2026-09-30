@@ -20,7 +20,7 @@ và trả JSON. Ảnh gốc có thể xóa ngay sau khi trích số đo (tối t
 | 4 | Fashion Knowledge Base + điểm tương thích dáng–SP | ✅ M5 — `backend/src/constants/fashion-kb.ts` + bảng `ProductBodyFit` (điểm 0..1/dáng + lý do); API sản phẩm trả `bodyFits` |
 | 5 | Recommendation engine (hybrid) + giải thích | ✅ M6 — `backend` recommendation.service (0.40 dáng + 0.25 style + 0.15 màu + 0.10 sở thích + 0.10 hành vi, chuẩn hóa cold-start); `GET /recommendations` + trang "Gợi ý cho bạn" kèm "Vì sao hợp với bạn" |
 | 6 | Ghi nhận hành vi & cá nhân hóa | ✅ M7 — `POST /behaviors` ghi VIEW/WISHLIST/ADD_TO_CART/PURCHASE; behavior.service tổng hợp ái lực danh mục/phong cách → BehaviorScore (0.10) vào công thức gợi ý |
-| 7 | Tích hợp, triển khai & đánh giá | ⬜ Chưa |
+| 7 | Tích hợp, triển khai & đánh giá | ✅ M8 — backend gọi `/pose`+`/body-shape` (fallback Node); nghiệm thu ảnh→gợi ý; báo cáo `EVALUATION.md` |
 
 ## Hợp đồng API (đề xuất, GĐ7)
 

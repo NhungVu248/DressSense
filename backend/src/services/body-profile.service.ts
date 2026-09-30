@@ -24,6 +24,7 @@ export interface GenerateProfileInput {
   shoulderHipRatio: number | null;
   photoUrl: string | null;
   processing: ProcessingResult; // kết quả UC3.2 (ok = true, có bodyShape)
+  analysisExtra?: Record<string, unknown>; // GĐ7 - metadata AI service (engine, pose)
 }
 
 // Điểm vào của UC3.3 - trả về Body Profile vừa sinh cho UC3.1 hiển thị (bước 6).
@@ -78,6 +79,7 @@ export async function generateBodyProfile(input: GenerateProfileInput) {
           note: processing.note,
           ratios: processing.ratios,
           shoulderHipRatio: input.shoulderHipRatio,
+          ...(input.analysisExtra ?? {}),
         },
       },
     });
