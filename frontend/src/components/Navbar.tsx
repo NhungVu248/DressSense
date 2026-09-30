@@ -12,6 +12,7 @@ export default function Navbar() {
         </Link>
         <div className="flex items-center gap-4 text-sm">
           <Link to="/" className="hover:text-brand">Sản phẩm</Link>
+          {user && <Link to="/recommendations" className="hover:text-brand">Gợi ý cho bạn</Link>}
           {user ? (
             <>
               <Link to="/profile" className="flex items-center gap-2 hover:text-brand">

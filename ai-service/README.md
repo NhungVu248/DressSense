@@ -18,7 +18,7 @@ và trả JSON. Ảnh gốc có thể xóa ngay sau khi trích số đo (tối t
 | 2 | Pose Estimation (MediaPipe) | ✅ M1 xong — FastAPI + `/pose` + `/body-shape`; nghiệm thu trên ảnh người thật (6/6 phát hiện, tin cậy ~0.95) |
 | 3 | Trích đặc trưng + phân loại dáng (rule → ML) | ✅ M2–M4 — huấn luyện/so sánh DT/RF/MLP/XGBoost trên ANSUR; `/body-shape?method=ml` (fallback rule) |
 | 4 | Fashion Knowledge Base + điểm tương thích dáng–SP | ✅ M5 — `backend/src/constants/fashion-kb.ts` + bảng `ProductBodyFit` (điểm 0..1/dáng + lý do); API sản phẩm trả `bodyFits` |
-| 5 | Recommendation engine (hybrid) + giải thích | ⬜ Chưa |
+| 5 | Recommendation engine (hybrid) + giải thích | ✅ M6 — `backend` recommendation.service (0.40 dáng + 0.25 style + 0.15 màu + 0.10 sở thích + 0.10 hành vi, chuẩn hóa cold-start); `GET /recommendations` + trang "Gợi ý cho bạn" kèm "Vì sao hợp với bạn" |
 | 6 | Ghi nhận hành vi & cá nhân hóa | ⬜ Chưa |
 | 7 | Tích hợp, triển khai & đánh giá | ⬜ Chưa |
 
