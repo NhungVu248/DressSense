@@ -18,18 +18,23 @@ Chạy (cần bộ ảnh+số đo cục bộ, KHÔNG commit vào repo):
 python estimate_measurements.py --dataset "C:/path/to/dataset"
 ```
 
-## Kết quả baseline (6 mẫu thật, bộ Kaggle Body Measurements)
+## Kết quả trên 6 mẫu thật (bộ Kaggle Body Measurements) — MAE (cm)
 
-| Vòng | MAE (sai số tuyệt đối TB) |
-|------|---------------------------|
-| Ngực | ~13 cm |
-| Eo   | ~40 cm |
-| Hông | ~32 cm |
+| Phương pháp | Ngực | Eo | Hông |
+|-------------|------|----|------|
+| Baseline (span toàn hàng, **gộp cánh tay**) | ~13 | ~40 | ~32 |
+| **(a)** Loại cánh tay (run giữa + chặn theo mốc vai/hông, hệ số theo mức) | ~14 | **~9** | **~13** |
+| **(b)** Hồi quy (RandomForest, LOO) trên đặc trưng rộng/sâu+cao/nặng | **~6** | **~7** | **~7** |
 
-**Phát hiện chính (quan trọng cho báo cáo):** baseline **ước lượng vượt** có hệ thống, nặng
-nhất ở eo/hông. Nguyên nhân: bề rộng lấy theo *span foreground* của mask tại mỗi hàng **bao
-gồm cả cánh tay buông hai bên thân** → rộng giả tạo, đặc biệt ở eo nơi tay sát người. Đây là
-khó khăn lõi của bài toán single-view anthropometry.
+**Phát hiện & tiến triển:**
+- Baseline **ước lượng vượt** nặng ở eo/hông vì bề rộng span cả hàng **gộp cánh tay buông**.
+- **(a)** Lấy run foreground liền mạch quanh trục giữa thân + **chặn** theo bề rộng suy từ mốc
+  vai/hông (hệ số theo mức: ngực 1.3, eo 1.45, hông 1.95 — khớp hông nằm sâu nên hông cần hệ
+  số lớn). Eo giảm 40→9, hông 32→13. `estimate_measurements.py`.
+- **(b)** Thay công thức elip cứng bằng **hồi quy học máy** (`train_measurement_regressor.py`,
+  Ridge/RandomForest, đánh giá Leave-One-Out): MAE ~6–7cm đều cả 3 vòng.
+  ⚠️ **n=6 là CỰC NHỎ** → số liệu chỉ để kiểm thử khung, phương sai LOO cao; KHÔNG dùng làm
+  kết luận độ chính xác. Khung đã sẵn sàng: có dataset lớn chỉ cần `--dump-features` rồi train.
 
 ## Hướng phát triển (next steps)
 

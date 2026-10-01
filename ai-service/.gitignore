@@ -16,3 +16,6 @@ data/body_shape/raw/
 # Model MediaPipe (.task) - tải lúc chạy, KHÔNG commit
 models/
 *.task
+
+# Đặc trưng/nhãn dẫn xuất từ dữ liệu vendor (số đo) - KHÔNG commit
+research/features.csv
