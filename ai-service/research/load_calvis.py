@@ -3,10 +3,13 @@
 Nạp bộ CALVIS (neoglez/calvis) về ĐỊNH DẠNG CHUNG của pipeline DressSense.
 
 CALVIS: ảnh người synthetic (xám 200x200, sinh từ mesh SMPL) + nhãn chu vi
-chest/waist/pelvis (JSON). Bố cục tải sẵn:
+chest/waist/pelvis (JSON). Bố cục tải sẵn (xác nhận theo code repo neoglez/calvis):
     CALVIS/dataset/cmu/
-        annotations/{female,male}/*.json      # nhãn chu vi
-        synthetic_images/{female,male}/*.png   # ảnh
+        annotations/{female,male}/*_anno.json          # nhãn
+        synthetic_images/200x200/{female,male}/*.png    # ảnh
+Nhãn JSON: {"betas":[...], "human_dimensions": {"chest_circumference",
+"waist_circumference","pelvis_circumference"}} — đơn vị MÉT (x100 -> cm).
+Ảnh X_mesh_Y.png  <->  nhãn X_mesh_Y_anno.json.
 (không cần SMPL để DÙNG dữ liệu đã tải; chỉ cần nếu tự sinh lại.)
 
 Ánh xạ sang schema của mình: bust = chest, waist = waist, hip = pelvis (lưu ý: pelvis
@@ -60,10 +63,18 @@ def to_cm(v):
     return round(v, 1)
 
 
-def inspect(root):
+def ann_dir(root, sex):
+    return os.path.join(root, "annotations", sex)
+
+
+def img_dir(root, images, sex):
+    return os.path.join(images or os.path.join(root, "synthetic_images", "200x200"), sex)
+
+
+def inspect(root, images):
     for sex in ("female", "male"):
-        anns = sorted(glob.glob(os.path.join(root, "annotations", sex, "*.json")))
-        imgs = sorted(glob.glob(os.path.join(root, "synthetic_images", sex, "*")))
+        anns = sorted(glob.glob(os.path.join(ann_dir(root, sex), "*.json")))
+        imgs = sorted(glob.glob(os.path.join(img_dir(root, images, sex), "*")))
         print(f"[{sex}] annotations={len(anns)} images={len(imgs)}")
         if anns:
             print(f"  JSON đầu tiên: {os.path.basename(anns[0])}")
@@ -72,21 +83,22 @@ def inspect(root):
             print("  Ảnh mẫu:", [os.path.basename(p) for p in imgs[:3]])
 
 
-def build(root, out):
+def build(root, images, out):
     rows = []
     for sex in ("female", "male"):
         label = "F" if sex == "female" else "M"
-        for ann_path in sorted(glob.glob(os.path.join(root, "annotations", sex, "*.json"))):
+        for ann_path in sorted(glob.glob(os.path.join(ann_dir(root, sex), "*.json"))):
             data = json.load(open(ann_path, encoding="utf-8"))
             vals = {k: to_cm(find_measure(data, kws)) for k, kws in CM_KEYS.items()}
             if vals["bust"] is None or vals["waist"] is None or vals["hip"] is None:
                 continue  # thiếu khóa -> bỏ (xem --inspect để chỉnh CM_KEYS)
-            stem = re.sub(r"\.json$", "", os.path.basename(ann_path))
-            matches = glob.glob(os.path.join(root, "synthetic_images", sex, stem + "*"))
+            # anno "X_mesh_Y_anno.json" -> ảnh "X_mesh_Y.png"
+            imgstem = re.sub(r"_anno\.json$", "", os.path.basename(ann_path))
+            imgpath = os.path.join(img_dir(root, images, sex), imgstem + ".png")
             rows.append({
-                "id": f"{label}_{stem}", "sex": label,
+                "id": f"{label}_{imgstem}", "sex": label,
                 "bust_cm": vals["bust"], "waist_cm": vals["waist"], "hip_cm": vals["hip"],
-                "image": os.path.relpath(matches[0], root) if matches else "",
+                "image": imgpath if os.path.exists(imgpath) else "",
                 "source": "calvis",
             })
     cols = ["id", "sex", "bust_cm", "waist_cm", "hip_cm", "image", "source"]
@@ -104,15 +116,16 @@ def build(root, out):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", required=True, help="đường dẫn tới CALVIS/dataset/cmu")
+    ap.add_argument("--images", help="thư mục ảnh (mặc định <root>/synthetic_images/200x200)")
     ap.add_argument("--out", default="calvis_labels.csv")
     ap.add_argument("--inspect", action="store_true", help="xem cấu trúc JSON/ảnh trước khi nạp")
     a = ap.parse_args()
     if not os.path.isdir(a.root):
         raise SystemExit(f"Không thấy thư mục {a.root}")
     if a.inspect:
-        inspect(a.root)
+        inspect(a.root, a.images)
     else:
-        build(a.root, a.out)
+        build(a.root, a.images, a.out)
 
 
 if __name__ == "__main__":

@@ -69,10 +69,15 @@ sinh từ mesh SMPL) + nhãn **chu vi chest/waist/pelvis** (JSON). Ưu điểm c
 không vướng riêng tư** (người tổng hợp), có nhãn số đo thật trên mesh → đủ lượng để
 train/đánh giá, thay cho bộ 6 mẫu.
 
-Cách dùng (tải sẵn **không cần SMPL**; chỉ cần SMPL nếu tự sinh lại):
-1. Tải dataset từ repo (link SharePoint + mật khẩu, vd `calvisdataset`), giải nén được
-   `CALVIS/dataset/cmu/{annotations,synthetic_images}/{female,male}/`.
-2. Xem cấu trúc JSON/đơn vị:
+**Lưu ý:** `calvis-master` (clone từ GitHub) chỉ là **code**; **dataset** nằm ở các link
+`.tar.gz` riêng (SharePoint + mật khẩu) trong README của repo.
+
+Cách dùng (bản tải sẵn **không cần SMPL**; chỉ cần SMPL nếu tự sinh lại):
+1. Tải dataset — nên lấy bản nhỏ **100 mẫu** trước để thử nhanh (`calvis-100-instances.tar.gz`,
+   mật khẩu `calvis-100-i`), rồi mới tải full (`CALVIS.tar.gz`, `calvisdataset`). Giải nén được
+   `CALVIS/dataset/cmu/` với `annotations/{female,male}/*_anno.json` và
+   `synthetic_images/200x200/{female,male}/*.png`.
+2. Xem cấu trúc JSON/đơn vị (xác nhận trước khi nạp):
    ```bash
    python load_calvis.py --root ".../CALVIS/dataset/cmu" --inspect
    ```
@@ -80,12 +85,13 @@ Cách dùng (tải sẵn **không cần SMPL**; chỉ cần SMPL nếu tự sinh
    ```bash
    python load_calvis.py --root ".../CALVIS/dataset/cmu" --out calvis_labels.csv
    ```
+(Định dạng đã khớp code repo: nhãn `human_dimensions.{chest,waist,pelvis}_circumference` theo
+**mét** → script tự ×100 ra cm; ảnh `X_mesh_Y.png` ↔ `X_mesh_Y_anno.json`.)
 
 Lưu ý: `bust=chest, waist=waist, hip=pelvis` (pelvis ở mức chậu, hơi khác "hông rộng nhất");
 ảnh là **silhouette xám synthetic** (MediaPipe pose có thể kém tin cậy — cân nhắc đo bề rộng
-trực tiếp từ silhouette, hoặc dùng để huấn luyện CNN kiểu *Neural Anthropometer*). Kiểm tra đơn
-vị bằng `--inspect` (script tự chuẩn hóa mét/mm → cm, nhưng nên xác nhận). Dữ liệu tải về
-**không commit** vào repo. Kiểm giấy phép CALVIS trước khi dùng trong báo cáo.
+trực tiếp từ silhouette, hoặc dùng để huấn luyện CNN kiểu *Neural Anthropometer*). Dữ liệu tải
+về **không commit** vào repo. Kiểm giấy phép CALVIS trước khi dùng trong báo cáo.
 
 ## Benchmark & hướng phát triển: SHAPY + HBW
 
