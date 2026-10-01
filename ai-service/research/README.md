@@ -89,9 +89,30 @@ Cách dùng (bản tải sẵn **không cần SMPL**; chỉ cần SMPL nếu t�
 **mét** → script tự ×100 ra cm; ảnh `X_mesh_Y.png` ↔ `X_mesh_Y_anno.json`.)
 
 Lưu ý: `bust=chest, waist=waist, hip=pelvis` (pelvis ở mức chậu, hơi khác "hông rộng nhất");
-ảnh là **silhouette xám synthetic** (MediaPipe pose có thể kém tin cậy — cân nhắc đo bề rộng
-trực tiếp từ silhouette, hoặc dùng để huấn luyện CNN kiểu *Neural Anthropometer*). Dữ liệu tải
-về **không commit** vào repo. Kiểm giấy phép CALVIS trước khi dùng trong báo cáo.
+ảnh là **silhouette xám synthetic** 1 góc, **không có chiều cao** → không dùng pipeline hình
+học (cần front+side+height) mà **hồi quy trực tiếp từ silhouette** (ảnh render ở tỉ lệ camera
+cố định nên bề rộng pixel mang thông tin kích thước). Dữ liệu tải về **không commit** vào repo;
+kiểm giấy phép CALVIS trước khi dùng trong báo cáo.
+
+### Kết quả hồi quy từ silhouette (bản 100 mẫu)
+
+`train_calvis.py`: trích đặc trưng silhouette (bề rộng tại 16 mức dọc + diện tích + bbox) →
+hồi quy (Ridge/RandomForest) → chu vi. Đánh giá train/test + 5-fold CV:
+
+| Model | MAE ngực | MAE eo | MAE hông | TB | CV-MAE |
+|-------|---------|--------|----------|----|--------|
+| **Ridge** | 2.4 | 3.7 | 1.5 | **2.5 cm** | 2.3 cm |
+| RandomForest | 2.2 | 3.5 | 2.2 | 2.7 | 2.4 |
+
+```bash
+python train_calvis.py --labels calvis_labels.csv   # -> ../models/calvis_regressor.joblib
+```
+
+⚠️ **Đọc đúng:** MAE ~2.5cm là trên **ảnh synthetic, 1 góc, camera cố định, 100 mẫu** → điều
+kiện "sạch", mang tính *cận trên lạc quan*. Ảnh người thật (nền/ánh sáng/tư thế/quần áo đa
+dạng) sẽ khó hơn. Bước tiếp: chạy trên **bản full (~3803 mẫu)** rồi kiểm tra chuyển giao sang
+ảnh thật (domain gap). Nhưng kết quả này **chứng minh pipeline image→số đo khả thi** khi có dữ
+liệu ảnh+số đo phù hợp.
 
 ## Benchmark & hướng phát triển: SHAPY + HBW
 
