@@ -49,6 +49,42 @@ python estimate_measurements.py --dataset "C:/path/to/dataset"
    vật tham chiếu thay cho chỉ dùng chiều cao.
 4. **Đánh giá**: MAE/°% theo từng vòng trên tập test có nhãn số đo thật.
 
+## Khung pluggable (estimators.py)
+
+Interface chung `MeasurementEstimator.estimate(front, side, height_cm) -> {bust, waist, hip}`
+để thay phương pháp mà không đổi phần gọi:
+- `GeometricEstimator` ("geometric") — baseline hình học, chạy **Windows/CPU**, cần ảnh
+  trước + nghiêng + chiều cao.
+- `ShapyEstimator` ("shapy") — **điểm cắm sẵn** cho bản SOTA (chưa hiện thực; cần Linux+GPU).
+
+```python
+from estimators import get_estimator
+get_estimator("geometric").estimate("front.jpg", "side.jpg", height_cm=165)
+```
+
+## Benchmark & hướng phát triển: SHAPY + HBW
+
+**SHAPY** (CVPR 2022, Max Planck) hồi quy dáng 3D **SMPL-X** từ 1 ảnh và xuất **chiều cao,
+cân nặng, chu vi ngực/eo/hông** — đúng bài toán ảnh→số đo, là bản nâng cấp SOTA của baseline
+hình học ở đây. Kèm **HBW (Human Bodies in the Wild)**: ảnh người thật + số đo thật (suy từ
+quét 3D) để **đánh giá**.
+
+Định vị:
+- *Baseline (repo này)*: nhẹ, chạy CPU, cần ảnh trước+nghiêng tư thế chuẩn; MAE hiện ~6–14cm
+  trên 6 mẫu (chỉ kiểm thử khung).
+- *SHAPY/SMPL-X*: chính xác hơn, ảnh đơn "in the wild"; nhưng nặng.
+
+Yêu cầu để dùng SHAPY+HBW (**ngoài phạm vi v1**, theo Mục 6 tài liệu thiết kế):
+1. **Đăng ký + chấp nhận license phi thương mại** tại https://shapy.is.tue.mpg.de (SMPL-X +
+   HBW). Phải ghi rõ "non-commercial research" trong báo cáo; DressSense TMĐT nếu thương mại
+   hóa phải xin license riêng.
+2. Môi trường **Linux + GPU + PyTorch + SMPL-X** (CPU/Windows gần như không chạy nổi).
+3. Cắm vào khung: hiện thực `ShapyEstimator.estimate()` (image → SMPL-X betas → đo chu vi
+   trên mesh), giữ nguyên interface → phần còn lại của hệ thống không đổi.
+
+Đánh giá đề xuất: so `GeometricEstimator` vs `ShapyEstimator` trên HBW (MAE theo từng vòng)
+để định lượng mức cải thiện — số liệu cho báo cáo.
+
 ## Trạng thái
 
 Chưa nối vào luồng sản phẩm. Giao diện UC3.1 vẫn yêu cầu nhập số đo tay; ảnh hiện chỉ dùng để
