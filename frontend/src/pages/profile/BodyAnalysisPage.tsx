@@ -361,8 +361,9 @@ export default function BodyAnalysisPage() {
                     <img src={photoPreview} alt="Xem trước" className="mt-3 h-40 rounded-lg object-cover border" />
                   )}
                   <p className="text-xs text-amber-600 mt-2">
-                    Trích xuất số đo tự động từ ảnh sẽ khả dụng khi module AI thị giác được triển khai.
-                    Hiện tại vui lòng nhập kèm số đo bên dưới để có kết quả chính xác.
+                    Hệ thống đã phát hiện tư thế/điểm mốc cơ thể từ ảnh (MediaPipe). Việc tự ước lượng
+                    số đo vòng (ngực/eo/hông) từ ảnh đang trong giai đoạn nghiên cứu — hiện vui lòng
+                    nhập kèm số đo bên dưới để có kết quả chính xác.
                   </p>
                 </div>
               )}
