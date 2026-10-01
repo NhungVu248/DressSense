@@ -17,5 +17,8 @@ data/body_shape/raw/
 models/
 *.task
 
-# Đặc trưng/nhãn dẫn xuất từ dữ liệu vendor (số đo) - KHÔNG commit
+# Đặc trưng/nhãn dẫn xuất từ dữ liệu bên thứ ba (số đo) - KHÔNG commit
 research/features.csv
+research/calvis_labels.csv
+# Dữ liệu CALVIS tải về - KHÔNG commit
+research/CALVIS/

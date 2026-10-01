@@ -62,6 +62,31 @@ from estimators import get_estimator
 get_estimator("geometric").estimate("front.jpg", "side.jpg", height_cm=165)
 ```
 
+## Bộ dữ liệu bổ sung: CALVIS (synthetic, miễn phí — ưu tiên)
+
+[CALVIS](https://github.com/neoglez/calvis): ~3.803 mẫu **ảnh người synthetic** (xám 200×200,
+sinh từ mesh SMPL) + nhãn **chu vi chest/waist/pelvis** (JSON). Ưu điểm cho đồ án: **miễn phí,
+không vướng riêng tư** (người tổng hợp), có nhãn số đo thật trên mesh → đủ lượng để
+train/đánh giá, thay cho bộ 6 mẫu.
+
+Cách dùng (tải sẵn **không cần SMPL**; chỉ cần SMPL nếu tự sinh lại):
+1. Tải dataset từ repo (link SharePoint + mật khẩu, vd `calvisdataset`), giải nén được
+   `CALVIS/dataset/cmu/{annotations,synthetic_images}/{female,male}/`.
+2. Xem cấu trúc JSON/đơn vị:
+   ```bash
+   python load_calvis.py --root ".../CALVIS/dataset/cmu" --inspect
+   ```
+3. Nạp về schema chung (`id, sex, bust_cm, waist_cm, hip_cm, image`):
+   ```bash
+   python load_calvis.py --root ".../CALVIS/dataset/cmu" --out calvis_labels.csv
+   ```
+
+Lưu ý: `bust=chest, waist=waist, hip=pelvis` (pelvis ở mức chậu, hơi khác "hông rộng nhất");
+ảnh là **silhouette xám synthetic** (MediaPipe pose có thể kém tin cậy — cân nhắc đo bề rộng
+trực tiếp từ silhouette, hoặc dùng để huấn luyện CNN kiểu *Neural Anthropometer*). Kiểm tra đơn
+vị bằng `--inspect` (script tự chuẩn hóa mét/mm → cm, nhưng nên xác nhận). Dữ liệu tải về
+**không commit** vào repo. Kiểm giấy phép CALVIS trước khi dùng trong báo cáo.
+
 ## Benchmark & hướng phát triển: SHAPY + HBW
 
 **SHAPY** (CVPR 2022, Max Planck) hồi quy dáng 3D **SMPL-X** từ 1 ảnh và xuất **chiều cao,
