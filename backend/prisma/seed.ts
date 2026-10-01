@@ -94,6 +94,11 @@ async function main() {
     sleeve?: string;
     style?: string;
     season?: string;
+    garmentType?: string;
+    targetGender?: string;
+    brand?: string;
+    occasion?: string;
+    tags?: string[];
     sizes: string[];
   }> = [
     // ----- Đầm / Váy -----
@@ -119,14 +124,44 @@ async function main() {
     // ----- Phụ kiện -----
     { categoryId: accessory.id, name: 'Thắt lưng bản nhỏ', description: 'Thắt lưng bản nhỏ tạo điểm nhấn eo — hợp dáng Chữ nhật & Quả táo.', price: 150000, color: 'Nâu', pattern: 'Trơn', material: 'Da', style: 'Office', season: 'Quanh năm', sizes: ['Freesize'] },
     { categoryId: accessory.id, name: 'Túi tote canvas', description: 'Túi tote canvas rộng rãi, phong cách tối giản.', price: 210000, color: 'Be', pattern: 'Trơn', material: 'Canvas', style: 'Casual', season: 'Quanh năm', sizes: ['Freesize'] },
+
+    // ----- Bổ sung (đa dạng giới tính / loại trang phục, tham khảo DeepFashion2) -----
+    { categoryId: top.id, name: 'Áo thun nam cổ tròn', description: 'Áo thun nam cotton cổ tròn basic, dễ phối.', price: 220000, color: 'Xám', pattern: 'Trơn', material: 'Cotton', fit: 'Regular', length: 'Vừa', neckline: 'Tròn', sleeve: 'Ngắn', style: 'Streetwear', season: 'Hè', targetGender: 'Nam', garmentType: 'Áo thun tay ngắn', sizes: ['M', 'L', 'XL'] },
+    { categoryId: top.id, name: 'Áo khoác blazer nam', description: 'Blazer nam dáng slim lịch sự cho công sở.', price: 850000, color: 'Xanh than', pattern: 'Trơn', material: 'Tuytsi', fit: 'Slim', length: 'Vừa', neckline: 'Cổ vest', sleeve: 'Dài', style: 'Office', season: 'Thu Đông', targetGender: 'Nam', garmentType: 'Áo khoác tay dài', sizes: ['M', 'L', 'XL'] },
+    { categoryId: bottom.id, name: 'Quần jeans nam slim', description: 'Quần jeans nam ống slim co giãn nhẹ.', price: 420000, color: 'Xanh denim', pattern: 'Trơn', material: 'Denim', fit: 'Slim', length: 'Dài', style: 'Streetwear', season: 'Quanh năm', targetGender: 'Nam', garmentType: 'Quần dài', sizes: ['29', '30', '32'] },
+    { categoryId: bottom.id, name: 'Quần short kaki', description: 'Quần short kaki unisex năng động mùa hè.', price: 250000, color: 'Be', pattern: 'Trơn', material: 'Kaki', fit: 'Regular', length: 'Ngắn', style: 'Casual', season: 'Hè', targetGender: 'Unisex', garmentType: 'Quần short', sizes: ['S', 'M', 'L'] },
   ];
 
+  // Tự suy các trường bổ sung (DeepFashion2-style) khi sản phẩm chưa khai báo
+  const OCCASION_BY_STYLE: Record<string, string> = {
+    Party: 'PARTY', Office: 'WORK', Casual: 'STREET', Streetwear: 'STREET',
+  };
+  const BRANDS = ['Elora', 'NorthLine', 'Mộc', 'Urban21', 'LaVie'];
+  function deriveGarmentType(p: (typeof products)[number], slug: string): string {
+    if (p.garmentType) return p.garmentType;
+    if (slug === 'dress') return p.sleeve ? `Đầm ${String(p.sleeve).toLowerCase()}` : 'Đầm';
+    if (slug === 'top') return p.sleeve ? `Áo ${String(p.sleeve).toLowerCase()}` : 'Áo';
+    if (slug === 'bottom') return p.name.includes('váy') ? 'Chân váy' : 'Quần dài';
+    if (slug === 'shoes') return 'Giày';
+    return 'Phụ kiện';
+  }
+  const slugById: Record<number, string> = {
+    [dress.id]: 'dress', [top.id]: 'top', [bottom.id]: 'bottom', [shoes.id]: 'shoes', [accessory.id]: 'accessory',
+  };
+
+  let bi = 0;
   for (const p of products) {
-    const { sizes, ...data } = p;
+    const { sizes, tags, ...data } = p;
+    const slug = slugById[p.categoryId];
     await prisma.product.create({
       data: {
         sellerId: seller.id,
         ...data,
+        garmentType: deriveGarmentType(p, slug),
+        targetGender: p.targetGender ?? 'Nữ',
+        brand: p.brand ?? BRANDS[bi++ % BRANDS.length],
+        occasion: p.occasion ?? (p.style ? OCCASION_BY_STYLE[p.style] ?? 'STREET' : undefined),
+        tags: tags ?? [p.material, p.pattern, p.fit, p.style].filter(Boolean),
         images: { create: [{ url: IMG, isPrimary: true }] },
         variants: { create: std(sizes) },
       },

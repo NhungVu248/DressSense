@@ -331,6 +331,13 @@ model Product {
   style    String?
   season   String?
 
+  // UC6/Tầng A - bổ sung theo lược đồ DeepFashion2 (loại trang phục chi tiết + ngữ cảnh)
+  garmentType  String? // loại trang phục chi tiết (vd "Áo tay ngắn", "Đầm tay dài", "Chân váy")
+  targetGender String? // Nữ | Nam | Unisex
+  brand        String? // thương hiệu (đồng bộ CustomerProfile.preferredBrands - UC2.1)
+  occasion     String? // dịp dùng chính: WORK|PARTY|STREET|SPORT|TRAVEL|SCHOOL (ánh xạ UC2.1c)
+  tags         Json?   // nhãn thuộc tính linh hoạt (kiểu DeepFashion attributes)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

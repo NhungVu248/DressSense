@@ -43,12 +43,15 @@ export async function recommendForUser(
   // Hồ sơ cá nhân hóa (sở thích) + ngân sách
   const profile = await prisma.customerProfile.findUnique({
     where: { userId },
-    include: { budgets: true },
+    include: { budgets: true, occasions: true },
   });
   const preferredStyles = asStringSet(profile?.preferredStyles);
   const preferredColors = asStringSet(profile?.preferredColors);
   const avoidColors = asStringSet(profile?.avoidColors);
   const preferredMaterials = asStringSet(profile?.preferredMaterials);
+  const preferredBrands = asStringSet(profile?.preferredBrands);
+  const occasionSet = new Set<string>();
+  for (const o of profile?.occasions ?? []) occasionSet.add(o.customLabel || o.occasion);
   const budgetByCat = new Map<number, { min: number; max: number }>();
   for (const b of profile?.budgets ?? []) budgetByCat.set(b.categoryId, { min: b.minPrice, max: b.maxPrice });
 
@@ -99,6 +102,16 @@ export async function recommendForUser(
     }
     const bud = budgetByCat.get(p.categoryId);
     if (bud) sub.push(p.price >= bud.min && p.price <= bud.max ? 1 : 0.3);
+    if (preferredBrands.size && p.brand) {
+      const bv = preferredBrands.has(p.brand) ? 1 : 0.4;
+      sub.push(bv);
+      if (bv === 1) reasons.push(`Thương hiệu ${p.brand} bạn thích`);
+    }
+    if (occasionSet.size && p.occasion) {
+      const ov = occasionSet.has(p.occasion) ? 1 : 0.4;
+      sub.push(ov);
+      if (ov === 1) reasons.push('Phù hợp dịp bạn hay mặc');
+    }
     if (sub.length) comps.preference = { value: sub.reduce((a, b) => a + b, 0) / sub.length, weight: WEIGHTS.preference, hasData: true };
 
     // (5) BehaviorScore - GĐ6: ái lực hành vi theo danh mục/phong cách

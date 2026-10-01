@@ -50,8 +50,20 @@ const createSchema = z.object({
   price: z.number().int().positive(),
   categoryId: z.number().int(),
   color: z.string().optional(),
+  pattern: z.string().optional(),
   material: z.string().optional(),
+  fit: z.string().optional(),
+  length: z.string().optional(),
+  neckline: z.string().optional(),
+  sleeve: z.string().optional(),
   style: z.string().optional(),
+  season: z.string().optional(),
+  // Trường bổ sung theo lược đồ DeepFashion2
+  garmentType: z.string().optional(),
+  targetGender: z.string().optional(),
+  brand: z.string().optional(),
+  occasion: z.string().optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 // POST /api/products  (chỉ SELLER/ADMIN)
