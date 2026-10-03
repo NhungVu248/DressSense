@@ -119,9 +119,28 @@ python train_calvis.py --labels calvis_full_labels.csv   # -> ../models/calvis_r
 
 ⚠️ **Đọc đúng:** MAE **~1.5cm (bản full 3.803)** là trên **ảnh synthetic, 1 góc, camera cố
 định** → điều kiện "sạch", mang tính *cận trên lạc quan*; tăng dữ liệu 100→3.803 giảm MAE
-2.5→1.5cm. Ảnh người thật (nền/ánh sáng/tư thế/quần áo đa dạng) sẽ khó hơn (**domain gap chưa
-đo**). Nhưng kết quả **chứng minh pipeline image→số đo khả thi** và **có lợi khi tăng dữ liệu**.
-Bước tiếp: kiểm tra chuyển giao sang **ảnh người thật**.
+2.5→1.5cm. Kết quả **chứng minh pipeline image→số đo khả thi** và **có lợi khi tăng dữ liệu**.
+
+### Domain gap — chạy model CALVIS trên ẢNH THẬT (`domain_gap.py`)
+
+Tách silhouette ảnh thật bằng **MediaPipe segmentation** (không còn phụ thuộc "pixel<250"),
+đưa về khung chuẩn CALVIS, rồi áp model → so số đo thật (bộ Kaggle 6 mẫu):
+
+| Vòng | MAE trên ảnh thật | Độ lệch TB (bias) |
+|------|-------------------|-------------------|
+| Ngực | ~49 cm | +49 cm |
+| Eo   | ~55 cm | +55 cm |
+| Hông | ~46 cm | +46 cm |
+
+→ **Chênh lệch khổng lồ so với ~1.5cm synthetic**: model **over-estimate mạnh, KHÔNG chuyển
+giao** sang ảnh thật. Nguyên nhân: silhouette CALVIS (dang tay, bề rộng ≈ chiều cao) khác hẳn
+tư thế/че khuất/quần áo của ảnh thật. **Kết luận:** mô hình synthetic chỉ chứng minh *khả thi*;
+muốn dùng trên ảnh thật cần **huấn luyện trên dữ liệu ảnh thật** (hoặc domain adaptation) + hiệu
+chuẩn tỉ lệ. Đây là giới hạn chính cần nêu trong báo cáo.
+
+### Endpoint thực nghiệm `/estimate-measurements`
+Đã bọc model thành API (ảnh → ước lượng chu vi) ở AI service, **luôn kèm cảnh báo** *"ước lượng,
+cho chỉnh tay"* (`experimental=true`, `editable=true`) đúng nguyên tắc "AI tham khảo".
 
 ## Benchmark & hướng phát triển: SHAPY + HBW
 

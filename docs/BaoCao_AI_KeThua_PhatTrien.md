@@ -94,8 +94,11 @@ Kết quả (6 mẫu thật): MAE eo ~9cm, hông ~13cm — baseline nhẹ, chạ
   eo 1.9 · hông 1.1; CV 1.5cm). Tăng dữ liệu cải thiện rõ ⇒ chứng minh pipeline ảnh→số đo khả thi.
 
 > *Lưu ý:* ~1.5cm là trên **ảnh synthetic 1 góc, camera cố định** (điều kiện sạch, cận trên lạc
-> quan); ảnh người thật khó hơn (**domain gap chưa đo**). Khung `estimators.py` để cắm bản SOTA
-> (SHAPY/SMPL‑X) khi có Linux+GPU.
+> quan). **Domain gap đã đo**: chạy model này trên **ảnh người thật** (tách silhouette bằng
+> MediaPipe segmentation) cho **MAE ~46–55cm** (over‑estimate mạnh) ⇒ mô hình synthetic **không
+> chuyển giao** sang ảnh thật; cần huấn luyện trên **dữ liệu ảnh thật** (hoặc domain adaptation).
+> Đã bọc thành endpoint thực nghiệm `/estimate-measurements` (kèm cảnh báo "ước lượng, cho chỉnh
+> tay"). Khung `estimators.py` để cắm bản SOTA (SHAPY/SMPL‑X) khi có Linux+GPU.
 
 ### 2.4. Điểm tương thích dáng ↔ sản phẩm (Fashion Knowledge Base)
 

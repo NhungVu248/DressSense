@@ -46,6 +46,33 @@ async def pose(image: UploadFile = File(...)):
     return detect_pose(bgr)
 
 
+@app.post("/estimate-measurements")
+async def estimate_measurements(image: UploadFile = File(...)):
+    """THỰC NGHIỆM — ước lượng vòng ngực/eo/hông từ 1 ảnh (model CALVIS hồi quy silhouette).
+    Model huấn luyện trên ảnh synthetic nên kết quả trên ảnh thật chỉ mang tính ƯỚC LƯỢNG;
+    luôn cho người dùng chỉnh tay."""
+    from . import measure
+    if not measure.model_available():
+        return {"status": "NO_MODEL", "message": "Chưa có model (chạy research/train_calvis.py)"}
+    raw = await image.read()
+    try:
+        pil = Image.open(io.BytesIO(raw)).convert("RGB")
+    except Exception:
+        return {"status": "INVALID_IMAGE", "message": "Không đọc được ảnh"}
+    bgr = np.array(pil)[:, :, ::-1]
+    est = measure.estimate_from_image(bgr)
+    if est is None:
+        return {"status": "NO_PERSON", "message": "Không phát hiện được người trong ảnh"}
+    return {
+        "status": "OK",
+        "measurements": est,  # {bust, waist, hip} cm
+        "experimental": True,
+        "editable": True,
+        "warning": "Số đo là ƯỚC LƯỢNG từ ảnh (model huấn luyện trên dữ liệu synthetic). "
+                   "Vui lòng kiểm tra và chỉnh tay trước khi dùng.",
+    }
+
+
 @app.post("/body-shape")
 def body_shape(req: BodyShapeRequest):
     """UC3.2 bước 4-6 — phân loại dáng người + độ tin cậy.
