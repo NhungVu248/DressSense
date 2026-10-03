@@ -68,8 +68,6 @@ async def estimate_measurements(image: UploadFile = File(...)):
         "measurements": est,  # {bust, waist, hip} cm
         "experimental": True,
         "editable": True,
-        "warning": "Số đo là ƯỚC LƯỢNG từ ảnh (model huấn luyện trên dữ liệu synthetic). "
-                   "Vui lòng kiểm tra và chỉnh tay trước khi dùng.",
     }
 
 
