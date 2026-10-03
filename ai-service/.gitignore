@@ -19,6 +19,6 @@ models/
 
 # Đặc trưng/nhãn dẫn xuất từ dữ liệu bên thứ ba (số đo) - KHÔNG commit
 research/features.csv
-research/calvis_labels.csv
+research/*labels*.csv
 # Dữ liệu CALVIS tải về - KHÔNG commit
 research/CALVIS/
