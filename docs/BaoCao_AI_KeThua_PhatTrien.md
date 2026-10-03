@@ -90,10 +90,12 @@ Kết quả (6 mẫu thật): MAE eo ~9cm, hông ~13cm — baseline nhẹ, chạ
 - Trích đặc trưng silhouette: **bề rộng pixel tại 16 mức dọc + diện tích + bbox** (ảnh render
   tỉ lệ camera cố định ⇒ pixel mang thông tin kích thước).
 - **Hồi quy Ridge / Random Forest** (đa đầu ra) → `(ngực, eo, hông)` cm.
-- Kết quả 100 mẫu: **Ridge MAE ~2.5cm** (CV 2.3cm) → chứng minh pipeline ảnh→số đo khả thi.
+- Kết quả: 100 mẫu → ~2.5cm; **bản FULL 3.803 mẫu → RandomForest MAE TB ~1.5cm** (ngực 1.5 ·
+  eo 1.9 · hông 1.1; CV 1.5cm). Tăng dữ liệu cải thiện rõ ⇒ chứng minh pipeline ảnh→số đo khả thi.
 
-> *Lưu ý:* 2.5cm là trên **ảnh synthetic 1 góc** (điều kiện sạch, cận trên lạc quan); ảnh người
-> thật khó hơn (domain gap). Khung mã `estimators.py` để cắm bản SOTA (SHAPY) khi có Linux+GPU.
+> *Lưu ý:* ~1.5cm là trên **ảnh synthetic 1 góc, camera cố định** (điều kiện sạch, cận trên lạc
+> quan); ảnh người thật khó hơn (**domain gap chưa đo**). Khung `estimators.py` để cắm bản SOTA
+> (SHAPY/SMPL‑X) khi có Linux+GPU.
 
 ### 2.4. Điểm tương thích dáng ↔ sản phẩm (Fashion Knowledge Base)
 

@@ -99,20 +99,29 @@ kiểm giấy phép CALVIS trước khi dùng trong báo cáo.
 `train_calvis.py`: trích đặc trưng silhouette (bề rộng tại 16 mức dọc + diện tích + bbox) →
 hồi quy (Ridge/RandomForest) → chu vi. Đánh giá train/test + 5-fold CV:
 
+Bản **100 mẫu**:
+
 | Model | MAE ngực | MAE eo | MAE hông | TB | CV-MAE |
 |-------|---------|--------|----------|----|--------|
-| **Ridge** | 2.4 | 3.7 | 1.5 | **2.5 cm** | 2.3 cm |
+| Ridge | 2.4 | 3.7 | 1.5 | 2.5 cm | 2.3 cm |
 | RandomForest | 2.2 | 3.5 | 2.2 | 2.7 | 2.4 |
 
+Bản **FULL ~3.803 mẫu** (cải thiện rõ khi tăng dữ liệu):
+
+| Model | MAE ngực | MAE eo | MAE hông | TB | CV-MAE |
+|-------|---------|--------|----------|----|--------|
+| Ridge | 2.0 | 2.3 | 1.5 | 1.9 cm | 1.9 cm |
+| **RandomForest** | 1.5 | 1.9 | 1.1 | **1.5 cm** | **1.5 cm** |
+
 ```bash
-python train_calvis.py --labels calvis_labels.csv   # -> ../models/calvis_regressor.joblib
+python train_calvis.py --labels calvis_full_labels.csv   # -> ../models/calvis_regressor.joblib
 ```
 
-⚠️ **Đọc đúng:** MAE ~2.5cm là trên **ảnh synthetic, 1 góc, camera cố định, 100 mẫu** → điều
-kiện "sạch", mang tính *cận trên lạc quan*. Ảnh người thật (nền/ánh sáng/tư thế/quần áo đa
-dạng) sẽ khó hơn. Bước tiếp: chạy trên **bản full (~3803 mẫu)** rồi kiểm tra chuyển giao sang
-ảnh thật (domain gap). Nhưng kết quả này **chứng minh pipeline image→số đo khả thi** khi có dữ
-liệu ảnh+số đo phù hợp.
+⚠️ **Đọc đúng:** MAE **~1.5cm (bản full 3.803)** là trên **ảnh synthetic, 1 góc, camera cố
+định** → điều kiện "sạch", mang tính *cận trên lạc quan*; tăng dữ liệu 100→3.803 giảm MAE
+2.5→1.5cm. Ảnh người thật (nền/ánh sáng/tư thế/quần áo đa dạng) sẽ khó hơn (**domain gap chưa
+đo**). Nhưng kết quả **chứng minh pipeline image→số đo khả thi** và **có lợi khi tăng dữ liệu**.
+Bước tiếp: kiểm tra chuyển giao sang **ảnh người thật**.
 
 ## Benchmark & hướng phát triển: SHAPY + HBW
 

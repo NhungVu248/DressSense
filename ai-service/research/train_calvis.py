@@ -92,7 +92,7 @@ def main():
     os.makedirs(os.path.dirname(os.path.abspath(MODEL_OUT)), exist_ok=True)
     joblib.dump({"model": best, "K": K, "targets": TARGETS, "name": best_name}, MODEL_OUT)
     print(f"\nMô hình tốt nhất: {best_name} (TB {best_mae:.1f}cm) -> {os.path.abspath(MODEL_OUT)}")
-    print("Lưu ý: 100 mẫu + ảnh synthetic 1 góc -> mốc tham khảo; bản full (~3803) sẽ tốt hơn.")
+    print(f"Lưu ý: {len(X)} mẫu ảnh synthetic 1 góc -> điều kiện sạch (cận trên); cần kiểm tra trên ảnh thật.")
 
 
 if __name__ == "__main__":
