@@ -139,8 +139,38 @@ muốn dùng trên ảnh thật cần **huấn luyện trên dữ liệu ảnh t
 chuẩn tỉ lệ. Đây là giới hạn chính cần nêu trong báo cáo.
 
 ### Endpoint thực nghiệm `/estimate-measurements`
-Đã bọc model thành API (ảnh → ước lượng chu vi) ở AI service, **luôn kèm cảnh báo** *"ước lượng,
-cho chỉnh tay"* (`experimental=true`, `editable=true`) đúng nguyên tắc "AI tham khảo".
+Đã bọc model thành API (ảnh → ước lượng chu vi) ở AI service, đánh dấu `experimental=true`,
+`editable=true` (cho người dùng chỉnh tay) đúng nguyên tắc "AI tham khảo, người quyết định cuối".
+
+### Ảnh → DÁNG NGƯỜI (phân loại) — `train_shape_from_image.py`
+
+Hướng **đơn giản & bền hơn** đo cm: phân loại dáng là bài toán **TỶ LỆ** (vai:eo:hông), mà tỷ lệ
+**bất biến với thang đo** → *không* dính domain gap ~50cm của hướng đo cm.
+
+Pipeline: ảnh CALVIS → MediaPipe (landmark vai/hông) + silhouette → đo bề rộng thân tại mức
+**ngực/eo/hông** (đều **dưới đường tay dang**, đo theo đoạn liền mạch chứa trục thân → loại khối
+tay) → **tỷ lệ 2D** → RandomForest. Nhãn dáng **tự gán từ số đo CALVIS** bằng `classify_body_shape`
+(khách quan, khỏi nhãn tay).
+
+Kết quả (3.803 ảnh, train/test + 5-fold CV):
+
+| Chỉ số | Giá trị |
+|--------|---------|
+| Accuracy test | **64%** |
+| 5-fold CV | **64.3% ±1.6%** |
+| Baseline đoán lớp đông nhất | 37.5% |
+| f1 theo lớp | HOURGLASS 0.74 · PEAR 0.72 · APPLE 0.65 · RECTANGLE 0.50 · INVERTED_TRIANGLE 0.11 |
+
+⚠️ **Đọc đúng:** 64% > baseline 37.5% → **ảnh có mang tín hiệu dáng rõ rệt** (khác hẳn hướng đo
+cm vô dụng trên ảnh thật). Dáng "rõ nét" (đồng hồ cát, quả lê) phân loại tốt; **RECTANGLE hay lẫn
+HOURGLASS** (khác nhau ở độ thu eo — ảnh *chính diện* nhìn eo kém vì thiếu độ dày trước-sau);
+**INVERTED_TRIANGLE** quá hiếm (49 mẫu) nên không học được. 64% là **trần lạc quan trên ảnh sạch
+synthetic**; ảnh thật sẽ thấp hơn. → **chứng minh phương pháp khả thi**, dùng ở vai trò *gợi ý /
+đối chiếu với số đo tay (đường chính)*, không thay thế số đo.
+
+**Kết hợp đề xuất:** số đo nhập tay là đường chính (đã chuẩn); ảnh→dáng làm **đối chiếu** — khớp
+thì tăng độ tin, lệch thì nhờ người dùng xác nhận. Chuyển giao sang ảnh thật cần tập ảnh thật nhỏ
+để hiệu chỉnh/kiểm chứng (tỷ lệ 2D rớt ít hơn đo cm nhiều).
 
 ## Benchmark & hướng phát triển: SHAPY + HBW
 
