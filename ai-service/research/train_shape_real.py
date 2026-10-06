@@ -44,13 +44,26 @@ EXTS = ("*.jpg", "*.jpeg", "*.png", "*.webp", "*.JPG", "*.JPEG", "*.PNG")
 
 import mediapipe as mp  # noqa: E402
 
+SQUARE = 512  # pad về vuông + resize cố định: tránh crash seg-mask trên ảnh không vuông
+
 
 def real_features(img_path):
-    """Ảnh thật -> silhouette (seg mask) + landmarks -> đặc trưng tỷ lệ. None nếu hỏng."""
-    bgr = cv2.imread(img_path)
-    if bgr is None:
+    """Ảnh thật -> silhouette (seg mask) + landmarks -> đặc trưng tỷ lệ. None nếu hỏng.
+
+    Nạp bằng PIL .convert('RGB') (luôn 3 kênh), PAD về VUÔNG rồi resize 512x512: build
+    MediaPipe này crash cứng ('1 vs 4') khi bật segmentation trên ảnh KHÔNG vuông. Pad giữ
+    nguyên tỷ lệ (viền đen = nền), landmark chuẩn hóa nên tỷ lệ 2D không đổi."""
+    from PIL import Image
+    try:
+        im = Image.open(img_path).convert("RGB")
+    except Exception:
         return None
-    rgb = np.ascontiguousarray(bgr[:, :, ::-1])
+    w, h = im.size
+    s = max(w, h)
+    canvas = Image.new("RGB", (s, s), (0, 0, 0))
+    canvas.paste(im, ((s - w) // 2, (s - h) // 2))
+    canvas = canvas.resize((SQUARE, SQUARE), Image.BILINEAR)
+    rgb = np.ascontiguousarray(np.array(canvas), dtype=np.uint8)
     res = measure._get_seg().detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb))
     if not res.pose_landmarks or not res.segmentation_masks:
         return None
@@ -58,10 +71,10 @@ def real_features(img_path):
     return ratio_features(mask, res.pose_landmarks[0])
 
 
-def collect_real():
+def collect_real(data_dir=DATA_DIR):
     rows, stats, bad = [], {}, 0
     for cls in CLASSES:
-        d = os.path.join(DATA_DIR, cls)
+        d = os.path.join(data_dir, cls)
         files = []
         for e in EXTS:
             files += glob.glob(os.path.join(d, e))
@@ -83,13 +96,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--with-calvis", action="store_true", help="trộn thêm đặc trưng CALVIS")
     ap.add_argument("--min-per-class", type=int, default=30)
+    ap.add_argument("--data-dir", default=DATA_DIR, help="thư mục chứa ảnh thật (mặc định data/body_shape/real)")
     a = ap.parse_args()
 
     for cls in CLASSES:
-        os.makedirs(os.path.join(DATA_DIR, cls), exist_ok=True)
+        os.makedirs(os.path.join(a.data_dir, cls), exist_ok=True)
 
-    print("Đang trích đặc trưng ảnh thật (MediaPipe segmentation)...")
-    df, stats, bad = collect_real()
+    print(f"Đang trích đặc trưng ảnh thật (MediaPipe segmentation) từ: {a.data_dir}")
+    df, stats, bad = collect_real(a.data_dir)
     print("\nSố ảnh ĐỌC ĐƯỢC / tổng theo lớp:")
     for cls in CLASSES:
         ok, tot = stats[cls]

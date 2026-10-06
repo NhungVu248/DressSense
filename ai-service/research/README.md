@@ -172,6 +172,27 @@ synthetic**; ảnh thật sẽ thấp hơn. → **chứng minh phương pháp kh
 thì tăng độ tin, lệch thì nhờ người dùng xác nhận. Chuyển giao sang ảnh thật cần tập ảnh thật nhỏ
 để hiệu chỉnh/kiểm chứng (tỷ lệ 2D rớt ít hơn đo cm nhiều).
 
+### Kiểm chứng trên ẢNH THẬT gom từ web — `train_shape_real.py`
+
+Gom **123 ảnh thật** từ web (21–29 ảnh/lớp), gán nhãn theo thư mục; silhouette lấy bằng MediaPipe
+segmentation (đã sửa crash seg-mask ảnh không vuông bằng cách **pad về vuông + resize 512**).
+
+| Train → Test (trên ảnh thật) | Accuracy |
+|------------------------------|----------|
+| Baseline (đoán lớp đông nhất) | 24.3% |
+| Ảnh thật → ảnh thật | **29.7%** (CV 30.8% ±9.8%) |
+| CALVIS + ảnh thật → ảnh thật | 29.7% (CALVIS **không giúp**) |
+| CALVIS → ảnh thật | 21.6% (**≈ đoán bừa**) |
+
+⚠️ **Kết luận thẳng:** ở quy mô này, phân loại ảnh→dáng **gần như không hoạt động** (~30% ≈ ngẫu
+nhiên). Ba nguyên nhân (có bằng chứng): (1) **quá ít ảnh** (~25/lớp, cần 80–150); (2) **đặc trưng
+không tách lớp** — trung bình tỷ lệ các lớp chồng nhau, riêng INVERTED_TRIANGLE có `r_shoulder_hip`
+= 0.71 (lẽ ra cao nhất) do ảnh web **buông tay** làm hỏng bề rộng eo/hông và `w_shoulder` dùng
+khoảng cách landmark (không cùng hệ với bề rộng silhouette); (3) **nhãn gán bằng mắt** từ ảnh web
+nhiễu, chủ quan. CALVIS synthetic **không chuyển giao** (22% ≈ ngẫu nhiên) → không thay được ảnh
+thật. → Giữ **số đo nhập tay là đường chính**; ảnh→dáng chỉ dùng được khi có tập ảnh lớn hơn,
+**tư thế chuẩn (tay tách thân)**, nhãn sạch.
+
 ## Benchmark & hướng phát triển: SHAPY + HBW
 
 **SHAPY** (CVPR 2022, Max Planck) hồi quy dáng 3D **SMPL-X** từ 1 ảnh và xuất **chiều cao,
