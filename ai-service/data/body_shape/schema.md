@@ -1,12 +1,10 @@
 # Tầng B — Dataset dáng người có nhãn
 
 Đóng góp lõi của đồ án: dữ liệu để huấn luyện/đánh giá bộ phân loại dáng người (GĐ3).
-Có **2 file** cùng schema cột:
 
-- `body_shapes_ansur.csv` — **số đo NGƯỜI THẬT** (ANSUR II), là tập chính. Có thêm cột `sex`.
-- `body_shapes.csv` — synthetic, cân bằng 5 dáng, bổ trợ cho thử nghiệm có kiểm soát.
+- `body_shapes_ansur.csv` — **số đo NGƯỜI THẬT** (ANSUR II), là tập chính. Có cột `sex`.
 
-Ở cả hai, **nhãn dáng là suy luận công thức** (quy tắc bên dưới), không phải người gán.
+**Nhãn dáng là suy luận công thức** (quy tắc bên dưới), không phải người gán.
 
 ## Cột dữ liệu
 
@@ -26,7 +24,7 @@ Có **2 file** cùng schema cột:
 | `shoulder_hip` | float | **Đặc trưng chuẩn hóa** vai/hông |
 | `body_shape` | enum | Nhãn: `HOURGLASS`, `RECTANGLE`, `PEAR`, `APPLE`, `INVERTED_TRIANGLE` |
 | `confidence` | float | Độ tin cậy của nhãn (theo biên so với ngưỡng) |
-| `source` | str | `ansur2` (số đo thật ANSUR II) · `synthetic_rule` (bootstrap) · `real` (nhóm tự gán, bổ sung sau) |
+| `source` | str | `ansur2` (số đo thật ANSUR II) · `real` (nhóm tự gán, bổ sung sau) |
 
 **Đặc trưng dùng để huấn luyện** = 4 tỷ lệ chuẩn hóa (`waist_hip`, `waist_bust`, `bust_hip`,
 `shoulder_hip`) — chuẩn hóa theo tỷ lệ để không phụ thuộc khoảng cách chụp/chiều cao. Các cột
@@ -48,8 +46,7 @@ Có **2 file** cùng schema cột:
   Center), bản công khai. Dùng file NỮ: 1986 người thật.
 - **Đơn vị gốc → chuẩn hóa:** số đo ANSUR ở mm → chia 10 ra cm; `weightkg` là phần mười kg
   → chia 10. Ánh xạ cột: `bust = chestcircumference`, `waist = waistcircumference`,
-  `hip = buttockcircumference`, `shoulder = biacromialbreadth` (rộng vai — là *breadth*,
-  không cùng loại với `shoulder_cm` ở file synthetic; không trộn cột này giữa hai nguồn),
+  `hip = buttockcircumference`, `shoulder = biacromialbreadth` (rộng vai — là *breadth*),
   `height = stature`.
 - **Gán nhãn:** áp quy tắc tỷ lệ ngực–eo–hông bên dưới (đồng bộ `classifyBodyShape` của hệ
   thống, theo tinh thần **FFIT — Female Figure Identification Technique**) lên số đo thật.
@@ -66,14 +63,6 @@ Tái lập:
 cd ai-service/scripts
 python download_ansur.py                 # tải ANSUR II vào ../data/body_shape/raw/ (gitignore)
 python build_ansur_dataset.py            # -> ../data/body_shape/body_shapes_ansur.csv (1986 mẫu)
-```
-
-## Sinh lại dataset synthetic (`body_shapes.csv`)
-
-```bash
-cd ai-service/scripts
-python generate_body_shape_dataset.py --per-class 120 --seed 42
-# -> ../data/body_shape/body_shapes.csv (600 mẫu, cân bằng 5 dáng)
 ```
 
 ## Bổ sung dữ liệu thật (giai đoạn sau)

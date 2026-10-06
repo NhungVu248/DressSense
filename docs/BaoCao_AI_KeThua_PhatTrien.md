@@ -98,7 +98,7 @@ Kết quả (6 mẫu thật): MAE eo ~9cm, hông ~13cm — baseline nhẹ, chạ
 > MediaPipe segmentation) cho **MAE ~46–55cm** (over‑estimate mạnh) ⇒ mô hình synthetic **không
 > chuyển giao** sang ảnh thật; cần huấn luyện trên **dữ liệu ảnh thật** (hoặc domain adaptation).
 > Đã bọc thành endpoint thực nghiệm `/estimate-measurements` (đánh dấu `experimental`/`editable`
-> — cho người dùng chỉnh tay). Khung `estimators.py` để cắm bản SOTA (SHAPY/SMPL‑X) khi có Linux+GPU.
+> — cho người dùng chỉnh tay). Có thể cắm bản SOTA (SHAPY/SMPL‑X) khi có Linux+GPU.
 
 **(c) Phân loại DÁNG trực tiếp từ ảnh** (hướng đơn giản hơn đo cm — dáng là bài toán *tỷ lệ*,
 bất biến thang đo nên không dính domain gap tuyệt đối):
@@ -172,7 +172,6 @@ trung bình ái lực danh mục + phong cách của nó → nạp vào thành p
 | Dataset | Vai trò trong dự án | Loại | Giấy phép / lưu ý |
 |---|---|---|---|
 | **ANSUR II** (US Army 2012) | Huấn luyện **phân loại dáng** (1.986 số đo nữ thật) | Số đo thật | Công khai |
-| **Bootstrap synthetic** (tự sinh) | Tập cân bằng 5 dáng để kiểm thử (600 mẫu) | Số đo synthetic | Tự tạo bằng luật |
 | **CALVIS** (neoglez) | Huấn luyện **ảnh → số đo** (ảnh silhouette + chu vi) | Ảnh synthetic + nhãn | **Phi thương mại** (kiểm license) |
 | **Body Measurements (unidpro, Kaggle)** | Nghiệm thu pose + POC ảnh→số đo (6 mẫu: ảnh trước/nghiêng + số đo thật) | Ảnh thật + số đo | Nhà bán TM; bản 6 là mẫu |
 | **DeepFashion2** | **Tham khảo lược đồ thuộc tính** SP (không tải/không train) | — | Phi thương mại |

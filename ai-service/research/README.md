@@ -4,19 +4,19 @@ Hướng mở của dự án: từ ảnh toàn thân tự ước lượng **vòn
 người dùng nhập số đo tay. Thư mục này là **điểm khởi đầu nghiên cứu (POC)**, không phải
 tính năng production.
 
-## Phương pháp (baseline hình học)
+## Phương pháp (baseline hình học) — *POC đã gỡ, giữ kết quả làm lịch sử*
 
-`estimate_measurements.py`:
+> Hai script POC ban đầu (`estimate_measurements.py` hình học + `train_measurement_regressor.py`
+> hồi quy 6 mẫu) **đã được gỡ khi thanh lọc** vì bị hướng hồi quy silhouette CALVIS
+> (`train_calvis.py`) thay thế. Mô tả & số liệu dưới đây giữ lại làm **ghi nhận lịch sử** của
+> quá trình nghiên cứu (không còn code chạy kèm).
+
+Baseline hình học khi đó:
 1. MediaPipe Pose (+ segmentation mask) trên **ảnh trước** và **ảnh nghiêng**.
 2. Tỉ lệ cm/pixel từ **chiều cao đã biết** (chiều cao người ÷ chiều cao pixel của mask).
 3. Tại mức ngực/eo/hông (suy từ mốc vai–hông): đo **bề rộng** (ảnh trước) và **bề sâu**
    (ảnh nghiêng) của thân từ mask.
 4. Chu vi ≈ **chu vi hình elip** (xấp xỉ Ramanujan) với bán trục = rộng/2, sâu/2.
-
-Chạy (cần bộ ảnh+số đo cục bộ, KHÔNG commit vào repo):
-```bash
-python estimate_measurements.py --dataset "C:/path/to/dataset"
-```
 
 ## Kết quả trên 6 mẫu thật (bộ Kaggle Body Measurements) — MAE (cm)
 
@@ -30,9 +30,9 @@ python estimate_measurements.py --dataset "C:/path/to/dataset"
 - Baseline **ước lượng vượt** nặng ở eo/hông vì bề rộng span cả hàng **gộp cánh tay buông**.
 - **(a)** Lấy run foreground liền mạch quanh trục giữa thân + **chặn** theo bề rộng suy từ mốc
   vai/hông (hệ số theo mức: ngực 1.3, eo 1.45, hông 1.95 — khớp hông nằm sâu nên hông cần hệ
-  số lớn). Eo giảm 40→9, hông 32→13. `estimate_measurements.py`.
-- **(b)** Thay công thức elip cứng bằng **hồi quy học máy** (`train_measurement_regressor.py`,
-  Ridge/RandomForest, đánh giá Leave-One-Out): MAE ~6–7cm đều cả 3 vòng.
+  số lớn). Eo giảm 40→9, hông 32→13.
+- **(b)** Thay công thức elip cứng bằng **hồi quy học máy** (Ridge/RandomForest, đánh giá
+  Leave-One-Out): MAE ~6–7cm đều cả 3 vòng.
   ⚠️ **n=6 là CỰC NHỎ** → số liệu chỉ để kiểm thử khung, phương sai LOO cao; KHÔNG dùng làm
   kết luận độ chính xác. Khung đã sẵn sàng: có dataset lớn chỉ cần `--dump-features` rồi train.
 
@@ -48,19 +48,6 @@ python estimate_measurements.py --dataset "C:/path/to/dataset"
 3. **Chuẩn hóa tư thế & hiệu chuẩn tỉ lệ**: yêu cầu ảnh đứng thẳng, đủ toàn thân; cân nhắc
    vật tham chiếu thay cho chỉ dùng chiều cao.
 4. **Đánh giá**: MAE/°% theo từng vòng trên tập test có nhãn số đo thật.
-
-## Khung pluggable (estimators.py)
-
-Interface chung `MeasurementEstimator.estimate(front, side, height_cm) -> {bust, waist, hip}`
-để thay phương pháp mà không đổi phần gọi:
-- `GeometricEstimator` ("geometric") — baseline hình học, chạy **Windows/CPU**, cần ảnh
-  trước + nghiêng + chiều cao.
-- `ShapyEstimator` ("shapy") — **điểm cắm sẵn** cho bản SOTA (chưa hiện thực; cần Linux+GPU).
-
-```python
-from estimators import get_estimator
-get_estimator("geometric").estimate("front.jpg", "side.jpg", height_cm=165)
-```
 
 ## Bộ dữ liệu bổ sung: CALVIS (synthetic, miễn phí — ưu tiên)
 

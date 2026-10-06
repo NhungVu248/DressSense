@@ -21,8 +21,10 @@ Chạy:  python build_ansur_dataset.py            # cần raw/ANSUR_II_FEMALE_Pu
 import argparse
 import csv
 import os
+import sys
 
-from generate_body_shape_dataset import classify  # dùng lại luật đã port
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from app.body_shape import classify_body_shape  # một nguồn chân lý cho luật phân loại dáng
 
 HERE = os.path.dirname(__file__)
 DEFAULT_RAW = os.path.join(HERE, "..", "data", "body_shape", "raw", "ANSUR_II_FEMALE_Public.csv")
@@ -49,7 +51,7 @@ def build(raw_path, out_path, sex):
                 continue
             if bust <= 0 or waist <= 0 or hip <= 0:
                 continue
-            label, conf = classify(bust, waist, hip)
+            label, conf, _ = classify_body_shape(bust, waist, hip)
             rows.append({
                 "id": i,
                 "sex": sex,

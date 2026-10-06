@@ -14,7 +14,7 @@ và trả JSON. Ảnh gốc có thể xóa ngay sau khi trích số đo (tối t
 
 | GĐ | Nội dung | Trạng thái |
 |----|----------|------------|
-| 1 | Thu thập & chuẩn bị dữ liệu (3 tầng A/B/C) | ✅ Tầng B: 1986 số đo NỮ THẬT (ANSUR II) + 600 synthetic; Tầng C: 14 SP đủ thuộc tính |
+| 1 | Thu thập & chuẩn bị dữ liệu (3 tầng A/B/C) | ✅ Tầng B: 1986 số đo NỮ THẬT (ANSUR II); Tầng C: 14 SP đủ thuộc tính |
 | 2 | Pose Estimation (MediaPipe) | ✅ M1 xong — FastAPI + `/pose` + `/body-shape`; nghiệm thu trên ảnh người thật (6/6 phát hiện, tin cậy ~0.95) |
 | 3 | Trích đặc trưng + phân loại dáng (rule → ML) | ✅ M2–M4 — huấn luyện/so sánh DT/RF/MLP/XGBoost trên ANSUR; `/body-shape?method=ml` (fallback rule) |
 | 4 | Fashion Knowledge Base + điểm tương thích dáng–SP | ✅ M5 — `backend/src/constants/fashion-kb.ts` + bảng `ProductBodyFit` (điểm 0..1/dáng + lý do); API sản phẩm trả `bodyFits` |
