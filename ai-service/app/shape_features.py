@@ -9,6 +9,9 @@ Trích ĐẶC TRƯNG TỶ LỆ 2D cho phân loại dáng người — DÙNG CHUN
 
 Nguyên tắc chống "tay": đo bề rộng tại các mức ĐỀU DƯỚI đường vai, và lấy ĐOẠN LIỀN MẠCH
 chứa trục thân (loại khối tay rời ở ảnh dang tay; với ảnh buông tay vẫn nên chụp hở nách).
+
+Ghi chú (nghiên cứu): đã thử biến thể "loại cánh tay" bằng mặt nạ xương + đo vai/hông bằng
+landmark (xem research/README.md) nhưng KHÔNG cải thiện accuracy trên ảnh thật -> giữ v1.
 """
 import numpy as np
 

@@ -193,6 +193,23 @@ nhiễu, chủ quan. CALVIS synthetic **không chuyển giao** (22% ≈ ngẫu n
 thật. → Giữ **số đo nhập tay là đường chính**; ảnh→dáng chỉ dùng được khi có tập ảnh lớn hơn,
 **tư thế chuẩn (tay tách thân)**, nhãn sạch.
 
+**Đã thử sửa đặc trưng "loại cánh tay" (kết quả âm tính, giữ lại để báo cáo trung thực):**
+vẽ mặt nạ theo xương tay (vai→khuỷu→cổ tay) rồi trừ khỏi silhouette, + thử đo vai/hông bằng
+landmark. So trên cùng tập ảnh (n=144, cùng split):
+
+| Biến thể đặc trưng | test-acc | CV |
+|--------------------|----------|-----|
+| v1 (gốc) | **40.9%** | 37.5% ±6.9% |
+| v2 (loại tay + vai/hông **landmark**) | 31.8% | 33.4% ±9.3% |
+| v3 (loại tay + tất cả từ **silhouette**) | 27.3% | 32.7% ±9.5% |
+
+→ Loại tay **sửa được hướng tín hiệu** (v3: `r_sh_hip` của PEAR thấp nhất, INVERTED > PEAR —
+đúng chiều, v1 bị ngược) nhưng **không tăng accuracy**: mặt nạ tay thô tự thêm nhiễu, và test set
+quá nhỏ (±7–9%, các biến thể chồng khoảng tin cậy). Dùng landmark cho **hông** là sai (khớp hông
+23/24 sát nhau, không phải bề ngang hông mềm) → v2 tệ nhất. Đòn bẩy thật là **DỮ LIỆU**: chỉ riêng
+tăng 123→144 ảnh đã kéo v1 từ ~30% lên ~41%. **Kết luận: giữ v1; muốn khá hơn thì thêm ảnh + tư
+thế chuẩn, không phải tinh chỉnh đặc trưng.**
+
 ## Benchmark & hướng phát triển: SHAPY + HBW
 
 **SHAPY** (CVPR 2022, Max Planck) hồi quy dáng 3D **SMPL-X** từ 1 ảnh và xuất **chiều cao,
