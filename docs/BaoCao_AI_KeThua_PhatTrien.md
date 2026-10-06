@@ -97,8 +97,30 @@ Kết quả (6 mẫu thật): MAE eo ~9cm, hông ~13cm — baseline nhẹ, chạ
 > quan). **Domain gap đã đo**: chạy model này trên **ảnh người thật** (tách silhouette bằng
 > MediaPipe segmentation) cho **MAE ~46–55cm** (over‑estimate mạnh) ⇒ mô hình synthetic **không
 > chuyển giao** sang ảnh thật; cần huấn luyện trên **dữ liệu ảnh thật** (hoặc domain adaptation).
-> Đã bọc thành endpoint thực nghiệm `/estimate-measurements` (kèm cảnh báo "ước lượng, cho chỉnh
-> tay"). Khung `estimators.py` để cắm bản SOTA (SHAPY/SMPL‑X) khi có Linux+GPU.
+> Đã bọc thành endpoint thực nghiệm `/estimate-measurements` (đánh dấu `experimental`/`editable`
+> — cho người dùng chỉnh tay). Khung `estimators.py` để cắm bản SOTA (SHAPY/SMPL‑X) khi có Linux+GPU.
+
+**(c) Phân loại DÁNG trực tiếp từ ảnh** (hướng đơn giản hơn đo cm — dáng là bài toán *tỷ lệ*,
+bất biến thang đo nên không dính domain gap tuyệt đối):
+- Ảnh → MediaPipe (landmark + silhouette) → bề rộng ngực/eo/hông (đo theo đoạn liền mạch quanh
+  trục thân) → **tỷ lệ 2D** → RandomForest. Nhãn tự gán từ số đo.
+- **Trên ảnh synthetic CALVIS sạch (3.803 ảnh): 64%** (baseline 37.5%) → ảnh *có* mang tín hiệu dáng.
+- **Trên ~144 ảnh người thật gom từ web (tự gán nhãn theo thư mục): chỉ ~35% (CV)**, baseline ~28%
+  → **chưa dùng được**. Nguyên nhân: ít ảnh, nhãn gán bằng mắt nhiễu, ảnh web buông tay làm sai
+  bề rộng. Đã thử cải tiến **"loại cánh tay"** (mặt nạ theo xương tay) — sửa được *hướng* tín hiệu
+  nhưng **không tăng** accuracy; đòn bẩy thật là **thêm dữ liệu** (123→144 ảnh: 30%→35%+).
+
+> **KẾT LUẬN PHẦN THỊ GIÁC (chốt).** Module thị giác đã đạt mức **chứng minh khả thi + định lượng
+> giới hạn** — một kết quả nghiên cứu hoàn chỉnh, trung thực:
+> - *Đo số đo từ ảnh:* khả thi trên synthetic (~1.5cm) nhưng **domain gap ~50cm** trên ảnh thật →
+>   không chuyển giao nếu chưa có dữ liệu ảnh thật.
+> - *Phân loại dáng từ ảnh:* khả thi trên synthetic (64%) nhưng chỉ **~35%** trên ảnh web thật.
+> - Cả hai hướng **đều vướng đúng một nút thắt: thiếu dữ liệu ẢNH NGƯỜI THẬT đã gán nhãn** (số đo
+>   thật hoặc dáng thật, tư thế chuẩn). Tinh chỉnh thuật toán/đặc trưng đã thử, không gỡ được nút này.
+> - **Quyết định thiết kế:** trong phạm vi hiện tại, **số đo người dùng NHẬP TAY là đường chính**
+>   (chính xác, đáng tin) cho phân loại dáng & gợi ý size; các mô hình ảnh để ở dạng **thực nghiệm /
+>   hướng phát triển**. Khi thu thập được tập ảnh thật chuẩn (hoặc dùng BodyM/SHAPY phi thương mại),
+>   hạ tầng (pipeline, đặc trưng, endpoint) **đã sẵn sàng** để huấn luyện lại — không phải làm lại.
 
 ### 2.4. Điểm tương thích dáng ↔ sản phẩm (Fashion Knowledge Base)
 
@@ -159,16 +181,23 @@ trung bình ái lực danh mục + phong cách của nó → nạp vào thành p
 
 **Trạng thái dữ liệu cho module thị giác:**
 - *Phát hiện pose*: không cần dữ liệu huấn luyện (pretrained) → đủ.
-- *Ảnh → số đo*: đã chạy trên **synthetic (CALVIS, MAE ~2.5cm)**; **trên ảnh thật chỉ có 6 mẫu**
-  → chưa đủ để huấn luyện/đánh giá chính thức. Điểm nghẽn là **dữ liệu ảnh người thật có nhãn
-  số đo** (cần vài trăm mẫu — nhóm tự thu thập hoặc HBW/bản full).
+- *Ảnh → số đo*: đã chạy trên **synthetic (CALVIS, MAE ~1.5cm bản full)**; **trên ảnh thật chỉ có
+  6 mẫu** → chưa đủ. Điểm nghẽn: **ảnh người thật có nhãn số đo thật** (cần vài trăm mẫu).
+- *Ảnh → dáng*: đã gom **~144 ảnh web** tự gán nhãn theo thư mục → chỉ ~35% (chưa dùng được).
+  Điểm nghẽn: **số lượng + tư thế chuẩn + nhãn sạch**.
+- *Nguồn free ứng viên cho tương lai*: **BodyM (Amazon, ~8.978 silhouette + 14 số đo thật, 2.505
+  người)** — đúng loại dữ liệu đang thiếu; license **phi thương mại** (hợp cho nghiên cứu/đồ án).
 
 ---
 
 ## KẾT LUẬN
 Dự án **kế thừa đúng phần khó đã được giải** (MediaPipe pose, thư viện ML, lược đồ DeepFashion,
 phương pháp SHAPY/CALVIS) và **tự phát triển toàn bộ phần lõi nghiệp vụ**: luật + ML phân loại
-dáng, ước lượng số đo từ ảnh (hình học + hồi quy silhouette), cơ sở luật thời trang, công thức
-gợi ý hybrid có giải thích, và cá nhân hóa theo hành vi. Hướng phát triển chính còn lại là **bổ
-sung dữ liệu ảnh người thật có số đo** để nâng module thị giác từ mức *khả thi (synthetic)* lên
-*đáng tin trên ảnh thật*.
+dáng, ước lượng số đo từ ảnh (hình học + hồi quy silhouette), phân loại dáng từ ảnh, cơ sở luật
+thời trang, công thức gợi ý hybrid có giải thích, và cá nhân hóa theo hành vi.
+
+**Phần thị giác được chốt ở mức *khả thi + đã định lượng giới hạn*** (xem hộp kết luận ở 2.3): cả
+hai hướng ảnh→số đo và ảnh→dáng đều vướng cùng một nút thắt — **thiếu dữ liệu ảnh người thật đã
+gán nhãn** — mà tinh chỉnh thuật toán không gỡ được. Do đó **số đo nhập tay là đường chính** trong
+phạm vi hiện tại; mô hình ảnh để ở dạng thực nghiệm/hướng phát triển, hạ tầng đã sẵn sàng huấn
+luyện lại khi có dữ liệu thật chuẩn (tự thu thập hoặc BodyM/SHAPY phi thương mại).
