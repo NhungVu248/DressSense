@@ -471,3 +471,92 @@ model UserBehavior {
   @@index([productId])
   @@index([action])
 }
+
+// ============================================================
+//  UC4.2 - TRI THỨC THỜI TRANG (quản lý bởi Quản trị viên)
+//  (a) Danh mục thuộc tính chuẩn dùng chung  (b) Luật hợp dáng
+//  Nguồn tham chiếu cho chuẩn hóa nhãn SP (UC4.1), khuyến nghị (UC3.3), gợi ý (UC5).
+// ============================================================
+
+enum AttributeType {
+  GARMENT // loại trang phục
+  COLOR // màu sắc
+  MATERIAL // chất liệu
+  FIT // phom dáng
+  NECKLINE // cổ áo
+  SLEEVE // tay áo
+  LENGTH // độ dài
+  STYLE // phong cách
+  OCCASION // dịp sử dụng
+  PATTERN // họa tiết
+  BODY_SHAPE // dáng người phù hợp
+}
+
+// (a) Danh mục thuộc tính chuẩn — mỗi value có mã chuẩn + nhãn + alias để chuẩn hóa
+// giá trị tự do của sản phẩm (vd "Xanh navy" -> navy). Dùng chung với UC2/UC3/UC7.
+model FashionAttribute {
+  id        Int           @id @default(autoincrement())
+  type      AttributeType
+  code      String // mã chuẩn (vd 'navy', 'office', 'Slim')
+  label     String // nhãn hiển thị (VN)
+  aliases   Json? // mảng biến thể tự do để ánh xạ về code (UC4.1 chuẩn hóa)
+  active    Boolean       @default(true) // false = vô hiệu hóa (không xóa cứng - UC4.2 4c)
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([type, code])
+  @@index([type])
+}
+
+enum FitRuleKind {
+  PREFER // ưu tiên (+)
+  AVOID // nên tránh (-)
+}
+
+// (b) Luật hợp dáng: dáng người ↔ thuộc tính (fit/neckline/length/sleeve) kèm trọng số + lý do.
+// Chuyển từ FASHION_KB hard-code vào DB để Admin quản lý (UC4.2).
+model ShapeFitRule {
+  id        Int         @id @default(autoincrement())
+  bodyShape BodyShape
+  attr      String // fit | neckline | length | sleeve
+  value     String // giá trị thuộc tính (khớp giá trị trên sản phẩm)
+  kind      FitRuleKind
+  weight    Float
+  reason    String
+  active    Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([bodyShape])
+}
+
+enum KnowledgeEntity {
+  ATTRIBUTE
+  FIT_RULE
+  PAIRING_RULE
+}
+
+enum KnowledgeAction {
+  CREATE
+  UPDATE
+  DELETE
+  DEACTIVATE
+  IMPORT
+}
+
+// Nhật ký + phiên bản thay đổi tri thức (UC4.2 - truy vết). actorId = id Quản trị viên.
+model KnowledgeAudit {
+  id        Int             @id @default(autoincrement())
+  entity    KnowledgeEntity
+  entityId  Int?
+  action    KnowledgeAction
+  actorId   Int?
+  before    Json?
+  after     Json?
+  note      String?
+  createdAt DateTime        @default(now())
+
+  @@index([entity])
+  @@index([actorId])
+}
