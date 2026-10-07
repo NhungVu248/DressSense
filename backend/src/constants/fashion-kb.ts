@@ -133,3 +133,43 @@ export function scoreProductForShape(p: ProductAttrs, shape: BodyShape): FitResu
 export function scoreProductAllShapes(p: ProductAttrs) {
   return BODY_SHAPES.map((shape) => ({ bodyShape: shape, ...scoreProductForShape(p, shape) }));
 }
+
+// ---- UC4.2: chấm điểm theo LUẬT TRUYỀN VÀO (đọc từ DB) - fallback về FASHION_KB ----
+
+export interface RuleLite {
+  bodyShape: BodyShape;
+  attr: string; // fit | neckline | length | sleeve
+  value: string;
+  kind: 'PREFER' | 'AVOID';
+  weight: number;
+  reason: string;
+}
+
+// Trải FASHION_KB thành danh sách luật phẳng (dùng làm fallback khi DB chưa có luật)
+export function flattenKB(): RuleLite[] {
+  const out: RuleLite[] = [];
+  for (const shape of BODY_SHAPES) {
+    for (const r of FASHION_KB[shape].prefer) out.push({ bodyShape: shape, attr: r.attr, value: r.value, kind: 'PREFER', weight: r.weight, reason: r.reason });
+    for (const r of FASHION_KB[shape].avoid) out.push({ bodyShape: shape, attr: r.attr, value: r.value, kind: 'AVOID', weight: r.weight, reason: r.reason });
+  }
+  return out;
+}
+
+// Chấm điểm 1 dáng theo tập luật truyền vào (rules đã lọc active ở tầng gọi)
+export function scoreWithRules(p: ProductAttrs, shape: BodyShape, rules: RuleLite[]): FitResult {
+  let score = 0.5;
+  const reasons: FitReason[] = [];
+  for (const r of rules) {
+    if (r.bodyShape !== shape) continue;
+    if ((p as Record<string, unknown>)[r.attr] === r.value) {
+      if (r.kind === 'PREFER') { score += r.weight; reasons.push({ type: 'plus', reason: r.reason }); }
+      else { score -= r.weight; reasons.push({ type: 'minus', reason: r.reason }); }
+    }
+  }
+  return { score: Math.round(clamp(score) * 1000) / 1000, reasons };
+}
+
+// Chấm điểm cả 5 dáng theo tập luật truyền vào
+export function scoreAllWithRules(p: ProductAttrs, rules: RuleLite[]) {
+  return BODY_SHAPES.map((shape) => ({ bodyShape: shape, ...scoreWithRules(p, shape, rules) }));
+}
