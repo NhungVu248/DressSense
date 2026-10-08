@@ -295,11 +295,7 @@ export default function BodyAnalysisPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <Link to="/profile" className="text-sm text-gray-400 hover:text-gray-600">← Hồ sơ cá nhân</Link>
-      <h1 className="text-2xl font-bold mt-2 mb-1">Phân tích dáng người</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        AI phân tích tỷ lệ cơ thể để xác định dáng người, gợi ý trang phục và size phù hợp.
-        Kết quả mang tính tham khảo — bạn giữ quyền quyết định cuối cùng.
-      </p>
+      <h1 className="text-2xl font-bold mt-2 mb-6">Phân tích dáng người</h1>
 
       <ErrorBox message={error} />
       <SuccessBox message={success} />
@@ -396,11 +392,6 @@ export default function BodyAnalysisPage() {
                   {photoPreview && (
                     <img src={photoPreview} alt="Xem trước" className="mt-3 h-40 rounded-lg object-cover border" />
                   )}
-                  <p className="text-xs text-amber-600 mt-2">
-                    Hệ thống đã phát hiện tư thế/điểm mốc cơ thể từ ảnh (MediaPipe). Việc tự ước lượng
-                    số đo vòng (ngực/eo/hông) từ ảnh đang trong giai đoạn nghiên cứu — hiện vui lòng
-                    nhập kèm số đo bên dưới để có kết quả chính xác.
-                  </p>
                 </div>
               )}
 
