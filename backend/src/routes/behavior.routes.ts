@@ -8,7 +8,7 @@ router.use(authenticate);
 
 const schema = z.object({
   productId: z.number().int(),
-  action: z.enum(['VIEW', 'WISHLIST', 'ADD_TO_CART', 'PURCHASE']),
+  action: z.enum(['VIEW', 'WISHLIST', 'ADD_TO_CART', 'PURCHASE', 'HIDE']),
 });
 
 // POST /api/behaviors - ghi nhận 1 sự kiện tương tác (UC5/GĐ6)

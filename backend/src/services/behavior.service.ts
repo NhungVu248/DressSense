@@ -14,6 +14,7 @@ const ACTION_WEIGHT: Record<BehaviorAction, number> = {
   WISHLIST: 2,
   ADD_TO_CART: 3,
   PURCHASE: 4,
+  HIDE: 0, // "không quan tâm" - không tính ái lực dương, chỉ dùng để loại khỏi gợi ý
 };
 
 export async function recordBehavior(userId: number, productId: number, action: BehaviorAction) {

@@ -484,6 +484,7 @@ enum BehaviorAction {
   WISHLIST
   ADD_TO_CART
   PURCHASE
+  HIDE // UC5.1 6a - "không quan tâm"/ẩn: loại khỏi gợi ý
 }
 
 model UserBehavior {
