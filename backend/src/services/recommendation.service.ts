@@ -58,15 +58,23 @@ export async function recommendForUser(
   // GĐ6 - ái lực hành vi (danh mục/phong cách) suy từ lịch sử tương tác
   const affinity = await getBehaviorAffinity(userId);
 
-  // Sản phẩm ứng viên (kèm điểm tương thích dáng - UC4)
+  // Sản phẩm ứng viên (kèm điểm tương thích dáng - UC4 + nhãn chuẩn hóa - UC4.1)
   const products = await prisma.product.findMany({
     where: opts.categoryId ? { categoryId: opts.categoryId } : undefined,
-    include: { images: true, category: true, bodyFits: true },
+    include: { images: true, category: true, bodyFits: true, analysis: true },
   });
 
   const scored = products.map((p) => {
     const reasons: string[] = [];
     const comps: Record<string, Component> = {};
+
+    // UC4.1 - ưu tiên NHÃN CHUẨN HÓA (mã chuẩn khớp với sở thích khách); fallback giá trị tự do
+    const attrs = (p.analysis?.attributes as Record<string, string> | null) ?? null;
+    const norm = (dim: string, raw: string | null) => (attrs && attrs[dim]) || raw || null;
+    const styleN = norm('style', p.style);
+    const colorN = norm('color', p.color);
+    const materialN = norm('material', p.material);
+    const occasionN = norm('occasion', p.occasion);
 
     // (1) BodyShapeMatch - từ ProductBodyFit của dáng người dùng
     if (shape) {
@@ -78,27 +86,27 @@ export async function recommendForUser(
       }
     }
 
-    // (2) StyleMatch
-    if (preferredStyles.size && p.style) {
-      const v = preferredStyles.has(p.style) ? 1 : 0.4;
+    // (2) StyleMatch - so nhãn chuẩn hóa với phong cách khách thích
+    if (preferredStyles.size && styleN) {
+      const v = preferredStyles.has(styleN) ? 1 : 0.4;
       comps.style = { value: v, weight: WEIGHTS.style, hasData: true };
-      if (v === 1) reasons.push(`Đúng phong cách ${p.style} bạn thích`);
+      if (v === 1) reasons.push(`Đúng phong cách ${styleN} bạn thích`);
     }
 
     // (3) ColorMatch
-    if ((preferredColors.size || avoidColors.size) && p.color) {
+    if ((preferredColors.size || avoidColors.size) && colorN) {
       let v = 0.5;
-      if (avoidColors.has(p.color)) v = 0;
-      else if (preferredColors.has(p.color)) { v = 1; reasons.push(`Màu ${p.color} bạn ưa thích`); }
+      if (avoidColors.has(colorN)) v = 0;
+      else if (preferredColors.has(colorN)) { v = 1; reasons.push(`Màu ${colorN} bạn ưa thích`); }
       comps.color = { value: v, weight: WEIGHTS.color, hasData: true };
     }
 
     // (4) PreferenceMatch - chất liệu + ngân sách theo danh mục
     const sub: number[] = [];
-    if (preferredMaterials.size && p.material) {
-      const mv = preferredMaterials.has(p.material) ? 1 : 0.4;
+    if (preferredMaterials.size && materialN) {
+      const mv = preferredMaterials.has(materialN) ? 1 : 0.4;
       sub.push(mv);
-      if (mv === 1) reasons.push(`Chất liệu ${p.material} phù hợp sở thích`);
+      if (mv === 1) reasons.push(`Chất liệu ${materialN} phù hợp sở thích`);
     }
     const bud = budgetByCat.get(p.categoryId);
     if (bud) sub.push(p.price >= bud.min && p.price <= bud.max ? 1 : 0.3);
@@ -107,8 +115,8 @@ export async function recommendForUser(
       sub.push(bv);
       if (bv === 1) reasons.push(`Thương hiệu ${p.brand} bạn thích`);
     }
-    if (occasionSet.size && p.occasion) {
-      const ov = occasionSet.has(p.occasion) ? 1 : 0.4;
+    if (occasionSet.size && occasionN) {
+      const ov = occasionSet.has(occasionN) ? 1 : 0.4;
       sub.push(ov);
       if (ov === 1) reasons.push('Phù hợp dịp bạn hay mặc');
     }
