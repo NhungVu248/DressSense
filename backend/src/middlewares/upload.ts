@@ -52,3 +52,13 @@ export const uploadBodyPhoto = multer({
     cb(null, true);
   },
 }).single('photo');
+
+// ---------- UC5.3 - Ảnh tìm kiếm: giữ trong BỘ NHỚ, KHÔNG lưu đĩa (tối thiểu hóa dữ liệu) ----------
+export const uploadSearchImage = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_MIME.includes(file.mimetype)) return cb(new Error('INVALID_IMAGE_TYPE')); // 4E
+    cb(null, true);
+  },
+}).single('image');

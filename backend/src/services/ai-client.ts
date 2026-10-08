@@ -53,6 +53,16 @@ export async function aiColorFromImage(filePath: string, filename: string): Prom
   return { code: d.code as string, conf: (d.confidence ?? 0.6) as number };
 }
 
+// /extract-color từ BUFFER (ảnh trong RAM, UC5.3 - không lưu đĩa). Trả {code, conf} hoặc null.
+export async function aiColorFromBuffer(buf: Buffer, filename: string): Promise<{ code: string; conf: number } | null> {
+  if (!BASE) return null;
+  const form = new FormData();
+  form.append('image', new Blob([new Uint8Array(buf)]), filename);
+  const d = await fetchJson('/extract-color', { method: 'POST', body: form }, 15000);
+  if (!d || d.status !== 'OK' || !d.code) return null;
+  return { code: d.code as string, conf: (d.confidence ?? 0.6) as number };
+}
+
 // /pose - phát hiện người + 33 landmarks từ ảnh đã lưu (multer). Trả tóm tắt hoặc null.
 export async function aiPose(filePath: string, filename: string) {
   if (!BASE) return null;

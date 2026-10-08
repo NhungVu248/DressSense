@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { authenticate } from '../middlewares/auth';
-import { recommendForUser, relatedProducts } from '../services/recommendation.service';
+import { recommendForUser, relatedProducts, searchByImageMatch } from '../services/recommendation.service';
 import { composeOutfits, outfitAlternatives, OUTFIT_SLOTS } from '../services/outfit.service';
+import { uploadSearchImage } from '../middlewares/upload';
+import { aiEnabled, aiColorFromBuffer } from '../services/ai-client';
 
 const router = Router();
 
@@ -73,5 +75,29 @@ router.get('/related', async (req, res, next) => {
     next(err);
   }
 });
+
+// POST /api/recommendations/search-by-image - UC5.3 tìm SP tương tự theo ẢNH (màu + loại).
+// Ảnh chỉ nằm trong RAM, KHÔNG lưu đĩa (tối thiểu hóa dữ liệu).
+router.post('/search-by-image',
+  (req, res, next) => {
+    uploadSearchImage(req, res, (err: any) => {
+      if (err) return res.status(400).json({ message: err.message === 'INVALID_IMAGE_TYPE' ? 'Ảnh phải ở định dạng JPG, PNG hoặc WEBP' : 'Không tải được ảnh, vui lòng thử lại' }); // 4E
+      next();
+    });
+  },
+  async (req, res, next) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: 'Vui lòng cung cấp ảnh cần tìm.' }); // 4E
+      if (!aiEnabled()) return res.status(503).json({ message: 'Dịch vụ AI trích đặc trưng ảnh chưa sẵn sàng.' }); // 5F
+      const color = await aiColorFromBuffer(req.file.buffer, req.file.originalname || 'search.jpg');
+      if (!color) return res.status(422).json({ message: 'Không nhận diện được đặc trưng món đồ trong ảnh. Hãy thử ảnh rõ hơn.' }); // 4E
+      const garment = (req.body?.garment ?? req.query.garment) ? String(req.body?.garment ?? req.query.garment) : undefined; // 4a - chọn loại món chính
+      const limit = req.body?.limit ?? req.query.limit;
+      const result = await searchByImageMatch(req.user!.userId, { color: color.code, garment, limit: limit ? Number(limit) : undefined });
+      res.json({ ...result, confidence: color.conf });
+    } catch (err) {
+      next(err);
+    }
+  });
 
 export default router;

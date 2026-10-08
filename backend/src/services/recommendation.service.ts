@@ -180,6 +180,62 @@ function shapeVi(s: BodyShape): string {
   return { HOURGLASS: 'đồng hồ cát', RECTANGLE: 'chữ nhật', PEAR: 'quả lê', APPLE: 'quả táo', INVERTED_TRIANGLE: 'tam giác ngược' }[s];
 }
 
+// UC5.3 - TÌM BẰNG ẢNH: đối sánh theo MÀU (trích từ ảnh, dùng chung UC4.1) + gợi ý LOẠI,
+// lớp cá nhân hóa (dáng/phong cách) là TÙY CHỌN khi khách đã có hồ sơ. Xếp theo độ tương đồng.
+const COLOR_NAME: Record<string, string> = {
+  black: 'đen', white: 'trắng', beige: 'be', gray: 'xám', navy: 'navy', blue: 'xanh dương',
+  green: 'xanh lá', brown: 'nâu', red: 'đỏ', pink: 'hồng', yellow: 'vàng', purple: 'tím', orange: 'cam',
+};
+
+export async function searchByImageMatch(userId: number, opts: { color: string; garment?: string; limit?: number }) {
+  const limit = Math.min(30, opts.limit ?? 12);
+  const want = opts.color;
+  const [bp, colorRules, hidden, products] = await Promise.all([
+    prisma.bodyProfile.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' }, select: { bodyShape: true } }),
+    prisma.outfitRule.findMany({ where: { active: true, kind: 'COLOR' } }),
+    prisma.userBehavior.findMany({ where: { userId, action: 'HIDE' }, select: { productId: true } }),
+    prisma.product.findMany({ include: { analysis: true, bodyFits: true, category: true, images: true } }),
+  ]);
+  const shape = bp?.bodyShape ?? null;
+  const exclude = new Set(hidden.map((h) => h.productId));
+  const harmony = new Set<string>();
+  for (const r of colorRules) if (r.subjectB && r.score > 0) { harmony.add(`${r.subjectA}|${r.subjectB}`); harmony.add(`${r.subjectB}|${r.subjectA}`); }
+  const g = (opts.garment ?? '').trim().toLowerCase();
+
+  const scored = products
+    .filter((p) => p.analysis != null && !exclude.has(p.id))
+    .map((p) => {
+      const at = (p.analysis!.attributes as Record<string, string> | null) ?? {};
+      const col = at.color ?? null;
+      let colorSim = 0.15; let colorWhy = '';
+      if (col === want) { colorSim = 1.0; colorWhy = `Cùng tông màu ${COLOR_NAME[want] ?? want}`; }
+      else if (col && harmony.has(`${col}|${want}`)) { colorSim = 0.65; colorWhy = 'Màu hài hòa với ảnh'; }
+      else if (col && (NEUTRAL_COLORS.has(col) || NEUTRAL_COLORS.has(want))) colorSim = 0.45;
+
+      let sim = colorSim; const reasons: string[] = [];
+      if (colorWhy) reasons.push(colorWhy);
+      if (g) {
+        const pg = (at.garmentType ?? p.garmentType ?? '').toLowerCase();
+        const match = pg === g || p.category.name.toLowerCase().includes(g);
+        sim = 0.7 * colorSim + 0.3 * (match ? 1 : 0.3);
+        if (match) reasons.push('Cùng loại trang phục');
+      }
+      // Lớp cá nhân hóa tùy chọn (chỉ khi có Body Profile) - tiêu chí phụ
+      if (shape) {
+        const fit = p.bodyFits.find((f) => f.bodyShape === shape)?.score ?? 0.5;
+        sim += 0.1 * (fit - 0.5) * 2;
+        if (fit >= 0.65) reasons.push(`Hợp dáng ${shapeVi(shape)}`);
+      }
+      return {
+        product: { id: p.id, name: p.name, price: p.price, category: { name: p.category.name }, images: p.images.map((i) => ({ url: i.url, isPrimary: i.isPrimary })) },
+        similarity: Math.round(Math.max(0, Math.min(1, sim)) * 1000) / 1000,
+        why: reasons.length ? reasons.slice(0, 2).join('; ') + '.' : 'Tương đồng thị giác theo màu.',
+      };
+    });
+  scored.sort((a, b) => b.similarity - a.similarity);
+  return { color: want, personalized: !!shape, total: scored.length, items: scored.slice(0, limit) };
+}
+
 // UC5.1 (1a) - SP LIÊN QUAN theo sản phẩm đang xem: tương tự về loại/màu/phong cách,
 // vẫn ưu tiên hợp dáng người dùng. Loại SP đã ẩn và chính SP neo.
 const NEUTRAL_COLORS = new Set(['black', 'white', 'beige', 'gray', 'navy', 'brown']);
