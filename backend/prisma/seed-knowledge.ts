@@ -93,14 +93,45 @@ async function seedFitRules() {
   return rows.length;
 }
 
+// Luật PHỐI ĐỒ: hòa sắc (COLOR) + tương thích phong cách (STYLE). Seed khi bảng rỗng.
+const OUTFIT: Array<['COLOR' | 'STYLE', string, string, number, string]> = [
+  ['COLOR', 'navy', 'beige', 0.25, 'Navy + be trung tính, dễ phối'],
+  ['COLOR', 'navy', 'white', 0.25, 'Navy + trắng thanh lịch'],
+  ['COLOR', 'black', 'white', 0.2, 'Đen + trắng kinh điển'],
+  ['COLOR', 'beige', 'brown', 0.2, 'Be + nâu tông đất hài hòa'],
+  ['COLOR', 'gray', 'pink', 0.15, 'Xám + hồng nhẹ nhàng'],
+  ['COLOR', 'white', 'red', 0.15, 'Trắng + đỏ nổi bật'],
+  ['COLOR', 'black', 'red', 0.15, 'Đen + đỏ cá tính'],
+  ['COLOR', 'navy', 'pink', 0.1, 'Navy + hồng dịu'],
+  ['COLOR', 'green', 'beige', 0.15, 'Xanh lá + be tự nhiên'],
+  ['COLOR', 'red', 'green', -0.3, 'Đỏ + xanh lá dễ chỏi'],
+  ['COLOR', 'red', 'pink', -0.2, 'Đỏ + hồng cùng tông nóng dễ rối'],
+  ['COLOR', 'orange', 'pink', -0.2, 'Cam + hồng chói'],
+  ['COLOR', 'purple', 'green', -0.2, 'Tím + xanh lá kị'],
+  ['STYLE', 'minimalist', 'classic', 0.1, 'Tối giản + công sở hợp'],
+  ['STYLE', 'elegant', 'classic', 0.1, 'Thanh lịch + công sở hợp'],
+  ['STYLE', 'street', 'sporty', 0.1, 'Đường phố + năng động hợp'],
+];
+
+async function seedOutfitRules() {
+  const existing = await prisma.outfitRule.count();
+  if (existing > 0) { console.log(`OutfitRule đã có ${existing} luật -> bỏ qua.`); return 0; }
+  await prisma.outfitRule.createMany({
+    data: OUTFIT.map(([kind, a, b, score, reason]) => ({ kind, subjectA: a, subjectB: b, score, reason })),
+  });
+  return OUTFIT.length;
+}
+
 async function main() {
   const a = await seedAttributes();
   const r = await seedFitRules();
+  const o = await seedOutfitRules();
   const counts = {
     attributes: await prisma.fashionAttribute.count(),
     fitRules: await prisma.shapeFitRule.count(),
+    outfitRules: await prisma.outfitRule.count(),
   };
-  console.log(`Seed tri thức xong: upsert ${a} thuộc tính, thêm ${r} luật hợp dáng.`);
+  console.log(`Seed tri thức xong: upsert ${a} thuộc tính, ${r} luật hợp dáng, ${o} luật phối đồ.`);
   console.log('Tổng trong DB:', counts);
   await prisma.$disconnect();
 }

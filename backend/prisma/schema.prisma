@@ -573,6 +573,29 @@ enum KnowledgeAction {
   IMPORT
 }
 
+// (b2) Luật PHỐI ĐỒ nhiều món (UC4.2): hợp/kị theo màu, phong cách, dịp, dáng.
+// subjectA/subjectB là mã chuẩn (vd COLOR navy+beige +0.25; COLOR red+green -0.3).
+enum OutfitRuleKind {
+  COLOR // hòa sắc giữa 2 màu
+  STYLE // tương thích 2 phong cách
+  OCCASION // phù hợp dịp
+  BODYSHAPE // phù hợp dáng
+}
+
+model OutfitRule {
+  id        Int            @id @default(autoincrement())
+  kind      OutfitRuleKind
+  subjectA  String
+  subjectB  String? // null = luật đơn trục (vd ưu tiên 1 dịp)
+  score     Float // + hợp / - kị
+  reason    String
+  active    Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([kind])
+}
+
 // Nhật ký + phiên bản thay đổi tri thức (UC4.2 - truy vết). actorId = id Quản trị viên.
 model KnowledgeAudit {
   id        Int             @id @default(autoincrement())

@@ -204,6 +204,69 @@ export async function deleteRule(req: Request, res: Response, next: NextFunction
   } catch (err) { next(err); }
 }
 
+// ---------------- (b2) OutfitRule - luật phối đồ ----------------
+
+const outfitSchema = z.object({
+  kind: z.enum(['COLOR', 'STYLE', 'OCCASION', 'BODYSHAPE']),
+  subjectA: z.string().min(1).max(100),
+  subjectB: z.string().min(1).max(100).optional(),
+  score: z.coerce.number().min(-1).max(1),
+  reason: z.string().min(1).max(191),
+});
+
+export async function listOutfitRules(req: Request, res: Response, next: NextFunction) {
+  try {
+    const q = z.object({ kind: z.enum(['COLOR', 'STYLE', 'OCCASION', 'BODYSHAPE']).optional(), active: z.enum(['true', 'false']).optional() }).parse(req.query);
+    const where: any = {};
+    if (q.kind) where.kind = q.kind;
+    if (q.active) where.active = q.active === 'true';
+    const items = await prisma.outfitRule.findMany({ where, orderBy: [{ kind: 'asc' }, { subjectA: 'asc' }] });
+    res.json({ items, total: items.length });
+  } catch (err) { next(err); }
+}
+
+// Dò luật phối cùng cặp (2 chiều) để chặn trùng/mâu thuẫn (6E)
+async function outfitSiblings(kind: string, a: string, b: string | undefined, excludeId?: number) {
+  const items = await prisma.outfitRule.findMany({ where: { kind: kind as any, active: true, ...(excludeId ? { id: { not: excludeId } } : {}) } });
+  return items.filter((r) => (r.subjectA === a && r.subjectB === (b ?? null)) || (b !== undefined && r.subjectA === b && r.subjectB === a));
+}
+
+export async function createOutfitRule(req: Request, res: Response, next: NextFunction) {
+  try {
+    const d = outfitSchema.parse(req.body);
+    const sib = await outfitSiblings(d.kind, d.subjectA, d.subjectB);
+    if (sib.some((s) => Math.sign(s.score) === Math.sign(d.score))) return res.status(409).json({ message: 'Luật phối đã tồn tại cho cặp này.' });
+    if (sib.some((s) => Math.sign(s.score) !== Math.sign(d.score))) return res.status(409).json({ message: 'Mâu thuẫn: đã có luật phối trái dấu cho cặp này.' });
+    const created = await prisma.outfitRule.create({ data: { kind: d.kind, subjectA: d.subjectA, subjectB: d.subjectB ?? null, score: d.score, reason: d.reason } });
+    await audit('PAIRING_RULE', created.id, 'CREATE', req.user?.userId, null, created);
+    res.status(201).json({ rule: created });
+  } catch (err) { next(err); }
+}
+
+export async function updateOutfitRule(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = Number(req.params.id);
+    const d = outfitSchema.partial().extend({ active: z.boolean().optional() }).parse(req.body);
+    const before = await prisma.outfitRule.findUnique({ where: { id } });
+    if (!before) return res.status(404).json({ message: 'Không tìm thấy luật phối.' });
+    const updated = await prisma.outfitRule.update({ where: { id }, data: d as any });
+    const action = d.active === false && before.active ? 'DEACTIVATE' : 'UPDATE';
+    await audit('PAIRING_RULE', id, action, req.user?.userId, before, updated);
+    res.json({ rule: updated });
+  } catch (err) { next(err); }
+}
+
+export async function deleteOutfitRule(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = Number(req.params.id);
+    const before = await prisma.outfitRule.findUnique({ where: { id } });
+    if (!before) return res.status(404).json({ message: 'Không tìm thấy luật phối.' });
+    await prisma.outfitRule.delete({ where: { id } });
+    await audit('PAIRING_RULE', id, 'DELETE', req.user?.userId, before, null);
+    res.json({ deleted: true });
+  } catch (err) { next(err); }
+}
+
 // ---------------- Nhật ký ----------------
 
 export async function listAudit(req: Request, res: Response, next: NextFunction) {
