@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api, { getErrorMessage } from '../../lib/api';
+import api, { getErrorMessage, recordBehavior } from '../../lib/api';
+import { PRODUCT_PLACEHOLDER } from '../../lib/placeholder';
 import { ErrorBox, SuccessBox, PrimaryButton, SecondaryButton, Chip } from '../../components/ui';
 
 // ============================================================
@@ -40,6 +41,13 @@ interface BodyProfile {
   createdAt: string;
 }
 interface Category { id: number; name: string; slug: string }
+
+// UC5.1/UC5.2 - gợi ý sản phẩm & phối đồ hiện ngay sau khi có Body Profile
+interface RecProduct { id: number; name: string; price: number; category: { name: string }; images: { url: string; isPrimary: boolean }[] }
+interface RecItem { product: RecProduct; score: number; why: string }
+interface OutfitPiece { id: number; name: string; slot: string; color: string | null; style: string | null; price: number; image: string | null }
+interface OutfitItem { items: OutfitPiece[]; score: number; why: string }
+const SLOT_LABEL: Record<string, string> = { DRESS: 'Đầm', TOP: 'Áo', BOTTOM: 'Quần/Váy', OUTER: 'Khoác', SHOES: 'Giày', ACCESSORY: 'Phụ kiện' };
 
 // UC2.3 - trạng thái đồng bộ Body Profile vào hồ sơ cá nhân hóa
 interface SyncStatus {
@@ -101,6 +109,27 @@ export default function BodyAnalysisPage() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [syncing, setSyncing] = useState(false);
 
+  // UC5 - gợi ý phối đồ + sản phẩm hợp dáng (hiện ngay sau phân tích)
+  const [recItems, setRecItems] = useState<RecItem[]>([]);
+  const [outfits, setOutfits] = useState<OutfitItem[]>([]);
+  const [recLoading, setRecLoading] = useState(false);
+
+  async function fetchRecs() {
+    setRecLoading(true);
+    try {
+      const [r, o] = await Promise.all([
+        api.get('/recommendations?limit=6'),
+        api.get('/recommendations/outfits?limit=3'),
+      ]);
+      setRecItems(r.data.items ?? []);
+      setOutfits(o.data.items ?? []);
+    } catch {
+      /* gợi ý là phần bổ trợ - lỗi không chặn luồng phân tích */
+    } finally {
+      setRecLoading(false);
+    }
+  }
+
   const categoryName = useMemo(() => {
     const map: Record<number, string> = {};
     for (const c of categories) map[c.id] = c.name;
@@ -120,6 +149,7 @@ export default function BodyAnalysisPage() {
         setProfile(profileRes.data.profile ?? null);
         setCategories(catRes.data.categories ?? []);
         setSyncStatus(syncRes.data);
+        if (profileRes.data.profile) fetchRecs(); // đã có dáng -> nạp gợi ý ngay
       })
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false));
@@ -227,6 +257,7 @@ export default function BodyAnalysisPage() {
         ? 'Đã phân tích xong. Độ tin cậy thấp nên kết quả chỉ mang tính sơ bộ — bạn nên hiệu chỉnh số đo.'
         : 'Phân tích dáng người thành công.');
       refreshSync(); // UC2.3 - có bản mới -> cập nhật trạng thái đồng bộ (2a nếu bật tự đồng bộ)
+      fetchRecs(); // UC5 - phân tích xong -> hiện ngay gợi ý phối đồ + sản phẩm hợp dáng
     } catch (err) {
       setFormError(getErrorMessage(err)); // 5E/5F/6E/7E - dùng thông báo từ backend
     } finally {
@@ -334,6 +365,11 @@ export default function BodyAnalysisPage() {
                 </p>
               )}
             </div>
+          )}
+
+          {/* UC5.1/UC5.2 - Gợi ý phối đồ + sản phẩm hợp dáng NGAY sau khi phân tích */}
+          {profile && !showForm && (
+            <SuggestedForShape loading={recLoading} recItems={recItems} outfits={outfits} shapeLabel={SHAPE_LABEL[profile.bodyShape]} />
           )}
 
           {/* b3-b4 - Biểu mẫu chọn phương thức và nhập liệu */}
@@ -521,6 +557,83 @@ function ProfileSummary({ profile, categoryName }: { profile: BodyProfile; categ
             ))}
           </div>
           <p className="text-xs text-gray-400 mt-2">Đồng bộ với bảng quy đổi size chuẩn (UC2.2). Bạn có thể chỉnh sửa trong mục Thông tin size.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const imgOf = (url?: string | null) => url || PRODUCT_PLACEHOLDER;
+
+// UC5.1 + UC5.2 - khối gợi ý hiện ngay dưới kết quả phân tích: bộ phối + sản phẩm hợp dáng
+function SuggestedForShape(
+  { loading, recItems, outfits, shapeLabel }:
+  { loading: boolean; recItems: RecItem[]; outfits: OutfitItem[]; shapeLabel: string },
+) {
+  if (loading) return <div className="bg-white rounded-xl border p-6 mb-5 text-sm text-gray-400">Đang tạo gợi ý phối đồ cho dáng của bạn...</div>;
+  if (!recItems.length && !outfits.length) return null;
+
+  return (
+    <div className="bg-white rounded-xl border p-6 mb-5">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h3 className="font-semibold">Gợi ý cho dáng {shapeLabel}</h3>
+        <Link to="/recommendations" className="text-sm text-indigo-600 hover:underline">Xem tất cả →</Link>
+      </div>
+      <p className="text-sm text-gray-500 mb-4">Bộ phối và sản phẩm hợp dáng, chọn từ kho theo luật phối đồ (UC4.2).</p>
+
+      {/* UC5.2 - Bộ đồ phối sẵn */}
+      {outfits.length > 0 && (
+        <div className="mb-5">
+          <p className="text-sm font-medium text-gray-700 mb-2">Phối đồ cho bạn</p>
+          <div className="space-y-3">
+            {outfits.map((o, idx) => {
+              const total = o.items.reduce((a, p) => a + p.price, 0);
+              return (
+                <div key={idx} className="border rounded-lg p-3">
+                  <div className="flex gap-2 overflow-x-auto">
+                    {o.items.map((p) => (
+                      <div key={p.id} className="shrink-0 w-20 text-center">
+                        <img src={imgOf(p.image)} alt={p.name} onError={(e) => { e.currentTarget.src = PRODUCT_PLACEHOLDER; }}
+                          className="w-20 h-24 object-cover rounded-md bg-gray-100 border" />
+                        <p className="text-[10px] text-gray-400 mt-1">{SLOT_LABEL[p.slot] ?? p.slot}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-2">
+                    <p className="text-xs text-gray-600">{o.why}</p>
+                    <p className="text-sm font-semibold text-brand whitespace-nowrap">{total.toLocaleString('vi-VN')}₫</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* UC5.1 - Sản phẩm hợp dáng đơn lẻ */}
+      {recItems.length > 0 && (
+        <div>
+          <p className="text-sm font-medium text-gray-700 mb-2">Sản phẩm hợp dáng</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {recItems.map((it) => {
+              const img = it.product.images.find((x) => x.isPrimary)?.url || it.product.images[0]?.url || PRODUCT_PLACEHOLDER;
+              return (
+                <div key={it.product.id} className="border rounded-lg overflow-hidden flex flex-col">
+                  <img src={img} alt={it.product.name} onError={(e) => { e.currentTarget.src = PRODUCT_PLACEHOLDER; }}
+                    className="w-full aspect-[4/5] object-cover bg-gray-100" />
+                  <div className="p-2 flex flex-col gap-1 flex-1">
+                    <p className="text-xs font-medium line-clamp-2">{it.product.name}</p>
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-brand font-semibold text-sm">{it.product.price.toLocaleString('vi-VN')}₫</p>
+                      <button onClick={() => recordBehavior(it.product.id, 'WISHLIST')}
+                        className="text-xs rounded-full border border-gray-300 text-gray-500 px-2 py-0.5 hover:border-red-300 hover:text-red-500" title="Thêm yêu thích">♡</button>
+                    </div>
+                    <p className="text-[11px] text-gray-500 line-clamp-2">{it.why}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
