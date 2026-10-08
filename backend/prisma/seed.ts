@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { scoreProductAllShapes } from '../src/constants/fashion-kb';
+import { seedKnowledge } from './seed-knowledge';
+import { analyzeProduct } from '../src/services/product-analysis.service';
+import { prisma as libPrisma } from '../src/lib/prisma';
 
 const prisma = new PrismaClient();
 
@@ -168,19 +170,17 @@ async function main() {
     });
   }
 
-  // UC4 (GĐ4) - tính điểm tương thích dáng người cho từng sản phẩm từ Fashion KB
+  // UC4.2 - seed tri thức (danh mục thuộc tính + luật hợp dáng + luật phối) trước khi phân tích
+  await seedKnowledge(prisma);
+
+  // UC4.1 - phân tích & gán nhãn từng sản phẩm NGAY trong seed (tạo ProductAnalysis + ProductBodyFit).
+  // Nhờ vậy seed xong là kho đã có nhãn, gợi ý (UC5) chạy được ngay, không cần chạy analyze-batch thủ công.
   const allProducts = await prisma.product.findMany();
   for (const pr of allProducts) {
-    for (const f of scoreProductAllShapes(pr)) {
-      await prisma.productBodyFit.upsert({
-        where: { productId_bodyShape: { productId: pr.id, bodyShape: f.bodyShape } },
-        update: { score: f.score, reasons: f.reasons },
-        create: { productId: pr.id, bodyShape: f.bodyShape, score: f.score, reasons: f.reasons },
-      });
-    }
+    try { await analyzeProduct(pr.id); } catch { /* lỗi 1 SP không chặn seed */ }
   }
 
-  console.log(`✅ Seed dữ liệu mẫu thành công! (${products.length} sản phẩm, ${allProducts.length * 5} điểm tương thích)`);
+  console.log(`✅ Seed dữ liệu mẫu thành công! (${products.length} sản phẩm đã gán nhãn + điểm tương thích dáng)`);
   console.log('   Admin: admin@dresssense.vn / Admin@123');
   console.log('   Seller: seller@dresssense.vn / 123456');
   console.log('   Customer: customer@dresssense.vn / 123456');
@@ -193,4 +193,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await libPrisma.$disconnect(); // analyzeProduct dùng client lib/prisma -> đóng để seed thoát sạch
   });
