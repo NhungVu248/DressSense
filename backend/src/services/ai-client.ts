@@ -37,6 +37,22 @@ export async function aiClassify(m: { bust: number; waist: number; hip: number; 
   return { bodyShape: d.bodyShape as string, confidence: d.confidence as number | null, method: d.method as string };
 }
 
+// /extract-color - UC4.1: màu chủ đạo của ảnh sản phẩm -> {code, conf} hoặc null.
+export async function aiColorFromImage(filePath: string, filename: string): Promise<{ code: string; conf: number } | null> {
+  if (!BASE) return null;
+  let buf: Buffer;
+  try {
+    buf = fs.readFileSync(filePath);
+  } catch {
+    return null;
+  }
+  const form = new FormData();
+  form.append('image', new Blob([new Uint8Array(buf)]), filename);
+  const d = await fetchJson('/extract-color', { method: 'POST', body: form }, 15000);
+  if (!d || d.status !== 'OK' || !d.code) return null;
+  return { code: d.code as string, conf: (d.confidence ?? 0.6) as number };
+}
+
 // /pose - phát hiện người + 33 landmarks từ ảnh đã lưu (multer). Trả tóm tắt hoặc null.
 export async function aiPose(filePath: string, filename: string) {
   if (!BASE) return null;

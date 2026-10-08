@@ -1,5 +1,19 @@
+import fs from 'fs';
+import path from 'path';
 import { prisma } from '../lib/prisma';
 import { scoreProductAllShapesDb } from './fashion-kb.service';
+import { aiEnabled, aiColorFromImage } from './ai-client';
+
+// Lấy màu từ ẢNH sản phẩm (nếu có ảnh LOCAL trong /uploads và AI service bật).
+// Ảnh placeholder/URL ngoài -> bỏ qua (chỉ text). Trả {code, conf} hoặc null.
+async function colorFromProductImage(productId: number): Promise<{ code: string; conf: number } | null> {
+  if (!aiEnabled()) return null;
+  const img = await prisma.productImage.findFirst({ where: { productId }, orderBy: { isPrimary: 'desc' } });
+  if (!img?.url || !img.url.startsWith('/uploads/')) return null; // chỉ ảnh upload local
+  const filePath = path.join(process.cwd(), img.url.replace(/^\//, ''));
+  if (!fs.existsSync(filePath)) return null;
+  try { return await aiColorFromImage(filePath, path.basename(filePath)); } catch { return null; }
+}
 
 // ============================================================
 //  UC4.1 - PHÂN TÍCH SẢN PHẨM: chuẩn hóa thuộc tính đa chiều từ tên/mô tả/danh mục
@@ -65,6 +79,8 @@ export async function analyzeProduct(productId: number, opts: { engine?: string;
 
   const lookups = await buildLookups();
   const text = `${product.name} ${product.description ?? ''} ${product.category?.name ?? ''}`;
+  const extraColor = opts.extraColor ?? await colorFromProductImage(productId); // màu từ ảnh (nếu có)
+  const engine = opts.engine ?? (extraColor ? 'rule+image' : 'rule');
 
   const attributes: Record<string, string> = {};
   const confidence: Record<string, number> = {};
@@ -76,7 +92,7 @@ export async function analyzeProduct(productId: number, opts: { engine?: string;
     let res = normalizeField(entries, raw);
     if (!res && d.textInfer) res = inferFromText(entries, text); // 3a - suy từ văn bản
     // màu từ ảnh (bước sau) bổ sung tín hiệu nếu trường color chưa chắc
-    if (d.type === 'COLOR' && opts.extraColor && (!res || res.conf < opts.extraColor.conf)) res = opts.extraColor;
+    if (d.type === 'COLOR' && extraColor && (!res || res.conf < extraColor.conf)) res = extraColor;
     if (res) {
       const key = d.field;
       attributes[key] = res.code;
@@ -104,13 +120,13 @@ export async function analyzeProduct(productId: number, opts: { engine?: string;
   const analysis = await prisma.productAnalysis.upsert({
     where: { productId },
     update: {
-      status: status as any, engine: opts.engine ?? 'rule',
+      status: status as any, engine,
       attributes, confidence, occasion: attributes.occasion ?? null,
       bodyShapes: bodyShapes as any, lowConfidence: lowConfidence as any, note,
       analyzedAt: new Date(), confirmedAt: null, confirmedBy: null,
     },
     create: {
-      productId, status: status as any, engine: opts.engine ?? 'rule',
+      productId, status: status as any, engine,
       attributes, confidence, occasion: attributes.occasion ?? null,
       bodyShapes: bodyShapes as any, lowConfidence: lowConfidence as any, note,
     },

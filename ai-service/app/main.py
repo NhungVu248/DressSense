@@ -71,6 +71,22 @@ async def estimate_measurements(image: UploadFile = File(...)):
     }
 
 
+@app.post("/extract-color")
+async def extract_color(image: UploadFile = File(...)):
+    """UC4.1 - trích MÀU CHỦ ĐẠO của ảnh sản phẩm -> mã màu chuẩn + độ tin cậy (ước lượng)."""
+    from . import color
+    raw = await image.read()
+    try:
+        pil = Image.open(io.BytesIO(raw)).convert("RGB")
+    except Exception:
+        return {"status": "INVALID_IMAGE", "message": "Không đọc được ảnh"}
+    rgb = np.array(pil)
+    res = color.dominant_color(rgb)
+    if res is None:
+        return {"status": "NO_COLOR", "message": "Không trích được màu"}
+    return {"status": "OK", **res, "experimental": True}
+
+
 @app.post("/body-shape")
 def body_shape(req: BodyShapeRequest):
     """UC3.2 bước 4-6 — phân loại dáng người + độ tin cậy.
