@@ -348,9 +348,37 @@ model Product {
   reviews    Review[]
   behaviors  UserBehavior[]
   bodyFits   ProductBodyFit[] // UC4 - điểm tương thích theo từng dáng người
+  analysis   ProductAnalysis? // UC4.1 - kết quả phân tích thuộc tính (đề xuất + xác nhận)
 
   @@index([categoryId])
   @@index([sellerId])
+}
+
+// UC4.1 - trạng thái gán nhãn thuộc tính của sản phẩm
+enum AnalysisStatus {
+  PENDING // thiếu dữ liệu đầu vào tối thiểu (2E) - chờ bổ sung
+  UNCONFIRMED // AI đã đề xuất nhãn, CHƯA được người xác nhận (8a) - vẫn dùng tạm
+  CONFIRMED // Người bán/Quản trị viên đã xác nhận (8)
+  FAILED // phân tích lỗi
+}
+
+// UC4.1 - tập thuộc tính đa chiều (chuẩn hóa) kèm độ tin cậy, lưu vào hồ sơ sản phẩm
+model ProductAnalysis {
+  id            Int            @id @default(autoincrement())
+  productId     Int            @unique
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  status        AnalysisStatus @default(UNCONFIRMED)
+  engine        String         @default("rule") // rule | rule+image
+  attributes    Json? // { color:'navy', style:'classic', material:'knit', ... } (mã chuẩn)
+  confidence    Json? // { color:0.9, style:0.6, ... } độ tin cậy từng nhãn
+  occasion      String? // dịp sử dụng suy ra (mã chuẩn, ánh xạ UC2.1)
+  bodyShapes    Json? // top dáng phù hợp [{bodyShape, score}] (ánh xạ UC3)
+  lowConfidence Json? // nhãn độ tin cậy thấp -> ưu tiên người xem lại (quy tắc nghiệp vụ)
+  note          String?
+  analyzedAt    DateTime       @default(now())
+  confirmedAt   DateTime?
+  confirmedBy   Int?
+  updatedAt     DateTime       @updatedAt
 }
 
 // UC4 (GĐ4) - Điểm tương thích giữa sản phẩm và từng dáng người, sinh từ Fashion
