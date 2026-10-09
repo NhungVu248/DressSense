@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import {
-  listProducts, getProduct, createProduct, updateProduct, listManagedProducts,
+  listProducts, getProduct, createProduct, updateProduct, listManagedProducts, getManagedProduct,
   deleteProduct, getInventory, updateInventory,
   analyzeProductEndpoint, confirmAnalysis, analyzeBatch,
 } from '../controllers/product.controller';
@@ -24,6 +24,8 @@ router.get('/:id', getProduct);
 router.post('/', authenticate, authorize('SELLER', 'ADMIN'), createProduct); // UC6.3
 router.patch('/:id', authenticate, authorize('SELLER', 'ADMIN'), updateProduct); // UC6.4
 router.delete('/:id', authenticate, authorize('SELLER', 'ADMIN'), deleteProduct); // UC6.5
+
+router.get('/:id/manage', authenticate, authorize('SELLER', 'ADMIN'), getManagedProduct); // UC6.4 chi tiết quản lý
 
 // UC6.6 - quản lý tồn kho theo biến thể
 router.get('/:id/inventory', authenticate, authorize('SELLER', 'ADMIN'), getInventory);

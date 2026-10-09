@@ -22,8 +22,14 @@ export default function Navbar() {
                 />
                 {user.fullName}
               </Link>
+              {(user.role === 'SELLER' || user.role === 'ADMIN') && (
+                <Link to="/manage/products" className="text-indigo-600 hover:underline">Quản lý SP</Link>
+              )}
               {user.role === 'ADMIN' && (
-                <Link to="/admin" className="text-indigo-600 hover:underline">Quản trị</Link>
+                <>
+                  <Link to="/admin/categories" className="text-indigo-600 hover:underline">Danh mục</Link>
+                  <Link to="/admin" className="text-indigo-600 hover:underline">Quản trị</Link>
+                </>
               )}
               <button onClick={logout} className="text-red-500 hover:underline">
                 Đăng xuất

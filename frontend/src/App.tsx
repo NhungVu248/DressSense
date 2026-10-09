@@ -24,6 +24,10 @@ import BodyAnalysisPage from './pages/profile/BodyAnalysisPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 // UC1.7 - Quản trị phân quyền người dùng
 import AdminUsersPage from './pages/admin/AdminUsersPage';
+// UC6 - Quản lý sản phẩm & danh mục (Người bán / Quản trị viên)
+import ProductManagePage from './pages/manage/ProductManagePage';
+import ProductFormPage from './pages/manage/ProductFormPage';
+import CategoryManagePage from './pages/admin/CategoryManagePage';
 import RequireAuth from './components/RequireAuth';
 
 // Bố cục trang mua sắm (có Navbar)
@@ -71,6 +75,13 @@ export default function App() {
 
       {/* UC1.7 - Phân quyền người dùng (chỉ ADMIN) */}
       <Route path="/admin" element={<RequireAuth roles={['ADMIN']}><ShopLayout><AdminUsersPage /></ShopLayout></RequireAuth>} />
+
+      {/* UC6 - Quản lý sản phẩm (Người bán + Quản trị viên) */}
+      <Route path="/manage/products" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductManagePage /></ShopLayout></RequireAuth>} />
+      <Route path="/manage/products/new" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductFormPage /></ShopLayout></RequireAuth>} />
+      <Route path="/manage/products/:id/edit" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductFormPage /></ShopLayout></RequireAuth>} />
+      {/* UC6.2 - Quản lý danh mục (chỉ ADMIN) */}
+      <Route path="/admin/categories" element={<RequireAuth roles={['ADMIN']}><ShopLayout><CategoryManagePage /></ShopLayout></RequireAuth>} />
     </Routes>
   );
 }

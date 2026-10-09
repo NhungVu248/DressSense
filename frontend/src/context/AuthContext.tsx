@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import api from '../lib/api';
+import { getToken, setToken, clearToken } from '../lib/token';
 
 export interface User {
   id: number;
@@ -32,28 +33,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = getToken();
     if (!token) { setLoading(false); return; }
     api.get('/auth/me')
       .then((res) => setUser(res.data.user))
-      .catch(() => localStorage.removeItem('token'))
+      .catch(() => clearToken())
       .finally(() => setLoading(false));
   }, []);
 
   async function login(identifier: string, password: string, rememberMe?: boolean): Promise<LoginResult> {
     const res = await api.post('/auth/login', { identifier, password, rememberMe });
-    localStorage.setItem('token', res.data.token);
+    setToken(res.data.token);
     setUser(res.data.user);
     return { redirect: res.data.redirect, pendingApproval: res.data.pendingApproval };
   }
 
   function setSession(token: string, u: User) {
-    localStorage.setItem('token', token);
+    setToken(token);
     setUser(u);
   }
 
   function logout() {
-    localStorage.removeItem('token');
+    clearToken();
     setUser(null);
   }
 

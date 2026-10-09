@@ -1,18 +1,19 @@
 import axios from 'axios';
+import { getToken } from './token';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
 // UC5/GĐ6 - ghi nhận hành vi (fire-and-forget; bỏ qua lỗi, chỉ khi đã đăng nhập)
 export function recordBehavior(productId: number, action: 'VIEW' | 'WISHLIST' | 'ADD_TO_CART' | 'PURCHASE') {
-  if (!localStorage.getItem('token')) return;
+  if (!getToken()) return;
   api.post('/behaviors', { productId, action }).catch(() => {});
 }
 

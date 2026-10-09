@@ -56,6 +56,23 @@ export async function getProduct(req: Request, res: Response, next: NextFunction
   }
 }
 
+// GET /api/products/:id/manage - UC6.4 nạp chi tiết SP cho Người bán/Admin (mọi trạng thái)
+export async function getManagedProduct(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = Number(req.params.id);
+    const guard = await assertCanEdit(req, id);
+    if (!guard.ok) return res.status(guard.code).json({ message: guard.message });
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: { images: true, variants: { orderBy: { size: 'asc' } }, category: true, analysis: true },
+    });
+    if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
+    res.json({ product });
+  } catch (err) {
+    next(err);
+  }
+}
+
 const createSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),

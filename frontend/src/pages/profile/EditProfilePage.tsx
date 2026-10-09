@@ -1,3 +1,4 @@
+import { getToken } from '../../lib/token';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
@@ -38,7 +39,7 @@ export default function EditProfilePage() {
       const body: Record<string, string> = { fullName };
       if (!user!.phone && phone) body.phone = phone; // chỉ gửi phone nếu đang khai báo lần đầu
       const res = await api.patch('/users/me', body);
-      setSession(localStorage.getItem('token')!, res.data.user);
+      setSession(getToken()!, res.data.user);
       setSuccess('Cập nhật hồ sơ thành công');
     } catch (err) { setError(getErrorMessage(err)); }
     finally { setSaving(false); }
@@ -54,7 +55,7 @@ export default function EditProfilePage() {
     form.append('avatar', file);
     try {
       const res = await api.post('/users/me/avatar', form, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setSession(localStorage.getItem('token')!, res.data.user);
+      setSession(getToken()!, res.data.user);
       setSuccess('Cập nhật ảnh đại diện thành công');
     } catch (err) { setError(getErrorMessage(err)); }
   }
@@ -76,7 +77,7 @@ export default function EditProfilePage() {
     setError(''); setContactLoading(true);
     try {
       const res = await api.post('/users/me/contact/verify', { newIdentifier, code: otpCode });
-      setSession(localStorage.getItem('token')!, res.data.user);
+      setSession(getToken()!, res.data.user);
       setSuccess('Cập nhật email/số điện thoại thành công');
       setShowContactForm(false); setContactStep('input'); setNewIdentifier(''); setOtpCode('');
     } catch (err) { setError(getErrorMessage(err)); }
