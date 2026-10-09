@@ -186,6 +186,91 @@ export async function listManagedProducts(req: Request, res: Response, next: Nex
   }
 }
 
+async function auditProduct(entityId: number, action: 'CREATE' | 'UPDATE' | 'DELETE', actorId: number | undefined, before: unknown, after: unknown, note?: string) {
+  await prisma.knowledgeAudit.create({ data: { entity: 'PRODUCT', entityId, action, actorId: actorId ?? null, before: before as any, after: after as any, note: note ?? null } });
+}
+
+// DELETE /api/products/:id - UC6.5 xóa SP (mềm nếu có lịch sử đơn; cứng nếu không; chặn khi có đơn chưa xong)
+const UNFINISHED_ORDER = ['PENDING', 'PAID', 'SHIPPING'];
+export async function deleteProduct(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = Number(req.params.id);
+    const guard = await assertCanEdit(req, id);
+    if (!guard.ok) return res.status(guard.code).json({ message: guard.message });
+    const product = await prisma.product.findUnique({ where: { id } });
+    if (!product || product.deletedAt) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
+    // 2G - đang có đơn chưa hoàn tất -> chặn, đề nghị ngừng bán
+    const unfinished = await prisma.orderItem.count({ where: { productId: id, order: { status: { in: UNFINISHED_ORDER as any } } } });
+    if (unfinished > 0) return res.status(409).json({ message: 'Sản phẩm đang có đơn hàng chưa hoàn tất. Hãy chuyển sang "ngừng bán" (ẩn) thay vì xóa.', code: 'HAS_PENDING_ORDERS' });
+    const history = await prisma.orderItem.count({ where: { productId: id } });
+    if (history > 0) {
+      // Có lịch sử đơn -> XÓA MỀM (lưu trữ) để bảo toàn dữ liệu đơn hàng (UC9/UC10)
+      const u = await prisma.product.update({ where: { id }, data: { status: 'ARCHIVED', deletedAt: new Date() } });
+      await auditProduct(id, 'DELETE', req.user?.userId, product, u, 'xóa mềm (có lịch sử đơn hàng)');
+      return res.json({ archived: true, message: 'Đã lưu trữ sản phẩm (xóa mềm) để bảo toàn dữ liệu đơn hàng.' });
+    }
+    // Không có đơn -> XÓA CỨNG (cascade biến thể/nhãn/điểm dáng/ảnh/giỏ hàng)
+    await prisma.product.delete({ where: { id } });
+    await auditProduct(id, 'DELETE', req.user?.userId, product, null, 'xóa cứng (không có đơn hàng)');
+    res.json({ deleted: true });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/products/:id/inventory - UC6.6 xem tồn kho theo biến thể
+export async function getInventory(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = Number(req.params.id);
+    const guard = await assertCanEdit(req, id);
+    if (!guard.ok) return res.status(guard.code).json({ message: guard.message });
+    const vs = await prisma.productVariant.findMany({ where: { productId: id }, orderBy: { size: 'asc' } });
+    res.json({
+      productId: id,
+      variants: vs.map((v) => {
+        const available = v.stock - v.reserved;
+        const state = v.stock <= 0 ? 'out' : (v.lowStockThreshold != null && v.stock <= v.lowStockThreshold) ? 'low' : 'in';
+        return { id: v.id, size: v.size, stock: v.stock, reserved: v.reserved, available, lowStockThreshold: v.lowStockThreshold, state };
+      }),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+const invSchema = z.object({
+  updates: z.array(z.object({
+    size: z.string().min(1),
+    stock: z.coerce.number().int().min(0).optional(),
+    lowStockThreshold: z.coerce.number().int().min(0).nullable().optional(),
+  })).min(1),
+});
+
+// PATCH /api/products/:id/inventory - UC6.6 cập nhật tồn kho (chống oversell: không thấp hơn số giữ chỗ)
+export async function updateInventory(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = Number(req.params.id);
+    const guard = await assertCanEdit(req, id);
+    if (!guard.ok) return res.status(guard.code).json({ message: guard.message });
+    const { updates } = invSchema.parse(req.body);
+    const updated: any[] = []; const errors: any[] = [];
+    for (const u of updates) {
+      const v = await prisma.productVariant.findUnique({ where: { productId_size: { productId: id, size: u.size } } });
+      if (!v) { errors.push({ size: u.size, message: 'Biến thể không tồn tại' }); continue; }
+      if (u.stock != null && u.stock < v.reserved) { errors.push({ size: u.size, message: `Không thể đặt tồn kho (${u.stock}) thấp hơn số đang giữ chỗ (${v.reserved}) để tránh bán vượt.` }); continue; } // 6E
+      const nv = await prisma.productVariant.update({
+        where: { id: v.id },
+        data: { stock: u.stock ?? v.stock, lowStockThreshold: u.lowStockThreshold === undefined ? v.lowStockThreshold : u.lowStockThreshold },
+      });
+      updated.push({ size: nv.size, stock: nv.stock, reserved: nv.reserved, lowStockThreshold: nv.lowStockThreshold, outOfStock: nv.stock <= 0 });
+    }
+    if (updated.length) await auditProduct(id, 'UPDATE', req.user?.userId, null, { updates: updated }, 'cập nhật tồn kho');
+    res.json({ updated, errors });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // POST /api/products/:id/analyze - "Phân tích lại sản phẩm" (UC4.1 sự kiện kích hoạt thủ công)
 export async function analyzeProductEndpoint(req: Request, res: Response, next: NextFunction) {
   try {

@@ -434,6 +434,9 @@ model ProductVariant {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   size      String
   stock     Int     @default(0)
+  // UC6.6 - quản lý tồn kho theo biến thể
+  reserved          Int  @default(0) // số đang giữ chỗ cho đơn chưa hoàn tất (UC9) - không được bán vượt
+  lowStockThreshold Int? // ngưỡng cảnh báo tồn kho thấp
 
   cartItems  CartItem[]
   orderItems OrderItem[]

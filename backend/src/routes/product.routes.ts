@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   listProducts, getProduct, createProduct, updateProduct, listManagedProducts,
+  deleteProduct, getInventory, updateInventory,
   analyzeProductEndpoint, confirmAnalysis, analyzeBatch,
 } from '../controllers/product.controller';
 import { authenticate, authorize } from '../middlewares/auth';
@@ -15,6 +16,11 @@ router.post('/analyze-batch', authenticate, authorize('SELLER', 'ADMIN'), analyz
 router.get('/:id', getProduct);
 router.post('/', authenticate, authorize('SELLER', 'ADMIN'), createProduct); // UC6.3
 router.patch('/:id', authenticate, authorize('SELLER', 'ADMIN'), updateProduct); // UC6.4
+router.delete('/:id', authenticate, authorize('SELLER', 'ADMIN'), deleteProduct); // UC6.5
+
+// UC6.6 - quản lý tồn kho theo biến thể
+router.get('/:id/inventory', authenticate, authorize('SELLER', 'ADMIN'), getInventory);
+router.patch('/:id/inventory', authenticate, authorize('SELLER', 'ADMIN'), updateInventory);
 
 // UC4.1 - phân tích lại + xác nhận/điều chỉnh nhãn thuộc tính
 router.post('/:id/analyze', authenticate, authorize('SELLER', 'ADMIN'), analyzeProductEndpoint);
