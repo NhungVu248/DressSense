@@ -4,7 +4,9 @@ import {
   deleteProduct, getInventory, updateInventory,
   analyzeProductEndpoint, confirmAnalysis, analyzeBatch,
 } from '../controllers/product.controller';
+import { importTemplate, exportProducts, importProducts } from '../controllers/product-io.controller';
 import { authenticate, authorize } from '../middlewares/auth';
+import { uploadCsv } from '../middlewares/upload';
 
 const router = Router();
 router.get('/', listProducts);
@@ -12,6 +14,11 @@ router.get('/', listProducts);
 // UC6.1 - danh sách quản lý theo vai trò + UC4.1 phân tích hàng loạt (đặt trước '/:id')
 router.get('/manage', authenticate, authorize('SELLER', 'ADMIN'), listManagedProducts);
 router.post('/analyze-batch', authenticate, authorize('SELLER', 'ADMIN'), analyzeBatch);
+
+// UC6.7 - nhập/xuất CSV (đặt trước '/:id' để không bị nuốt làm id)
+router.get('/export', authenticate, authorize('SELLER', 'ADMIN'), exportProducts);
+router.get('/import/template', authenticate, authorize('SELLER', 'ADMIN'), importTemplate);
+router.post('/import', authenticate, authorize('SELLER', 'ADMIN'), uploadCsv, importProducts);
 
 router.get('/:id', getProduct);
 router.post('/', authenticate, authorize('SELLER', 'ADMIN'), createProduct); // UC6.3

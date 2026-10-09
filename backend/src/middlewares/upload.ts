@@ -53,6 +53,12 @@ export const uploadBodyPhoto = multer({
   },
 }).single('photo');
 
+// ---------- UC6.7 - Tệp CSV nhập sản phẩm: giữ trong bộ nhớ ----------
+export const uploadCsv = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+}).single('file');
+
 // ---------- UC5.3 - Ảnh tìm kiếm: giữ trong BỘ NHỚ, KHÔNG lưu đĩa (tối thiểu hóa dữ liệu) ----------
 export const uploadSearchImage = multer({
   storage: multer.memoryStorage(),
