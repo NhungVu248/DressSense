@@ -67,6 +67,7 @@ export async function recommendForUser(
   // Sản phẩm ứng viên: CHỈ SP đã gán nhãn (UC4.1) + loại SP đã ẩn; kèm điểm hợp dáng + nhãn chuẩn hóa
   const products = (await prisma.product.findMany({
     where: {
+      status: 'ACTIVE', deletedAt: null, // UC6 - chỉ gợi ý SP đang bán
       ...(opts.categoryId ? { categoryId: opts.categoryId } : {}),
       ...(excludeIds.size ? { id: { notIn: [...excludeIds] } } : {}),
     },
@@ -194,7 +195,7 @@ export async function searchByImageMatch(userId: number, opts: { color: string; 
     prisma.bodyProfile.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' }, select: { bodyShape: true } }),
     prisma.outfitRule.findMany({ where: { active: true, kind: 'COLOR' } }),
     prisma.userBehavior.findMany({ where: { userId, action: 'HIDE' }, select: { productId: true } }),
-    prisma.product.findMany({ include: { analysis: true, bodyFits: true, category: true, images: true } }),
+    prisma.product.findMany({ where: { status: 'ACTIVE', deletedAt: null }, include: { analysis: true, bodyFits: true, category: true, images: true } }),
   ]);
   const shape = bp?.bodyShape ?? null;
   const exclude = new Set(hidden.map((h) => h.productId));
@@ -253,7 +254,7 @@ export async function relatedProducts(userId: number, productId: number, limit =
   const aColor = aAttr.color ?? anchor.color, aStyle = aAttr.style ?? anchor.style, aGarment = aAttr.garmentType ?? anchor.garmentType;
 
   const cands = (await prisma.product.findMany({
-    where: { id: { notIn: [...exclude] } },
+    where: { id: { notIn: [...exclude] }, status: 'ACTIVE', deletedAt: null },
     include: { images: true, category: true, bodyFits: true, analysis: true },
   })).filter((p) => p.analysis != null);
 

@@ -49,7 +49,7 @@ async function buildContext(userId: number): Promise<Ctx> {
   const shape: BodyShape | null = bp?.bodyShape ?? null;
   const [rules, products] = await Promise.all([
     prisma.outfitRule.findMany({ where: { active: true } }),
-    prisma.product.findMany({ include: { analysis: true, bodyFits: true, category: true, images: true } }),
+    prisma.product.findMany({ where: { status: 'ACTIVE', deletedAt: null }, include: { analysis: true, bodyFits: true, category: true, images: true } }),
   ]);
 
   const colorRule = new Map<string, { score: number; reason: string }>();

@@ -332,6 +332,10 @@ model Product {
   description String?  @db.Text
   price       Int
 
+  // UC6.3/6.4 - vòng đời sản phẩm; chỉ ACTIVE mới hiển thị cho khách (UC7) & vào gợi ý (UC5)
+  status    ProductStatus @default(ACTIVE)
+  deletedAt DateTime? // UC6.5 - xóa mềm/lưu trữ (giữ dữ liệu đơn hàng)
+
   color    String?
   pattern  String?
   material String?
@@ -363,6 +367,15 @@ model Product {
 
   @@index([categoryId])
   @@index([sellerId])
+}
+
+// UC6 - trạng thái bán của sản phẩm
+enum ProductStatus {
+  DRAFT // nháp (6a) - chưa hiển thị, chưa phân tích
+  PENDING // chờ duyệt nội dung (UC16.4)
+  ACTIVE // đang bán - hiển thị cho khách + vào gợi ý
+  HIDDEN // ẩn/ngừng bán - không hiển thị
+  ARCHIVED // đã xóa mềm (lưu trữ) - UC6.5
 }
 
 // UC4.1 - trạng thái gán nhãn thuộc tính của sản phẩm

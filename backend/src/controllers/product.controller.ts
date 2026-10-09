@@ -17,16 +17,18 @@ export async function listProducts(req: Request, res: Response, next: NextFuncti
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(50, Number(req.query.limit) || 12);
     const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
+    // UC6 - khách chỉ thấy sản phẩm ĐANG BÁN (ACTIVE) và chưa bị xóa
+    const where: any = { status: 'ACTIVE', deletedAt: null, ...(categoryId ? { categoryId } : {}) };
 
     const [items, total] = await Promise.all([
       prisma.product.findMany({
-        where: categoryId ? { categoryId } : undefined,
+        where,
         include: { images: true, category: true, bodyFits: true }, // UC4 - điểm tương thích dáng
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.product.count({ where: categoryId ? { categoryId } : undefined }),
+      prisma.product.count({ where }),
     ]);
 
     res.json({ items, total, page, totalPages: Math.ceil(total / limit) });
@@ -47,7 +49,7 @@ export async function getProduct(req: Request, res: Response, next: NextFunction
         analysis: true, // UC4.1 - nhãn thuộc tính đề xuất/đã xác nhận
       },
     });
-    if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
+    if (!product || product.deletedAt || product.status !== 'ACTIVE') return res.status(404).json({ message: 'Không tìm thấy sản phẩm' }); // UC6 - chỉ hiện SP đang bán
     res.json({ product });
   } catch (err) {
     next(err);
@@ -74,19 +76,111 @@ const createSchema = z.object({
   brand: z.string().optional(),
   occasion: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  // UC6.3 - trạng thái + biến thể (size + tồn kho ban đầu, không âm)
+  status: z.enum(['DRAFT', 'PENDING', 'ACTIVE', 'HIDDEN']).optional(),
+  variants: z.array(z.object({ size: z.string().min(1), stock: z.coerce.number().int().min(0) })).optional(),
 });
 
-// POST /api/products  (chỉ SELLER/ADMIN)
+// POST /api/products  (chỉ SELLER/ADMIN) - UC6.3 thêm sản phẩm (nguyên tử + tự phân tích UC4.1)
 export async function createProduct(req: Request, res: Response, next: NextFunction) {
   try {
-    const data = createSchema.parse(req.body);
+    const { variants, status, ...fields } = createSchema.parse(req.body);
+    // 7F - danh mục phải hợp lệ và đang hoạt động
+    const cat = await prisma.category.findUnique({ where: { id: fields.categoryId } });
+    if (!cat || !cat.active) return res.status(400).json({ message: 'Danh mục không hợp lệ hoặc đã bị ẩn. Vui lòng chọn lại.' });
+    const st = status ?? 'ACTIVE';
+    // 8E - nguyên tử: tạo trọn vẹn SP + biến thể (+tồn kho) hoặc không gì
     const product = await prisma.product.create({
-      data: { ...data, sellerId: req.user!.userId },
+      data: {
+        ...fields, sellerId: req.user!.userId, status: st,
+        variants: variants && variants.length ? { create: variants.map((v) => ({ size: v.size, stock: v.stock })) } : undefined,
+      },
     });
-    // UC4.1 - tự động phân tích khi thêm mới (sự kiện kích hoạt). Lỗi không làm hỏng việc tạo SP.
+    // UC4.1 - tự phân tích (trừ khi lưu nháp 6a). Lỗi không làm hỏng việc tạo SP.
     let analysis = null;
-    try { analysis = await analyzeProduct(product.id); } catch { /* 8E - để phân tích lại sau */ }
+    if (st !== 'DRAFT') { try { analysis = await analyzeProduct(product.id); } catch { /* để phân tích lại sau */ } }
     res.status(201).json({ product, analysis });
+  } catch (err) {
+    next(err);
+  }
+}
+
+const updateSchema = createSchema.partial();
+
+// PATCH /api/products/:id - UC6.4 sửa sản phẩm (+ phân tích lại khi đổi nội dung)
+export async function updateProduct(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = Number(req.params.id);
+    const guard = await assertCanEdit(req, id);
+    if (!guard.ok) return res.status(guard.code).json({ message: guard.message });
+    const { variants, ...d } = updateSchema.parse(req.body);
+    const before = await prisma.product.findUnique({ where: { id } });
+    if (!before) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
+    if (d.categoryId != null) {
+      const cat = await prisma.category.findUnique({ where: { id: d.categoryId } });
+      if (!cat || !cat.active) return res.status(400).json({ message: 'Danh mục không hợp lệ hoặc đã bị ẩn.' }); // 7F
+    }
+    const updated = await prisma.product.update({ where: { id }, data: d as any });
+    // 3b - thêm/sửa biến thể (upsert theo size)
+    if (variants) for (const v of variants) {
+      await prisma.productVariant.upsert({
+        where: { productId_size: { productId: id, size: v.size } },
+        update: { stock: v.stock }, create: { productId: id, size: v.size, stock: v.stock },
+      });
+    }
+    // 3c/7 - chỉ phân tích lại khi NỘI DUNG đổi (tên/mô tả/danh mục/thuộc tính), bỏ qua nếu chỉ giá/tồn kho/trạng thái
+    const CONTENT = ['name', 'description', 'categoryId', 'color', 'material', 'style', 'garmentType', 'occasion', 'pattern', 'fit', 'neckline', 'sleeve', 'length'];
+    const contentChanged = CONTENT.some((k) => (d as any)[k] !== undefined && (before as any)[k] !== (d as any)[k]);
+    let analysis = null;
+    if (contentChanged && updated.status !== 'DRAFT') { try { analysis = await analyzeProduct(id); } catch { /* để phân tích lại sau */ } }
+    res.json({ product: updated, reanalyzed: contentChanged, analysis });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/products/manage - UC6.1 danh sách QUẢN LÝ theo vai trò (tìm/lọc/sắp xếp)
+const manageQuery = z.object({
+  search: z.string().optional(),
+  categoryId: z.coerce.number().int().optional(),
+  sellerId: z.coerce.number().int().optional(), // 2a - Admin lọc theo gian hàng
+  status: z.enum(['DRAFT', 'PENDING', 'ACTIVE', 'HIDDEN', 'ARCHIVED']).optional(),
+  lowStock: z.enum(['true', 'false']).optional(),
+  unlabeled: z.enum(['true', 'false']).optional(), // 5a - lọc SP chưa gán nhãn/đang chờ
+  sort: z.enum(['newest', 'price_asc', 'price_desc', 'name']).default('newest'),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export async function listManagedProducts(req: Request, res: Response, next: NextFunction) {
+  try {
+    const q = manageQuery.parse(req.query);
+    const where: any = { deletedAt: null };
+    if (req.user?.role !== 'ADMIN') where.sellerId = req.user!.userId; // Người bán: chỉ SP của mình
+    else if (q.sellerId) where.sellerId = q.sellerId;
+    if (q.categoryId) where.categoryId = q.categoryId;
+    if (q.status) where.status = q.status; else where.status = { not: 'ARCHIVED' };
+    if (q.search) where.OR = [{ name: { contains: q.search } }, { brand: { contains: q.search } }];
+    const orderBy = q.sort === 'price_asc' ? { price: 'asc' as const } : q.sort === 'price_desc' ? { price: 'desc' as const }
+      : q.sort === 'name' ? { name: 'asc' as const } : { createdAt: 'desc' as const };
+
+    const rows = await prisma.product.findMany({
+      where, orderBy,
+      include: { category: { select: { name: true } }, images: { where: { isPrimary: true }, take: 1 }, variants: { select: { stock: true } }, analysis: { select: { status: true } } },
+    });
+    let mapped = rows.map((p) => {
+      const stock = p.variants.reduce((a, v) => a + v.stock, 0);
+      return {
+        id: p.id, name: p.name, price: p.price, category: p.category.name,
+        image: p.images[0]?.url ?? null, status: p.status, stock,
+        outOfStock: stock === 0, analysisStatus: p.analysis?.status ?? null,
+      };
+    });
+    if (q.lowStock === 'true') mapped = mapped.filter((m) => m.stock <= 5); // tồn kho thấp (ngưỡng mặc định)
+    if (q.unlabeled === 'true') mapped = mapped.filter((m) => m.analysisStatus == null || m.analysisStatus === 'UNCONFIRMED'); // 5a
+    const total = mapped.length;
+    const items = mapped.slice((q.page - 1) * q.limit, q.page * q.limit);
+    res.json({ items, total, page: q.page, totalPages: Math.max(1, Math.ceil(total / q.limit)) });
   } catch (err) {
     next(err);
   }
