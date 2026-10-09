@@ -301,14 +301,25 @@ model BodyDataDeletionLog {
 
 // ---------- Danh mục & sản phẩm (FR3, FR6) ----------
 model Category {
-  id       Int       @id @default(autoincrement())
-  name     String
-  slug     String    @unique
+  id        Int        @id @default(autoincrement())
+  name      String
+  slug      String     @unique
+  // UC6.2 - cây danh mục đa cấp (cha-con) + ẩn/thứ tự
+  parentId  Int?
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Category[] @relation("CategoryTree")
+  active    Boolean    @default(true) // false = ẩn/vô hiệu hóa (không hiện cho khách - 4c)
+  sortOrder Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
   products Product[]
 
   // UC2.1b/UC2.2 - nhóm sản phẩm dùng để thiết lập ngân sách và size cá nhân hóa
   budgets ProfileBudget[]
   sizes   CustomerSize[]
+
+  @@index([parentId])
 }
 
 model Product {
@@ -564,6 +575,8 @@ enum KnowledgeEntity {
   ATTRIBUTE
   FIT_RULE
   PAIRING_RULE
+  CATEGORY // UC6.2 - nhật ký thay đổi cây danh mục
+  PRODUCT // UC6.5 - nhật ký xóa/lưu trữ sản phẩm
 }
 
 enum KnowledgeAction {
