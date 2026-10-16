@@ -146,7 +146,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-6">
         <h1 className="text-2xl font-bold">Quản trị người dùng</h1>
         <div className="flex gap-2 text-sm">
           <button
@@ -205,8 +205,8 @@ export default function AdminUsersPage() {
             ) : items.length === 0 ? (
               <p className="text-gray-400 text-sm">Không tìm thấy tài khoản phù hợp.</p>
             ) : (
-              <div className="bg-white rounded-xl border overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="bg-white rounded-xl border overflow-x-auto">
+                <table className="w-full text-sm min-w-[460px]">
                   <thead className="bg-gray-50 text-gray-500 text-left">
                     <tr>
                       <th className="px-4 py-2.5 font-medium">Tài khoản</th>
@@ -343,8 +343,8 @@ export default function AdminUsersPage() {
           ) : logs.length === 0 ? (
             <p className="text-gray-400 text-sm">Chưa có nhật ký phân quyền nào.</p>
           ) : (
-            <div className="bg-white rounded-xl border overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-white rounded-xl border overflow-x-auto">
+              <table className="w-full text-sm min-w-[720px]">
                 <thead className="bg-gray-50 text-gray-500 text-left">
                   <tr>
                     <th className="px-4 py-2.5 font-medium">Thời gian</th>

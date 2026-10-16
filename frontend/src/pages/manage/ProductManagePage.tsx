@@ -116,8 +116,8 @@ export default function ProductManagePage({ basePath = '/manage/products' }: { b
           Chưa có sản phẩm. <Link to={`${basePath}/new`} className="text-brand underline">Thêm sản phẩm</Link> hoặc nhập CSV.
         </div>
       ) : (
-        <div className="bg-white border rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white border rounded-xl overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
               <tr>
                 <th className="text-left px-3 py-2">Sản phẩm</th>
@@ -193,7 +193,7 @@ function InventoryModal({ product, onClose }: { product: ManagedProduct; onClose
         <p className="text-xs text-gray-400 mb-3">Không đặt tồn thấp hơn số đang giữ chỗ (chống bán vượt).</p>
         <ErrorBox message={err} />
         {variants.length === 0 ? <p className="text-sm text-gray-400">Sản phẩm chưa có biến thể.</p> : (
-          <table className="w-full text-sm mb-3">
+          <div className="overflow-x-auto mb-3"><table className="w-full text-sm min-w-[300px]">
             <thead><tr className="text-xs text-gray-400"><th className="text-left">Size</th><th>Tồn</th><th>Ngưỡng cảnh báo</th><th>TT</th></tr></thead>
             <tbody>
               {variants.map((v, i) => (
@@ -205,7 +205,7 @@ function InventoryModal({ product, onClose }: { product: ManagedProduct; onClose
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
         <div className="flex gap-2 justify-end">
           <SecondaryButton type="button" onClick={() => onClose(false)}>Đóng</SecondaryButton>

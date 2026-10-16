@@ -92,7 +92,7 @@ export default function ProductFormPage({ basePath = '/manage/products' }: { bas
             </select>
           </label>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {FIELDS.map(({ key, label }) => (
             <label key={key} className="block">
               <span className="block text-xs text-gray-500 mb-1">{label}</span>
