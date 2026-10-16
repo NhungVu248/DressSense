@@ -14,7 +14,7 @@ const FIELDS: Array<{ key: string; label: string }> = [
   { key: 'garmentType', label: 'Loại trang phục' }, { key: 'occasion', label: 'Dịp dùng' },
 ];
 
-export default function ProductFormPage() {
+export default function ProductFormPage({ basePath = '/manage/products' }: { basePath?: string }) {
   const { id } = useParams();
   const editing = !!id;
   const nav = useNavigate();
@@ -57,7 +57,7 @@ export default function ProductFormPage() {
     try {
       if (editing) { await api.patch(`/products/${id}`, payload); setSuccess('Đã cập nhật sản phẩm.'); }
       else { await api.post('/products', payload); setSuccess('Đã thêm sản phẩm.'); }
-      setTimeout(() => nav('/manage/products'), 600);
+      setTimeout(() => nav(basePath), 600);
     } catch (e) { setError(getErrorMessage(e)); setSaving(false); } // 7E/7F
   }
 
@@ -65,7 +65,7 @@ export default function ProductFormPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <Link to="/manage/products" className="text-sm text-gray-400 hover:text-gray-600">← Danh sách sản phẩm</Link>
+      <Link to={basePath} className="text-sm text-gray-400 hover:text-gray-600">← Danh sách sản phẩm</Link>
       <h1 className="text-2xl font-bold mt-2 mb-5">{editing ? 'Sửa sản phẩm' : 'Thêm sản phẩm'}</h1>
       <ErrorBox message={error} />
       <SuccessBox message={success} />
@@ -126,7 +126,7 @@ export default function ProductFormPage() {
 
         <div className="flex gap-2 pt-2">
           <PrimaryButton style={{ width: 'auto' }} onClick={submit} disabled={saving}>{saving ? 'Đang lưu...' : editing ? 'Lưu thay đổi' : 'Thêm sản phẩm'}</PrimaryButton>
-          <SecondaryButton type="button" onClick={() => nav('/manage/products')}>Hủy</SecondaryButton>
+          <SecondaryButton type="button" onClick={() => nav(basePath)}>Hủy</SecondaryButton>
         </div>
       </div>
     </div>

@@ -22,7 +22,7 @@ const STATUS_COLOR: Record<string, string> = {
 const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace('/api', '');
 const imgUrl = (u: string | null) => (!u ? PRODUCT_PLACEHOLDER : u.startsWith('/uploads') ? API_ORIGIN + u : u);
 
-export default function ProductManagePage() {
+export default function ProductManagePage({ basePath = '/manage/products' }: { basePath?: string }) {
   const [items, setItems] = useState<ManagedProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -93,7 +93,7 @@ export default function ProductManagePage() {
           <SecondaryButton type="button" onClick={doExport}>Xuất CSV</SecondaryButton>
           <SecondaryButton type="button" onClick={() => fileRef.current?.click()}>Nhập CSV</SecondaryButton>
           <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => e.target.files?.[0] && doImport(e.target.files[0])} />
-          <Link to="/manage/products/new"><PrimaryButton style={{ width: 'auto' }}>+ Thêm sản phẩm</PrimaryButton></Link>
+          <Link to={`${basePath}/new`}><PrimaryButton style={{ width: 'auto' }}>+ Thêm sản phẩm</PrimaryButton></Link>
         </div>
       </div>
       <p className="text-sm text-gray-500 mb-4">Tồn kho, trạng thái bán và trạng thái gán nhãn (AI) của từng sản phẩm.</p>
@@ -113,7 +113,7 @@ export default function ProductManagePage() {
 
       {loading ? <p className="text-gray-400">Đang tải...</p> : items.length === 0 ? (
         <div className="bg-white border rounded-xl p-8 text-center text-gray-500">
-          Chưa có sản phẩm. <Link to="/manage/products/new" className="text-brand underline">Thêm sản phẩm</Link> hoặc nhập CSV.
+          Chưa có sản phẩm. <Link to={`${basePath}/new`} className="text-brand underline">Thêm sản phẩm</Link> hoặc nhập CSV.
         </div>
       ) : (
         <div className="bg-white border rounded-xl overflow-hidden">
@@ -145,7 +145,7 @@ export default function ProductManagePage() {
                   <td className="px-3 py-2 text-center text-xs text-gray-500">{p.analysisStatus === 'CONFIRMED' ? '✓ Đã xác nhận' : p.analysisStatus === 'UNCONFIRMED' ? 'Chờ xác nhận' : p.analysisStatus ?? '—'}</td>
                   <td className="px-3 py-2">
                     <div className="flex gap-1.5 justify-end text-xs whitespace-nowrap">
-                      <Link to={`/manage/products/${p.id}/edit`} className="text-indigo-600 hover:underline">Sửa</Link>
+                      <Link to={`${basePath}/${p.id}/edit`} className="text-indigo-600 hover:underline">Sửa</Link>
                       <button onClick={() => setInvFor(p)} className="text-gray-600 hover:underline">Tồn kho</button>
                       {p.status !== 'ARCHIVED' && (p.status === 'ACTIVE'
                         ? <button onClick={() => setProductStatus(p, 'HIDDEN')} className="text-amber-600 hover:underline">Ẩn</button>

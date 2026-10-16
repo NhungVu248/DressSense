@@ -16,6 +16,7 @@ export interface User {
 interface LoginResult {
   redirect: string;
   pendingApproval?: boolean;
+  user: User;
 }
 
 interface AuthContextType {
@@ -45,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await api.post('/auth/login', { identifier, password, rememberMe });
     setToken(res.data.token);
     setUser(res.data.user);
-    return { redirect: res.data.redirect, pendingApproval: res.data.pendingApproval };
+    return { redirect: res.data.redirect, pendingApproval: res.data.pendingApproval, user: res.data.user };
   }
 
   function setSession(token: string, u: User) {
