@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { recordBehavior } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { addWishlist, removeWishlist, getWishlistIds } from '../lib/cart';
 import { PRODUCT_PLACEHOLDER } from '../lib/placeholder';
 import {
   type ProductCard as Product, formatVND, primaryImage, isNew, colorHex,
@@ -18,13 +20,29 @@ function Stars({ value }: { value: number }) {
 }
 
 function WishlistButton({ productId }: { productId: number }) {
-  const [liked, setLiked] = useState(false);
+  const { user } = useAuth();
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const { data: ids } = useQuery({ queryKey: ['wishlist-ids'], queryFn: getWishlistIds, enabled: !!user, staleTime: 60_000 });
+  const liked = !!ids?.includes(productId);
+
+  async function toggle(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    if (!user) { nav('/login'); return; } // UC8.2 3E - cần đăng nhập
+    try {
+      if (liked) await removeWishlist(productId);
+      else { await addWishlist(productId); recordBehavior(productId, 'WISHLIST'); }
+      qc.invalidateQueries({ queryKey: ['wishlist-ids'] });
+      qc.invalidateQueries({ queryKey: ['wishlist'] });
+    } catch { /* bỏ qua lỗi tạm thời */ }
+  }
+
   return (
     <button
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLiked((v) => !v); if (!liked) recordBehavior(productId, 'WISHLIST'); }}
+      onClick={toggle}
       className={`absolute top-3 right-3 w-9 h-9 grid place-items-center rounded-full backdrop-blur
         bg-white/80 shadow-sm transition-colors ${liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
-      title="Thêm vào yêu thích" aria-label="Thêm vào yêu thích"
+      title={liked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'} aria-label="Yêu thích"
     >
       {liked ? '♥' : '♡'}
     </button>

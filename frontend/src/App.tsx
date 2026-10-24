@@ -3,6 +3,9 @@ import Navbar from './components/Navbar';
 import ProductsPage from './pages/ProductsPage';
 // UC7.4 - Xem chi tiết sản phẩm
 import ProductDetailPage from './pages/ProductDetailPage';
+// UC8 - Giỏ hàng & Danh sách yêu thích
+import CartPage from './pages/CartPage';
+import WishlistPage from './pages/WishlistPage';
 // UC1 - Khách hàng
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -72,8 +75,12 @@ export default function App() {
       <Route path="/profile/personalization" element={<RequireAuth><ShopLayout><PersonalizationPage /></ShopLayout></RequireAuth>} />
       <Route path="/profile/sizes" element={<RequireAuth><ShopLayout><SizeInfoPage /></ShopLayout></RequireAuth>} />
 
-      {/* UC3.1 - Phân tích dáng người bằng AI */}
-      <Route path="/profile/body" element={<RequireAuth><ShopLayout><BodyAnalysisPage /></ShopLayout></RequireAuth>} />
+      {/* UC3.1 - Phân tích dáng người bằng AI (CÔNG KHAI: khách dùng thử, lưu hồ sơ cần đăng nhập) */}
+      <Route path="/profile/body" element={<ShopLayout><BodyAnalysisPage /></ShopLayout>} />
+
+      {/* UC8 - Giỏ hàng & Danh sách yêu thích (gắn tài khoản) */}
+      <Route path="/cart" element={<RequireAuth><ShopLayout><CartPage /></ShopLayout></RequireAuth>} />
+      <Route path="/wishlist" element={<RequireAuth><ShopLayout><WishlistPage /></ShopLayout></RequireAuth>} />
 
       {/* UC5 - Gợi ý sản phẩm cá nhân hóa */}
       <Route path="/recommendations" element={<RequireAuth><ShopLayout><RecommendationsPage /></ShopLayout></RequireAuth>} />

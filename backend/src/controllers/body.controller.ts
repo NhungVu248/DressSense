@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import fs from 'fs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { BODY_MEASUREMENT_RANGES } from '../constants/body-analysis';
+import { BODY_MEASUREMENT_RANGES, STYLE_RECOMMENDATIONS } from '../constants/body-analysis';
 import { processBodyAnalysis } from '../services/body-analysis.service';
 import { generateBodyProfile } from '../services/body-profile.service';
 import { syncBodyProfile } from '../services/body-sync.service';
@@ -32,6 +32,52 @@ function serializeProfile(p: any) {
     suggestedSizes: p.suggestedSizes,
     createdAt: p.createdAt,
   };
+}
+
+// POST /api/body/preview - CÔNG KHAI: khách chưa đăng nhập dùng thử phân tích dáng (KHÔNG lưu hồ sơ).
+// Muốn lưu Body Profile thì phải đăng nhập (dùng /body/analyze).
+const previewSchema = z.object({
+  height: z.coerce.number(),
+  weight: z.coerce.number().optional(),
+  bust: z.coerce.number(),
+  waist: z.coerce.number(),
+  hip: z.coerce.number(),
+});
+
+export async function previewBodyShape(req: Request, res: Response, next: NextFunction) {
+  try {
+    const parsed = previewSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: 'Vui lòng nhập đầy đủ số đo bắt buộc (chiều cao, ngực, eo, hông).' });
+    const d = parsed.data;
+
+    const rangeChecks: Array<[number, { min: number; max: number }, string]> = [
+      [d.height, BODY_MEASUREMENT_RANGES.height, 'chiều cao'],
+      [d.bust, BODY_MEASUREMENT_RANGES.bust, 'vòng ngực'],
+      [d.waist, BODY_MEASUREMENT_RANGES.waist, 'vòng eo'],
+      [d.hip, BODY_MEASUREMENT_RANGES.hip, 'vòng hông'],
+    ];
+    if (d.weight !== undefined) rangeChecks.push([d.weight, BODY_MEASUREMENT_RANGES.weight, 'cân nặng']);
+    for (const [value, range, label] of rangeChecks) {
+      if (!inRange(value, range)) return res.status(400).json({ message: `Số đo "${label}" phải nằm trong khoảng ${range.min}–${range.max}.` });
+    }
+
+    const result = processBodyAnalysis({
+      source: 'MANUAL', height: d.height, weight: d.weight ?? null,
+      bust: d.bust, waist: d.waist, hip: d.hip, shoulderHipRatio: null, hasPhoto: false,
+    });
+    if (!result.ok || !result.bodyShape) return res.status(422).json({ message: `${result.note} Vui lòng kiểm tra lại số đo.` });
+
+    res.json({
+      preview: true,
+      bodyShape: result.bodyShape,
+      confidence: result.confidence,
+      isPreliminary: result.isPreliminary,
+      ratios: result.ratios,
+      recommendations: STYLE_RECOMMENDATIONS[result.bodyShape],
+    });
+  } catch (err) {
+    next(err);
+  }
 }
 
 // GET /api/body/consent - trạng thái đồng ý xử lý dữ liệu cơ thể (UC3.1 bước 2)

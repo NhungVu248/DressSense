@@ -11,6 +11,9 @@ import fashionKnowledgeRoutes from './fashion-knowledge.routes';
 import categoryAdminRoutes from './category-admin.routes';
 import recommendationRoutes from './recommendation.routes';
 import behaviorRoutes from './behavior.routes';
+import cartRoutes from './cart.routes';
+import wishlistRoutes from './wishlist.routes';
+import voucherRoutes from './voucher.routes';
 
 const router = Router();
 router.use('/auth', authRoutes);
@@ -25,5 +28,8 @@ router.use('/admin/fashion-knowledge', fashionKnowledgeRoutes); // UC4.2 - Quả
 router.use('/admin/categories', categoryAdminRoutes); // UC6.2 - Quản lý danh mục đa cấp
 router.use('/recommendations', recommendationRoutes); // UC5 - Gợi ý sản phẩm cá nhân hóa
 router.use('/behaviors', behaviorRoutes); // UC5/GĐ6 - Ghi nhận hành vi người dùng
+router.use('/cart', cartRoutes);       // UC8.1 - Giỏ hàng
+router.use('/wishlist', wishlistRoutes); // UC8.2 - Danh sách yêu thích
+router.use('/vouchers', voucherRoutes);  // UC8.3 - Mã giảm giá
 
 export default router;

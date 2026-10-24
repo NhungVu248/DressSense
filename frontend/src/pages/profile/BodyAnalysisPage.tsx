@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api, { getErrorMessage, recordBehavior } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 import { PRODUCT_PLACEHOLDER } from '../../lib/placeholder';
 import { ErrorBox, SuccessBox, PrimaryButton, SecondaryButton, Chip } from '../../components/ui';
 
@@ -79,6 +80,7 @@ const MEASUREMENT_FIELDS = [
 type MeasurementKey = (typeof MEASUREMENT_FIELDS)[number]['key'];
 
 export default function BodyAnalysisPage() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -154,7 +156,8 @@ export default function BodyAnalysisPage() {
       .catch((err) => setError(getErrorMessage(err)))
       .finally(() => setLoading(false));
   }
-  useEffect(load, []);
+  // Khách chưa đăng nhập: không gọi API cần xác thực, chuyển sang chế độ dùng thử
+  useEffect(() => { if (user) load(); else setLoading(false); }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // UC2.3 - làm mới trạng thái đồng bộ
   async function refreshSync() {
@@ -289,6 +292,9 @@ export default function BodyAnalysisPage() {
       setDeleting(false);
     }
   }
+
+  // Khách chưa đăng nhập -> trải nghiệm thử (không lưu hồ sơ)
+  if (!user) return <GuestBodyPreview />;
 
   if (loading) return <p className="max-w-2xl mx-auto px-4 py-10 text-gray-400">Đang tải...</p>;
 
@@ -624,6 +630,103 @@ function SuggestedForShape(
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+//  Chế độ DÙNG THỬ cho khách CHƯA đăng nhập (UC3.1):
+//  nhập số đo -> xem dáng + khuyến nghị NGAY (không lưu).
+//  Muốn lưu hồ sơ / nhận gợi ý sản phẩm -> đăng nhập/đăng ký.
+// ============================================================
+interface PreviewResult {
+  bodyShape: BodyShape;
+  confidence: number;
+  isPreliminary: boolean;
+  recommendations: { description: string; should: string[]; avoid: string[] };
+}
+
+function GuestBodyPreview() {
+  const [values, setValues] = useState<Record<MeasurementKey, string>>({ height: '', weight: '', bust: '', waist: '', hip: '' });
+  const [result, setResult] = useState<PreviewResult | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function preview() {
+    setError('');
+    for (const f of MEASUREMENT_FIELDS) {
+      if (f.required && !values[f.key].trim()) { setError('Vui lòng nhập đầy đủ số đo bắt buộc (chiều cao, ngực, eo, hông).'); return; }
+    }
+    setLoading(true);
+    try {
+      const payload: Record<string, string> = {};
+      for (const f of MEASUREMENT_FIELDS) if (values[f.key].trim()) payload[f.key] = values[f.key].trim();
+      const res = await api.post('/body/preview', payload);
+      setResult(res.data);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto px-4 py-8">
+      <p className="text-[11px] uppercase tracking-widest text-gray-400">Trải nghiệm miễn phí</p>
+      <h1 className="font-display text-3xl text-ink mt-1 mb-2">Phân tích dáng người</h1>
+      <p className="text-sm text-gray-500 mb-6">
+        Nhập số đo để xem ngay dáng người và gợi ý trang phục phù hợp. Kết quả chỉ mang tính tham khảo và{' '}
+        <span className="text-ink font-medium">không được lưu lại</span>.
+      </p>
+
+      <ErrorBox message={error} />
+
+      <div className="bg-white rounded-xl border border-black/5 p-6">
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          {MEASUREMENT_FIELDS.map((f) => (
+            <label key={f.key} className="block">
+              <span className="block text-xs text-gray-500 mb-1">{f.label}{f.required && <span className="text-red-400"> *</span>}</span>
+              <input type="number" value={values[f.key]} onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand" />
+            </label>
+          ))}
+        </div>
+        <button onClick={preview} disabled={loading} className="bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg px-5 py-2.5 text-sm font-medium">
+          {loading ? 'Đang phân tích…' : 'Xem dáng của tôi'}
+        </button>
+      </div>
+
+      {result && (
+        <div className="bg-white rounded-xl border border-black/5 p-6 mt-5">
+          <p className="text-sm text-gray-400">Dáng người của bạn</p>
+          <h2 className="font-display text-2xl text-ink">{SHAPE_LABEL[result.bodyShape]}</h2>
+          <p className="text-xs text-gray-400 mt-1">Độ tin cậy {Math.round(result.confidence * 100)}%{result.isPreliminary ? ' · ước lượng sơ bộ' : ''}</p>
+
+          {result.recommendations && (
+            <div className="mt-4 border-t border-black/5 pt-4">
+              <p className="text-sm text-gray-500 mb-3">{result.recommendations.description}</p>
+              <div className="grid sm:grid-cols-2 gap-3 text-sm">
+                <div className="bg-brand-light rounded-lg p-3">
+                  <p className="font-medium text-brand mb-1">Nên mặc</p>
+                  <ul className="list-disc pl-4 space-y-0.5 text-gray-600">{result.recommendations.should.map((s, i) => <li key={i}>{s}</li>)}</ul>
+                </div>
+                <div className="bg-red-50 rounded-lg p-3">
+                  <p className="font-medium text-red-600 mb-1">Nên tránh</p>
+                  <ul className="list-disc pl-4 space-y-0.5 text-gray-600">{result.recommendations.avoid.map((s, i) => <li key={i}>{s}</li>)}</ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CTA - muốn lưu hồ sơ phải đăng nhập/đăng ký */}
+          <div className="mt-5 bg-ink text-white rounded-xl p-5">
+            <p className="font-medium">Lưu hồ sơ dáng người của bạn</p>
+            <p className="text-sm text-white/70 mt-1 mb-3">Đăng nhập để lưu kết quả, đồng bộ gợi ý size (UC2.2) và nhận gợi ý sản phẩm hợp dáng (UC5).</p>
+            <div className="flex gap-2">
+              <Link to="/login" className="bg-white text-ink rounded-full px-4 py-2 text-sm font-medium">Đăng nhập</Link>
+              <Link to="/register" className="border border-white/40 text-white rounded-full px-4 py-2 text-sm">Đăng ký</Link>
+            </div>
           </div>
         </div>
       )}

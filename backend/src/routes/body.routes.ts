@@ -6,11 +6,15 @@ import {
   getLatestProfile,
   getHistory,
   deleteBodyData,
+  previewBodyShape,
 } from '../controllers/body.controller';
 import { authenticate } from '../middlewares/auth';
 import { uploadBodyPhoto } from '../middlewares/upload';
 
 const router = Router();
+
+// CÔNG KHAI - khách chưa đăng nhập dùng thử phân tích dáng (không lưu). Đặt TRƯỚC authenticate.
+router.post('/preview', previewBodyShape);
 
 // UC3 - chỉ Khách hàng đã đăng nhập mới được phân tích/xem/xóa dữ liệu cơ thể của chính mình
 router.use(authenticate);

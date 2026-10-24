@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
+import { getCartCount } from '../lib/cart';
 import { DEFAULT_AVATAR } from '../lib/placeholder';
 import SearchBar from './SearchBar';
 
@@ -34,6 +36,9 @@ export default function Navbar() {
   const avatar = user?.avatarUrl
     ? (import.meta.env.VITE_API_URL?.replace('/api', '') + user.avatarUrl)
     : DEFAULT_AVATAR;
+
+  // UC8.1 - số mục trong giỏ (badge)
+  const { data: cartCount } = useQuery({ queryKey: ['cart-count'], queryFn: getCartCount, enabled: !!user, staleTime: 30_000 });
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (accRef.current && !accRef.current.contains(e.target as Node)) setMenu(false); };
@@ -77,19 +82,18 @@ export default function Navbar() {
 
           {/* Icon phải */}
           <div className="flex items-center gap-1 sm:gap-2 ml-auto md:ml-2 text-gray-600">
-            <button className="p-2 hover:text-brand" title="Yêu thích" aria-label="Sản phẩm yêu thích">
+            <Link to="/wishlist" className="p-2 hover:text-brand" title="Yêu thích" aria-label="Sản phẩm yêu thích">
               <Icon path="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
-            </button>
+            </Link>
             <button
               onClick={() => (user ? nav('/profile') : nav('/login'))}
               className="p-2 hover:text-brand md:hidden" title="Tài khoản" aria-label="Tài khoản"
             >
               <Icon path="M20 21a8 8 0 0 0-16 0M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
             </button>
-            <button className="p-2 hover:text-brand" title="Giỏ hàng (UC8)" aria-label="Giỏ hàng"
-              onClick={() => alert('Giỏ hàng thuộc UC8 — sẽ bổ sung sau.')}>
-              <Icon path="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" />
-            </button>
+            <Link to="/cart" className="p-2 hover:text-brand" title="Giỏ hàng" aria-label="Giỏ hàng">
+              <Icon path="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" badge={cartCount} />
+            </Link>
 
             {/* Tài khoản - desktop (dropdown) */}
             <div className="relative hidden md:block" ref={accRef}>

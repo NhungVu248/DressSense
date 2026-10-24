@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import api, { recordBehavior } from '../lib/api';
+import { recordBehavior } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { PRODUCT_PLACEHOLDER } from '../lib/placeholder';
 import {
   fetchProduct, fetchRelated, formatVND, primaryImage, colorHex,
   type ProductVariant,
 } from '../lib/products';
+import { addToCart as apiAddToCart, addWishlist } from '../lib/cart';
 import ProductCard from '../components/ProductCard';
 
 type Tab = 'desc' | 'detail' | 'reviews' | 'qa';
@@ -14,6 +16,8 @@ type Tab = 'desc' | 'detail' | 'reviews' | 'qa';
 export default function ProductDetailPage() {
   const { id } = useParams();
   const nav = useNavigate();
+  const { user } = useAuth();
+  const qc = useQueryClient();
   const [img, setImg] = useState(0);
   const [size, setSize] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('desc');
@@ -46,11 +50,31 @@ export default function ProductDetailPage() {
 
   const images = p.images.length ? p.images : [{ url: primaryImage(p.images) || PRODUCT_PLACEHOLDER, isPrimary: true }];
 
-  function addToCart() {
-    if (!size) { alert('Vui lòng chọn size.'); return; }
+  const [adding, setAdding] = useState(false);
+
+  async function addToCart() {
+    if (!user) { alert('Vui lòng đăng nhập để thêm vào giỏ hàng.'); nav('/login'); return; } // 17E.1
+    if (p!.variants.length > 0 && !size) { alert('Vui lòng chọn size.'); return; } // 4E
     if (selectedVariant && avail(selectedVariant) <= 0) return; // 8a - hết hàng
-    recordBehavior(p!.id, 'ADD_TO_CART');
-    alert('Đã ghi nhận. Giỏ hàng & thanh toán thuộc UC8 — sẽ bổ sung sau.');
+    setAdding(true);
+    try {
+      await apiAddToCart(p!.id, selectedVariant?.id ?? null, 1);
+      recordBehavior(p!.id, 'ADD_TO_CART');
+      qc.invalidateQueries({ queryKey: ['cart-count'] });
+      alert('Đã thêm vào giỏ hàng.');
+    } catch (e: any) {
+      alert(e?.response?.data?.message ?? 'Không thêm được vào giỏ.'); // 4E.1 hết hàng
+    } finally { setAdding(false); }
+  }
+
+  async function toggleWishlist() {
+    if (!user) { alert('Vui lòng đăng nhập để lưu sản phẩm yêu thích.'); nav('/login'); return; } // 3E
+    try {
+      await addWishlist(p!.id);
+      recordBehavior(p!.id, 'WISHLIST');
+      qc.invalidateQueries({ queryKey: ['wishlist-ids'] });
+      alert('Đã lưu vào yêu thích.');
+    } catch { alert('Không lưu được, vui lòng thử lại.'); }
   }
 
   return (
@@ -134,12 +158,12 @@ export default function ProductDetailPage() {
 
           {/* Hành động */}
           <div className="flex items-center gap-3 mt-6">
-            <button onClick={addToCart} disabled={!!selectedVariant && avail(selectedVariant) <= 0}
+            <button onClick={addToCart} disabled={adding || (!!selectedVariant && avail(selectedVariant) <= 0)}
               className="flex-1 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-3 font-medium inline-flex items-center justify-center gap-2">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" /></svg>
-              Thêm vào giỏ hàng
+              {adding ? 'Đang thêm…' : 'Thêm vào giỏ hàng'}
             </button>
-            <button onClick={() => recordBehavior(p.id, 'WISHLIST')} className="w-12 h-12 grid place-items-center border border-black/15 rounded-lg hover:text-red-500" title="Yêu thích">♡</button>
+            <button onClick={toggleWishlist} className="w-12 h-12 grid place-items-center border border-black/15 rounded-lg hover:text-red-500" title="Yêu thích">♡</button>
           </div>
           <button onClick={() => nav('/recommendations')} className="w-full mt-3 border border-black/15 rounded-lg py-3 text-ink hover:border-brand">Xem gợi ý hợp với bạn</button>
 

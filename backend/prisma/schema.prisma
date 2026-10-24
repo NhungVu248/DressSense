@@ -62,6 +62,7 @@ model User {
   bodyDataDeletionLogs BodyDataDeletionLog[]
   products     Product[]        @relation("SellerProducts")
   cartItems    CartItem[]
+  wishlist     Wishlist[] // UC8.2 - danh sách yêu thích
   orders       Order[]
   reviews      Review[]
   behaviors    UserBehavior[]
@@ -359,6 +360,7 @@ model Product {
   images     ProductImage[]
   variants   ProductVariant[]
   cartItems  CartItem[]
+  wishlist   Wishlist[] // UC8.2 - được lưu trong danh sách yêu thích
   orderItems OrderItem[]
   reviews    Review[]
   behaviors  UserBehavior[]
@@ -454,6 +456,7 @@ model CartItem {
   variantId Int?
   variant   ProductVariant? @relation(fields: [variantId], references: [id])
   quantity  Int             @default(1)
+  selected  Boolean         @default(true) // UC8.1 - chọn mục này để thanh toán
   createdAt DateTime        @default(now())
 
   @@index([userId])
@@ -640,4 +643,39 @@ model KnowledgeAudit {
 
   @@index([entity])
   @@index([actorId])
+}
+
+// UC8.2 - Danh sách yêu thích (gắn với tài khoản, 1 sản phẩm xuất hiện 1 lần)
+model Wishlist {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+// UC8.3 - Mã giảm giá (bản gọn; quản lý đầy đủ thuộc UC13)
+enum VoucherType {
+  PERCENT // giảm theo phần trăm (value = %), có thể giới hạn maxDiscount
+  FIXED   // giảm số tiền cố định (value = VND)
+}
+
+model Voucher {
+  id          Int         @id @default(autoincrement())
+  code        String      @unique
+  description String?
+  type        VoucherType
+  value       Int // PERCENT: 0..100 | FIXED: số tiền VND
+  minOrder    Int         @default(0) // đơn tối thiểu để áp dụng
+  maxDiscount Int? // trần giảm cho loại PERCENT (null = không giới hạn)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  usageLimit  Int? // tổng số lượt được dùng (null = không giới hạn)
+  usedCount   Int         @default(0)
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
 }
