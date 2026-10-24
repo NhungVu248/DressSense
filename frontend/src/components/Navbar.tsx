@@ -64,6 +64,10 @@ export default function Navbar() {
               <Link key={n.label} to={n.to} className="hover:text-brand transition-colors">{n.label}</Link>
             ))}
             {user && <Link to="/recommendations" className="hover:text-brand transition-colors">Gợi ý cho bạn</Link>}
+            {/* UC3 - lối vào Phân tích dáng người (làm nổi bật trên navbar) */}
+            <Link to="/profile/body" className="inline-flex items-center gap-1 text-brand font-medium hover:text-brand-dark transition-colors">
+              <span aria-hidden>✨</span> Phân tích dáng
+            </Link>
           </div>
 
           {/* Ô tìm kiếm - desktop */}
@@ -136,12 +140,13 @@ export default function Navbar() {
               {NAV.map((n) => (
                 <Link key={n.label} to={n.to} onClick={() => setMobile(false)} className="py-2.5 hover:text-brand border-b border-black/5">{n.label}</Link>
               ))}
+              {/* UC3 - Phân tích dáng người (hiển thị cho mọi người) */}
+              <Link to="/profile/body" onClick={() => setMobile(false)} className="py-2.5 text-brand font-medium border-b border-black/5">✨ Phân tích dáng người</Link>
               {user ? (
                 <>
                   <Link to="/profile" onClick={() => setMobile(false)} className="py-2.5 flex items-center gap-2 border-b border-black/5">
                     <img src={avatar} alt="" className="w-7 h-7 rounded-full object-cover bg-gray-100" />{user.fullName}
                   </Link>
-                  <Link to="/profile/body" onClick={() => setMobile(false)} className="py-2.5 text-brand border-b border-black/5">Phân tích dáng người</Link>
                   <Link to="/recommendations" onClick={() => setMobile(false)} className="py-2.5 hover:text-brand border-b border-black/5">Gợi ý cho bạn</Link>
                   {user.role === 'SELLER' && <Link to="/manage/products" onClick={() => setMobile(false)} className="py-2.5 border-b border-black/5">Quản lý gian hàng</Link>}
                   {user.role === 'ADMIN' && <Link to="/admin" onClick={() => setMobile(false)} className="py-2.5 border-b border-black/5">Trang quản trị</Link>}
