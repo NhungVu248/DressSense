@@ -11,27 +11,173 @@ async function assertCanEdit(req: Request, productId: number): Promise<{ ok: tru
   return { ok: true };
 }
 
-// GET /api/products  (hỗ trợ phân trang + lọc theo danh mục)
+// Tách chuỗi "S,M,L" -> ['S','M','L'] (bỏ khoảng trắng/rỗng) cho bộ lọc nhiều giá trị
+function parseList(v: unknown): string[] {
+  if (typeof v !== 'string') return [];
+  return v.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+// UC7.1/7.2/7.3 - truy vấn công khai: từ khóa + bộ lọc + sắp xếp
+const publicQuery = z.object({
+  q: z.string().trim().optional(),                 // UC7.1 - từ khóa
+  categoryId: z.coerce.number().int().optional(),  // UC7.2 - danh mục
+  minPrice: z.coerce.number().int().min(0).optional(),
+  maxPrice: z.coerce.number().int().min(0).optional(),
+  size: z.string().optional(),   // UC7.2 - size (phân tách bằng dấu phẩy)
+  color: z.string().optional(),  // UC7.2 - màu sắc
+  style: z.string().optional(),  // UC7.2 - phong cách
+  sort: z.enum(['newest', 'price_asc', 'price_desc', 'bestselling']).default('newest'), // UC7.3
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(12),
+});
+
+// Điều kiện chung: chỉ sản phẩm ĐANG BÁN (ACTIVE) & chưa xóa được hiển thị cho khách (UC7 quy tắc nghiệp vụ)
+function publicWhere(q: z.infer<typeof publicQuery>): any {
+  const where: any = { status: 'ACTIVE', deletedAt: null };
+  if (q.q) {
+    where.OR = [
+      { name: { contains: q.q } },
+      { description: { contains: q.q } },
+      { brand: { contains: q.q } },
+      { style: { contains: q.q } },
+      { garmentType: { contains: q.q } },
+      { category: { is: { name: { contains: q.q } } } },
+    ];
+  }
+  if (q.categoryId) where.categoryId = q.categoryId;
+  if (q.minPrice != null || q.maxPrice != null) {
+    where.price = { ...(q.minPrice != null ? { gte: q.minPrice } : {}), ...(q.maxPrice != null ? { lte: q.maxPrice } : {}) };
+  }
+  const sizes = parseList(q.size);
+  const colors = parseList(q.color);
+  const styles = parseList(q.style);
+  if (sizes.length) where.variants = { some: { size: { in: sizes } } };
+  if (colors.length) where.color = { in: colors };
+  if (styles.length) where.style = { in: styles };
+  return where;
+}
+
+// GET /api/products  (UC7.1 tìm kiếm + UC7.2 lọc + UC7.3 sắp xếp)
 export async function listProducts(req: Request, res: Response, next: NextFunction) {
   try {
-    const page = Math.max(1, Number(req.query.page) || 1);
-    const limit = Math.min(50, Number(req.query.limit) || 12);
-    const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
-    // UC6 - khách chỉ thấy sản phẩm ĐANG BÁN (ACTIVE) và chưa bị xóa
-    const where: any = { status: 'ACTIVE', deletedAt: null, ...(categoryId ? { categoryId } : {}) };
+    const q = publicQuery.parse(req.query);
+    // 4E (UC7.2) - khoảng giá không hợp lệ: giá tối thiểu lớn hơn giá tối đa
+    if (q.minPrice != null && q.maxPrice != null && q.minPrice > q.maxPrice) {
+      return res.status(400).json({ message: 'Khoảng giá không hợp lệ: giá tối thiểu lớn hơn giá tối đa.', code: 'INVALID_PRICE_RANGE' });
+    }
+    const where = publicWhere(q);
+    const orderBy =
+      q.sort === 'price_asc' ? { price: 'asc' as const }
+      : q.sort === 'price_desc' ? { price: 'desc' as const }
+      : q.sort === 'bestselling' ? { orderItems: { _count: 'desc' as const } } // UC7.3 - bán chạy (số lượt mua)
+      : { createdAt: 'desc' as const }; // newest (mặc định)
 
-    const [items, total] = await Promise.all([
+    const [rows, total] = await Promise.all([
       prisma.product.findMany({
-        where,
-        include: { images: true, category: true, bodyFits: true }, // UC4 - điểm tương thích dáng
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
+        where, orderBy,
+        include: {
+          images: true, category: { select: { id: true, name: true } },
+          variants: { select: { size: true, stock: true } },
+          reviews: { select: { rating: true } },
+          _count: { select: { orderItems: true } },
+        },
+        skip: (q.page - 1) * q.limit,
+        take: q.limit,
       }),
       prisma.product.count({ where }),
     ]);
 
-    res.json({ items, total, page, totalPages: Math.ceil(total / limit) });
+    const items = rows.map((p) => {
+      const ratingCount = p.reviews.length;
+      const ratingAvg = ratingCount ? p.reviews.reduce((a, r) => a + r.rating, 0) / ratingCount : 0;
+      const inStock = p.variants.some((v) => v.stock > 0);
+      const { reviews, _count, ...rest } = p as any;
+      return {
+        ...rest,
+        sizes: [...new Set(p.variants.map((v) => v.size))],
+        ratingAvg: Math.round(ratingAvg * 10) / 10,
+        ratingCount,
+        soldCount: p._count.orderItems,
+        inStock,
+      };
+    });
+
+    res.json({ items, total, page: q.page, totalPages: Math.max(1, Math.ceil(total / q.limit)) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/products/facets - dữ liệu cho khu vực bộ lọc (UC7.2): danh mục + số lượng, size/màu/phong cách, khoảng giá
+export async function getPublicFacets(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const base: any = { status: 'ACTIVE', deletedAt: null };
+    const [byCat, cats, colorRows, styleRows, sizeRows, priceAgg] = await Promise.all([
+      prisma.product.groupBy({ by: ['categoryId'], where: base, _count: { _all: true } }),
+      prisma.category.findMany({ where: { active: true }, select: { id: true, name: true } }),
+      prisma.product.findMany({ where: { ...base, color: { not: null } }, select: { color: true }, distinct: ['color'] }),
+      prisma.product.findMany({ where: { ...base, style: { not: null } }, select: { style: true }, distinct: ['style'] }),
+      prisma.productVariant.findMany({ where: { product: { is: base } }, select: { size: true }, distinct: ['size'] }),
+      prisma.product.aggregate({ where: base, _min: { price: true }, _max: { price: true } }),
+    ]);
+    const catName = new Map(cats.map((c) => [c.id, c.name]));
+    const categories = byCat
+      .map((g) => ({ id: g.categoryId, name: catName.get(g.categoryId) ?? 'Khác', count: g._count._all }))
+      .filter((c) => catName.has(c.id))
+      .sort((a, b) => b.count - a.count);
+    res.json({
+      categories,
+      colors: colorRows.map((r) => r.color).filter(Boolean),
+      styles: styleRows.map((r) => r.style).filter(Boolean),
+      sizes: sizeRows.map((r) => r.size).filter(Boolean),
+      priceMin: priceAgg._min.price ?? 0,
+      priceMax: priceAgg._max.price ?? 0,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/products/suggest?q= - gợi ý tự hoàn thành khi khách gõ từ khóa (UC7.1 luồng 3/3a)
+export async function suggestProducts(req: Request, res: Response, next: NextFunction) {
+  try {
+    const q = (typeof req.query.q === 'string' ? req.query.q : '').trim();
+    if (!q) return res.json({ items: [] });
+    const rows = await prisma.product.findMany({
+      where: { status: 'ACTIVE', deletedAt: null, name: { contains: q } },
+      select: { id: true, name: true, price: true, images: { where: { isPrimary: true }, take: 1, select: { url: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+    });
+    res.json({ items: rows.map((r) => ({ id: r.id, name: r.name, price: r.price, image: r.images[0]?.url ?? null })) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/products/:id/related - "Có thể bạn cũng thích" (UC7.4 luồng 9a): cùng danh mục, khác chính nó
+export async function getRelatedProducts(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = Number(req.params.id);
+    const self = await prisma.product.findUnique({ where: { id }, select: { categoryId: true } });
+    if (!self) return res.json({ items: [] });
+    const rows = await prisma.product.findMany({
+      where: { status: 'ACTIVE', deletedAt: null, categoryId: self.categoryId, id: { not: id } },
+      include: {
+        images: { where: { isPrimary: true }, take: 1 },
+        category: { select: { id: true, name: true } },
+        reviews: { select: { rating: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 4,
+    });
+    const items = rows.map((p) => {
+      const ratingCount = p.reviews.length;
+      const ratingAvg = ratingCount ? p.reviews.reduce((a, r) => a + r.rating, 0) / ratingCount : 0;
+      const { reviews, ...rest } = p as any;
+      return { ...rest, ratingAvg: Math.round(ratingAvg * 10) / 10, ratingCount };
+    });
+    res.json({ items });
   } catch (err) {
     next(err);
   }

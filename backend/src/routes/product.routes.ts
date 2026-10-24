@@ -3,6 +3,7 @@ import {
   listProducts, getProduct, createProduct, updateProduct, listManagedProducts, getManagedProduct,
   deleteProduct, getInventory, updateInventory,
   analyzeProductEndpoint, confirmAnalysis, analyzeBatch,
+  getPublicFacets, suggestProducts, getRelatedProducts,
 } from '../controllers/product.controller';
 import { importTemplate, exportProducts, importProducts } from '../controllers/product-io.controller';
 import { authenticate, authorize } from '../middlewares/auth';
@@ -10,6 +11,10 @@ import { uploadCsv } from '../middlewares/upload';
 
 const router = Router();
 router.get('/', listProducts);
+
+// UC7 - tìm kiếm & duyệt (công khai): facets cho bộ lọc + gợi ý tự hoàn thành (đặt trước '/:id')
+router.get('/facets', getPublicFacets);   // UC7.2
+router.get('/suggest', suggestProducts);  // UC7.1
 
 // UC6.1 - danh sách quản lý theo vai trò + UC4.1 phân tích hàng loạt (đặt trước '/:id')
 router.get('/manage', authenticate, authorize('SELLER', 'ADMIN'), listManagedProducts);
@@ -21,6 +26,7 @@ router.get('/import/template', authenticate, authorize('SELLER', 'ADMIN'), impor
 router.post('/import', authenticate, authorize('SELLER', 'ADMIN'), uploadCsv, importProducts);
 
 router.get('/:id', getProduct);
+router.get('/:id/related', getRelatedProducts); // UC7.4 - sản phẩm liên quan
 router.post('/', authenticate, authorize('SELLER', 'ADMIN'), createProduct); // UC6.3
 router.patch('/:id', authenticate, authorize('SELLER', 'ADMIN'), updateProduct); // UC6.4
 router.delete('/:id', authenticate, authorize('SELLER', 'ADMIN'), deleteProduct); // UC6.5

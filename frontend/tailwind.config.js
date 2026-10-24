@@ -4,10 +4,18 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Phong cách DressSense (theo giao diện Figma): xanh olive trầm trên nền kem
         brand: {
-          DEFAULT: '#7c3aed',
-          dark: '#5b21b6',
+          DEFAULT: '#4f5e41',
+          dark: '#3c4832',
+          light: '#eceee6',
         },
+        cream: '#f8f6f1',
+        ink: '#272723',
+      },
+      fontFamily: {
+        display: ['"Playfair Display"', 'Georgia', 'serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
     },
   },
