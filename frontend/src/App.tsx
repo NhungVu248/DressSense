@@ -6,6 +6,11 @@ import ProductDetailPage from './pages/ProductDetailPage';
 // UC8 - Giỏ hàng & Danh sách yêu thích
 import CartPage from './pages/CartPage';
 import WishlistPage from './pages/WishlistPage';
+// UC9 - Đặt hàng & thanh toán
+import CheckoutPage from './pages/CheckoutPage';
+import CheckoutResultPage from './pages/CheckoutResultPage';
+import { OrdersPage, OrderDetailPage } from './pages/OrdersPage';
+import TransactionHistoryPage from './pages/TransactionHistoryPage';
 // UC1 - Khách hàng
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -81,6 +86,13 @@ export default function App() {
       {/* UC8 - Giỏ hàng & Danh sách yêu thích (gắn tài khoản) */}
       <Route path="/cart" element={<RequireAuth><ShopLayout><CartPage /></ShopLayout></RequireAuth>} />
       <Route path="/wishlist" element={<RequireAuth><ShopLayout><WishlistPage /></ShopLayout></RequireAuth>} />
+
+      {/* UC9 - Đặt hàng & thanh toán */}
+      <Route path="/checkout" element={<RequireAuth><ShopLayout><CheckoutPage /></ShopLayout></RequireAuth>} />
+      <Route path="/checkout/result" element={<RequireAuth><ShopLayout><CheckoutResultPage /></ShopLayout></RequireAuth>} />
+      <Route path="/orders" element={<RequireAuth><ShopLayout><OrdersPage /></ShopLayout></RequireAuth>} />
+      <Route path="/orders/:id" element={<RequireAuth><ShopLayout><OrderDetailPage /></ShopLayout></RequireAuth>} />
+      <Route path="/transactions" element={<RequireAuth><ShopLayout><TransactionHistoryPage /></ShopLayout></RequireAuth>} />
 
       {/* UC5 - Gợi ý sản phẩm cá nhân hóa */}
       <Route path="/recommendations" element={<RequireAuth><ShopLayout><RecommendationsPage /></ShopLayout></RequireAuth>} />

@@ -116,6 +116,8 @@ export default function Navbar() {
                     <p className="text-xs text-gray-400 truncate">{user.email}</p>
                   </div>
                   <MenuLink to="/profile" label="Hồ sơ của tôi" />
+                  <MenuLink to="/orders" label="Đơn hàng của tôi" />
+                  <MenuLink to="/transactions" label="Lịch sử giao dịch" />
                   <MenuLink to="/profile/body" label="Phân tích dáng người" hot />
                   <MenuLink to="/profile/personalization" label="Hồ sơ cá nhân hóa" />
                   <MenuLink to="/profile/sizes" label="Thông tin size" />

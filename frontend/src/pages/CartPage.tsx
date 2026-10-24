@@ -1,22 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { PRODUCT_PLACEHOLDER } from '../lib/placeholder';
 import { formatVND } from '../lib/products';
 import {
-  getCart, updateCartItem, removeCartItem, checkoutPreview, listVouchers, applyVoucher,
-  type Cart, type CartItem, type Voucher,
+  getCart, updateCartItem, removeCartItem, listVouchers, applyVoucher,
+  type CartItem, type Voucher,
 } from '../lib/cart';
 
 export default function CartPage() {
   const qc = useQueryClient();
+  const nav = useNavigate();
   const { data: cart, isLoading } = useQuery({ queryKey: ['cart'], queryFn: getCart });
   const { data: vouchers } = useQuery({ queryKey: ['vouchers'], queryFn: listVouchers, staleTime: 5 * 60 * 1000 });
 
   const [code, setCode] = useState('');
   const [applied, setApplied] = useState<{ voucher: Voucher; discount: number } | null>(null);
   const [voucherMsg, setVoucherMsg] = useState('');
-  const [checkout, setCheckout] = useState<string>('');
 
   const refresh = () => { qc.invalidateQueries({ queryKey: ['cart'] }); qc.invalidateQueries({ queryKey: ['cart-count'] }); };
 
@@ -47,15 +47,9 @@ export default function CartPage() {
     else { setApplied(null); setVoucherMsg(r.message); }
   }
 
-  async function doCheckout() {
-    setCheckout('');
-    try {
-      const s = await checkoutPreview(applied?.voucher.code);
-      setCheckout(`Sẵn sàng đặt ${s.items.length} sản phẩm · Tổng ${formatVND(s.total)}${s.discount ? ` (đã giảm ${formatVND(s.discount)})` : ''}. ${s.note}`);
-    } catch (e: any) {
-      setCheckout('');
-      alert(e?.response?.data?.message ?? 'Không thể thanh toán.');
-    }
+  function goCheckout() {
+    if (!cart || cart.selectedCount === 0) { alert('Hãy chọn ít nhất một sản phẩm để thanh toán.'); return; }
+    nav('/checkout'); // UC9.1 - sang trang đặt hàng
   }
 
   if (isLoading) return <p className="text-center py-24 text-gray-400">Đang tải giỏ hàng…</p>;
@@ -128,11 +122,10 @@ export default function CartPage() {
 
             {cart!.hasInvalid && <p className="text-xs text-amber-600">Một số mục đang chọn đã hết hàng/ngừng bán và sẽ bị loại khi thanh toán.</p>}
 
-            <button onClick={doCheckout} disabled={cart!.selectedCount === 0}
+            <button onClick={goCheckout} disabled={cart!.selectedCount === 0}
               className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-3 font-medium">
               Thanh toán ({cart!.selectedCount})
             </button>
-            {checkout && <p className="text-xs text-green-700 bg-green-50 rounded-lg px-3 py-2">{checkout}</p>}
           </aside>
         </div>
       )}

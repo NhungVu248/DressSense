@@ -463,23 +463,66 @@ model CartItem {
 }
 
 enum OrderStatus {
-  PENDING
+  PENDING          // chờ xác nhận (đã đặt, COD hoặc đã thanh toán online)
+  AWAITING_PAYMENT // chờ thanh toán (đơn online chưa thanh toán thành công)
   PAID
   SHIPPING
   COMPLETED
   CANCELLED
 }
 
-model Order {
-  id        Int         @id @default(autoincrement())
-  userId    Int
-  user      User        @relation(fields: [userId], references: [id])
-  status    OrderStatus @default(PENDING)
-  total     Int
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+// UC9.2 - phương thức thanh toán (MoMo tạm bỏ; Visa đi qua VNPAY thẻ quốc tế)
+enum PaymentMethod {
+  COD
+  VNPAY
+  VISA
+}
 
-  items OrderItem[]
+// UC9.2/9.3 - trạng thái thanh toán, tách riêng khỏi trạng thái đơn hàng
+enum PaymentStatus {
+  UNPAID   // chưa thanh toán (COD trước khi thu tiền)
+  PENDING  // đang chờ kết quả cổng thanh toán
+  PAID
+  FAILED
+  CANCELLED
+  EXPIRED
+  REFUNDED
+}
+
+model Order {
+  id     Int         @id @default(autoincrement())
+  code   String      @unique // mã đơn hàng hiển thị (DSxxxxxxxx)
+  userId Int
+  user   User        @relation(fields: [userId], references: [id])
+  status OrderStatus @default(PENDING)
+
+  // Snapshot địa chỉ giao hàng tại thời điểm đặt (UC9.1 - lưu thông tin khi đặt)
+  recipientName String
+  phone         String
+  province      String
+  district      String
+  ward          String
+  addressDetail String
+
+  // Tiền (tính ở phía hệ thống - UC9.1 quy tắc nghiệp vụ)
+  subtotal       Int
+  discount       Int    @default(0)
+  voucherCode    String?
+  shippingMethod String @default("STANDARD")
+  shippingFee    Int    @default(0)
+  total          Int
+
+  // Thanh toán (UC9.2 - trạng thái thanh toán tách khỏi trạng thái đơn)
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(UNPAID)
+  note          String?
+
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  items    OrderItem[]
+  payments PaymentTransaction[]
 
   @@index([userId])
 }
@@ -492,8 +535,31 @@ model OrderItem {
   product   Product         @relation(fields: [productId], references: [id])
   variantId Int?
   variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  name      String? // snapshot tên SP khi đặt (giữ lịch sử kể cả SP bị xóa/đổi)
+  size      String? // snapshot size biến thể khi đặt
   quantity  Int
-  price     Int
+  price     Int // snapshot đơn giá khi đặt
+}
+
+// UC9.2/9.3 - mỗi lần thử thanh toán của một đơn; một đơn có thể có nhiều giao dịch,
+// chỉ một giao dịch PAID có hiệu lực. Lưu cả giao dịch thất bại để tra cứu (UC9.3).
+model PaymentTransaction {
+  id          Int           @id @default(autoincrement())
+  code        String        @unique // mã giao dịch (vnp_TxnRef cho VNPAY)
+  orderId     Int
+  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method      PaymentMethod
+  amount      Int
+  status      PaymentStatus @default(PENDING)
+  providerRef String? // mã giao dịch phía cổng (vnp_TransactionNo)
+  bankCode    String? // mã ngân hàng / loại thẻ
+  cardLast4   String? // 4 số cuối thẻ (nếu có) - KHÔNG lưu CVV/số thẻ đầy đủ
+  responseCode String? // mã phản hồi cổng (vnp_ResponseCode)
+  message     String?
+  createdAt   DateTime      @default(now())
+  paidAt      DateTime?
+
+  @@index([orderId])
 }
 
 model Review {

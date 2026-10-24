@@ -11,7 +11,19 @@ export const env = {
   googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   // GĐ7 - AI service (Python/FastAPI). Trống -> tắt tích hợp, backend tự tính bằng luật Node.
   aiServiceUrl: process.env.AI_SERVICE_URL || '',
+
+  // UC9.2 - VNPAY sandbox. Trống TMN/secret -> thanh toán online tạm tắt (COD vẫn chạy).
+  // Đăng ký sandbox miễn phí tại https://sandbox.vnpayment.vn để lấy TMN code + hash secret.
+  vnp: {
+    tmnCode: process.env.VNP_TMN_CODE || '',
+    hashSecret: process.env.VNP_HASH_SECRET || '',
+    url: process.env.VNP_URL || 'https://sandbox.vnpayment.vn/paymentv2/vnpaymenthtml',
+    returnUrl: process.env.VNP_RETURN_URL || 'http://localhost:4000/api/payments/vnpay/return',
+  },
 };
+
+// UC9.2 - thanh toán online chỉ bật khi đã cấu hình VNPAY sandbox
+export const vnpayEnabled = () => !!(env.vnp.tmnCode && env.vnp.hashSecret);
 
 export const isDev = env.nodeEnv !== 'production';
 

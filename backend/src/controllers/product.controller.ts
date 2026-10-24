@@ -354,7 +354,7 @@ async function auditProduct(entityId: number, action: 'CREATE' | 'UPDATE' | 'DEL
 }
 
 // DELETE /api/products/:id - UC6.5 xóa SP (mềm nếu có lịch sử đơn; cứng nếu không; chặn khi có đơn chưa xong)
-const UNFINISHED_ORDER = ['PENDING', 'PAID', 'SHIPPING'];
+const UNFINISHED_ORDER = ['PENDING', 'AWAITING_PAYMENT', 'PAID', 'SHIPPING'];
 export async function deleteProduct(req: Request, res: Response, next: NextFunction) {
   try {
     const id = Number(req.params.id);
