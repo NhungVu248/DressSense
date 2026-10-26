@@ -117,6 +117,7 @@ export default function Navbar() {
                   </div>
                   <MenuLink to="/profile" label="Hồ sơ của tôi" />
                   <MenuLink to="/orders" label="Đơn hàng của tôi" />
+                  <MenuLink to="/support" label="Đổi/trả & Khiếu nại" />
                   <MenuLink to="/transactions" label="Lịch sử giao dịch" />
                   <MenuLink to="/profile/body" label="Phân tích dáng người" hot />
                   <MenuLink to="/profile/personalization" label="Hồ sơ cá nhân hóa" />
@@ -124,6 +125,7 @@ export default function Navbar() {
                   <MenuLink to="/recommendations" label="Gợi ý cho bạn" />
                   {user.role === 'SELLER' && <MenuLink to="/manage/products" label="Quản lý gian hàng" />}
                   {user.role === 'SELLER' && <MenuLink to="/manage/orders" label="Quản lý đơn hàng" />}
+                  {user.role === 'SELLER' && <MenuLink to="/manage/support" label="Hỗ trợ sau bán" />}
                   {user.role === 'ADMIN' && <MenuLink to="/admin" label="Trang quản trị" />}
                   <button onClick={logout} className="w-full text-left px-4 py-2 text-red-500 hover:bg-cream">Đăng xuất</button>
                 </div>

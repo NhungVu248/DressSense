@@ -5,6 +5,7 @@ import {
   getSellerOrders, sellerUpdateStatus, sellerApproveCancel, sellerRejectCancel,
   ORDER_STATUS_LABEL, type Order, type OrderStatus,
 } from '../../lib/order';
+import { createIncident, type IncidentType } from '../../lib/support';
 
 const STATUS_CLS: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-700', CONFIRMED: 'bg-sky-100 text-sky-700',
@@ -74,6 +75,12 @@ function SellerOrderCard({ o, onChanged }: { o: Order; onChanged: () => void }) 
     } catch (e: any) { alert(e?.response?.data?.message ?? 'Không cập nhật được.'); }
     finally { setBusy(false); }
   }
+  async function reportIncident() {
+    const t = prompt('Loại sự cố: LATE (giao chậm) / FAILED (giao thất bại) / LOST (thất lạc)')?.toUpperCase();
+    if (!t || !['LATE', 'FAILED', 'LOST'].includes(t)) return;
+    try { await createIncident(o.id, t as IncidentType, prompt('Ghi chú (tuỳ chọn):') || undefined); alert('Đã ghi nhận sự cố. Xử lý trong mục Hỗ trợ sau bán.'); }
+    catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); }
+  }
   async function approve() { setBusy(true); try { await sellerApproveCancel(o.id); onChanged(); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } finally { setBusy(false); } }
   async function reject() { setBusy(true); try { await sellerRejectCancel(o.id); onChanged(); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } finally { setBusy(false); } }
 
@@ -115,12 +122,17 @@ function SellerOrderCard({ o, onChanged }: { o: Order; onChanged: () => void }) 
         </div>
       )}
 
-      {next && o.status !== 'CANCELLED' && (
-        <div className="flex gap-2 mt-3">
-          <button onClick={advance} disabled={busy || (next.needShip && shipForm && !carrier)} className="bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg px-4 py-2 text-sm">{busy ? 'Đang lưu…' : next.label}</button>
-          {shipForm && <button onClick={() => setShipForm(false)} className="border border-black/15 rounded-lg px-4 py-2 text-sm">Hủy</button>}
-        </div>
-      )}
+      <div className="flex gap-2 mt-3 flex-wrap">
+        {next && o.status !== 'CANCELLED' && (
+          <>
+            <button onClick={advance} disabled={busy || (next.needShip && shipForm && !carrier)} className="bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg px-4 py-2 text-sm">{busy ? 'Đang lưu…' : next.label}</button>
+            {shipForm && <button onClick={() => setShipForm(false)} className="border border-black/15 rounded-lg px-4 py-2 text-sm">Hủy</button>}
+          </>
+        )}
+        {(o.status === 'SHIPPING' || o.status === 'DELIVERED') && (
+          <button onClick={reportIncident} className="border border-amber-300 text-amber-700 rounded-lg px-4 py-2 text-sm">Báo sự cố</button>
+        )}
+      </div>
     </div>
   );
 }

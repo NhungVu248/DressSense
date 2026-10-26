@@ -64,6 +64,8 @@ model User {
   cartItems    CartItem[]
   wishlist     Wishlist[] // UC8.2 - danh sách yêu thích
   orders       Order[]
+  returnRequests ReturnRequest[] // UC11.1
+  complaints     Complaint[]     // UC11.2
   reviews      Review[]
   behaviors    UserBehavior[]
   addresses    Address[]
@@ -544,6 +546,9 @@ model Order {
 
   items    OrderItem[]
   payments PaymentTransaction[]
+  returnRequests ReturnRequest[]   // UC11.1
+  complaints     Complaint[]       // UC11.2
+  incidents      DeliveryIncident[] // UC11.3
 
   @@index([userId])
 }
@@ -560,15 +565,23 @@ model OrderItem {
   size      String? // snapshot size biến thể khi đặt
   quantity  Int
   price     Int // snapshot đơn giá khi đặt
+
+  returnItems ReturnItem[] // UC11.1
 }
 
 // UC9.2/9.3 - mỗi lần thử thanh toán của một đơn; một đơn có thể có nhiều giao dịch,
 // chỉ một giao dịch PAID có hiệu lực. Lưu cả giao dịch thất bại để tra cứu (UC9.3).
+enum PaymentKind {
+  PAYMENT
+  REFUND // UC11.4 - giao dịch hoàn tiền
+}
+
 model PaymentTransaction {
   id          Int           @id @default(autoincrement())
   code        String        @unique // mã giao dịch (vnp_TxnRef cho VNPAY)
   orderId     Int
   order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  kind        PaymentKind   @default(PAYMENT) // UC11.4 - thanh toán hay hoàn tiền
   method      PaymentMethod
   amount      Int
   status      PaymentStatus @default(PENDING)
@@ -577,6 +590,10 @@ model PaymentTransaction {
   cardLast4   String? // 4 số cuối thẻ (nếu có) - KHÔNG lưu CVV/số thẻ đầy đủ
   responseCode String? // mã phản hồi cổng (vnp_ResponseCode)
   message     String?
+  // UC11.4 - giao dịch hoàn tiền liên kết tới giao dịch thanh toán gốc
+  refundOfId Int?
+  refundOf   PaymentTransaction?  @relation("Refunds", fields: [refundOfId], references: [id])
+  refunds    PaymentTransaction[] @relation("Refunds")
   createdAt   DateTime      @default(now())
   paidAt      DateTime?
 
@@ -765,4 +782,107 @@ model Voucher {
   usedCount   Int         @default(0)
   active      Boolean     @default(true)
   createdAt   DateTime    @default(now())
+}
+
+// ============================================================
+//  UC11 - Đổi/trả, khiếu nại, sự cố giao hàng
+// ============================================================
+
+enum ReturnType {
+  EXCHANGE // đổi hàng (size/màu khác)
+  RETURN   // trả hàng + hoàn tiền
+}
+
+enum RequestStatus {
+  PENDING   // chờ người bán xử lý
+  APPROVED  // đã chấp thuận
+  REJECTED  // bị từ chối
+  COMPLETED // đã hoàn tất (đổi xong / đã hoàn tiền)
+  CANCELLED
+}
+
+// UC11.1 - yêu cầu đổi/trả hàng
+model ReturnRequest {
+  id           Int           @id @default(autoincrement())
+  code         String        @unique
+  orderId      Int
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId       Int
+  user         User          @relation(fields: [userId], references: [id])
+  type         ReturnType
+  reason       String
+  description  String?       @db.Text
+  evidence     String?       @db.Text // URL/ghi chú bằng chứng (chưa làm upload file)
+  exchangeSize String?       // size muốn đổi (khi EXCHANGE)
+  status       RequestStatus @default(PENDING)
+  sellerNote   String?       // lý do khi từ chối / ghi chú xử lý
+  refundAmount Int?          // số tiền hoàn dự kiến (khi RETURN)
+  createdAt    DateTime      @default(now())
+  resolvedAt   DateTime?
+
+  items ReturnItem[]
+
+  @@index([orderId])
+  @@index([userId])
+}
+
+model ReturnItem {
+  id              Int           @id @default(autoincrement())
+  returnRequestId Int
+  returnRequest   ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
+  orderItemId     Int
+  orderItem       OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  quantity        Int
+}
+
+enum ComplaintStatus {
+  PENDING          // chờ người bán phản hồi
+  SELLER_RESPONDED // người bán đã đề xuất phương án
+  RESOLVED         // hai bên thống nhất
+  ESCALATED        // chuyển quản trị viên phân xử
+  ADMIN_RESOLVED   // quản trị viên đã xử lý
+  REJECTED         // bị từ chối
+}
+
+// UC11.2 - khiếu nại đơn hàng
+model Complaint {
+  id            Int             @id @default(autoincrement())
+  code          String          @unique
+  orderId       Int
+  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId        Int
+  user          User            @relation(fields: [userId], references: [id])
+  type          String          // loại vấn đề
+  content       String          @db.Text
+  evidence      String?         @db.Text
+  status        ComplaintStatus @default(PENDING)
+  sellerProposal String?        @db.Text // phương án người bán đề xuất
+  adminDecision  String?        @db.Text // quyết định của quản trị viên
+  handledBy      Int?           // id quản trị viên xử lý
+  createdAt     DateTime        @default(now())
+  escalatedAt   DateTime?
+  resolvedAt    DateTime?
+
+  @@index([orderId])
+  @@index([userId])
+}
+
+enum IncidentType {
+  LATE   // giao chậm
+  FAILED // giao thất bại
+  LOST   // thất lạc
+}
+
+// UC11.3 - sự cố giao hàng (người bán xử lý)
+model DeliveryIncident {
+  id         Int          @id @default(autoincrement())
+  orderId    Int
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type       IncidentType
+  note       String?      @db.Text
+  resolution String?      // REDELIVER | UPDATE_ETA | LOST_REFUND | ESCALATE
+  createdAt  DateTime     @default(now())
+  resolvedAt DateTime?
+
+  @@index([orderId])
 }

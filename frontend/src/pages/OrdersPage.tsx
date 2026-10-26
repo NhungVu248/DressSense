@@ -7,6 +7,7 @@ import {
   ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, PAYMENT_METHOD_LABEL,
   type Order, type OrderStatus,
 } from '../lib/order';
+import { ReturnModal, ComplaintModal } from '../components/SupportModals';
 
 const STATUS_CLS: Record<OrderStatus, string> = {
   AWAITING_PAYMENT: 'bg-orange-100 text-orange-700', PENDING: 'bg-amber-100 text-amber-700',
@@ -127,6 +128,8 @@ export function OrderDetailPage() {
   const qc = useQueryClient();
   const { data: o, isLoading } = useQuery({ queryKey: ['order', id], queryFn: () => getOrder(id!), enabled: !!id });
   const [showCancel, setShowCancel] = useState(false);
+  const [showReturn, setShowReturn] = useState(false);
+  const [showComplaint, setShowComplaint] = useState(false);
   const [reason, setReason] = useState(CANCEL_REASONS[0]);
   const [busy, setBusy] = useState(false);
 
@@ -159,6 +162,8 @@ export function OrderDetailPage() {
   const canConfirm = o.status === 'DELIVERED';
   const canCancelDirect = o.status === 'PENDING' || o.status === 'AWAITING_PAYMENT';
   const canCancelRequest = (o.status === 'CONFIRMED' || o.status === 'PREPARING') && !o.cancelRequested;
+  const canReturn = o.status === 'DELIVERED' || o.status === 'COMPLETED'; // UC11.1
+  const canComplain = ['CONFIRMED', 'PREPARING', 'SHIPPING', 'DELIVERED', 'COMPLETED'].includes(o.status); // UC11.2
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -212,12 +217,17 @@ export function OrderDetailPage() {
       </section>
 
       {/* Thao tác theo trạng thái */}
-      {(canConfirm || canCancelDirect || canCancelRequest) && (
+      {(canConfirm || canCancelDirect || canCancelRequest || canReturn || canComplain) && (
         <div className="flex flex-wrap gap-2 mt-5">
           {canConfirm && <button onClick={doConfirm} disabled={busy} className="bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg px-5 py-2.5 text-sm">Đã nhận được hàng</button>}
+          {canReturn && <button onClick={() => setShowReturn(true)} className="border border-black/15 text-ink hover:border-brand rounded-lg px-5 py-2.5 text-sm">Đổi/trả hàng</button>}
+          {canComplain && <button onClick={() => setShowComplaint(true)} className="border border-black/15 text-ink hover:border-brand rounded-lg px-5 py-2.5 text-sm">Gửi khiếu nại</button>}
           {(canCancelDirect || canCancelRequest) && <button onClick={() => setShowCancel(true)} className="border border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-5 py-2.5 text-sm">{canCancelDirect ? 'Hủy đơn hàng' : 'Yêu cầu hủy'}</button>}
         </div>
       )}
+
+      {showReturn && <ReturnModal order={o} onClose={() => setShowReturn(false)} onDone={() => { setShowReturn(false); refresh(); }} />}
+      {showComplaint && <ComplaintModal orderId={o.id} onClose={() => setShowComplaint(false)} onDone={() => setShowComplaint(false)} />}
 
       {showCancel && (
         <div className="fixed inset-0 z-50 grid place-items-center p-4">
