@@ -15,7 +15,7 @@ export interface CheckoutInfo {
   items: CheckoutItem[]; subtotal: number; vnpayEnabled: boolean;
 }
 
-export type OrderStatus = 'PENDING' | 'AWAITING_PAYMENT' | 'PAID' | 'SHIPPING' | 'COMPLETED' | 'CANCELLED';
+export type OrderStatus = 'AWAITING_PAYMENT' | 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'COMPLETED' | 'CANCELLED' | 'PAID';
 export type PaymentStatus = 'UNPAID' | 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'EXPIRED' | 'REFUNDED';
 export type PaymentMethod = 'COD' | 'VNPAY' | 'VISA';
 
@@ -32,8 +32,24 @@ export interface Order {
   subtotal: number; discount: number; voucherCode: string | null;
   shippingMethod: string; shippingFee: number; total: number; note: string | null;
   paidAt: string | null; createdAt: string;
+  // UC10 - giao nhận + hủy
+  carrier: string | null; trackingNumber: string | null; estimatedDelivery: string | null;
+  confirmedAt: string | null; shippedAt: string | null; deliveredAt: string | null;
+  completedAt: string | null; cancelledAt: string | null;
+  cancelRequested: boolean; cancelReason: string | null; cancelledBy: string | null; refundStatus: string | null;
   items: OrderItem[]; payments?: Transaction[];
+  user?: { fullName: string }; // chỉ ở danh sách của người bán
 }
+
+// UC10.2 - các bước tiến trình theo dõi
+export const TRACKING_STEPS: { status: OrderStatus; label: string }[] = [
+  { status: 'PENDING', label: 'Chờ xác nhận' },
+  { status: 'CONFIRMED', label: 'Đã xác nhận' },
+  { status: 'PREPARING', label: 'Đang chuẩn bị' },
+  { status: 'SHIPPING', label: 'Đang giao' },
+  { status: 'DELIVERED', label: 'Đã giao' },
+  { status: 'COMPLETED', label: 'Hoàn tất' },
+];
 
 export interface PlaceOrderBody {
   addressId: number; shippingMethod: string; paymentMethod: PaymentMethod; voucherCode?: string; note?: string;
@@ -45,8 +61,31 @@ export async function getCheckoutInfo(): Promise<CheckoutInfo> {
 export async function placeOrder(body: PlaceOrderBody): Promise<{ order: Order; payUrl?: string }> {
   return (await api.post('/orders', body)).data;
 }
-export async function getOrders(): Promise<Order[]> {
-  return (await api.get('/orders')).data.orders;
+export async function getOrders(status?: string): Promise<Order[]> {
+  return (await api.get('/orders', { params: status ? { status } : {} })).data.orders;
+}
+
+// UC10.3 - xác nhận đã nhận hàng
+export async function confirmReceipt(orderId: number) {
+  return (await api.patch(`/orders/${orderId}/confirm-receipt`)).data;
+}
+// UC10.5 - hủy đơn / yêu cầu hủy
+export async function cancelOrder(orderId: number, reason: string) {
+  return (await api.post(`/orders/${orderId}/cancel`, { reason })).data;
+}
+
+// ---- UC10.4 - Người bán ----
+export async function getSellerOrders(status?: string): Promise<Order[]> {
+  return (await api.get('/seller/orders', { params: status ? { status } : {} })).data.orders;
+}
+export async function sellerUpdateStatus(orderId: number, body: { to: string; carrier?: string; trackingNumber?: string; estimatedDelivery?: string }) {
+  return (await api.patch(`/seller/orders/${orderId}/status`, body)).data;
+}
+export async function sellerApproveCancel(orderId: number) {
+  return (await api.patch(`/seller/orders/${orderId}/cancel/approve`)).data;
+}
+export async function sellerRejectCancel(orderId: number) {
+  return (await api.patch(`/seller/orders/${orderId}/cancel/reject`)).data;
 }
 export async function getOrder(id: number | string): Promise<Order> {
   return (await api.get(`/orders/${id}`)).data.order;
@@ -63,8 +102,9 @@ export async function createAddress(a: Omit<Address, 'id' | 'isDefault'> & { isD
 
 // Nhãn hiển thị
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
-  PENDING: 'Chờ xác nhận', AWAITING_PAYMENT: 'Chờ thanh toán', PAID: 'Đã thanh toán',
-  SHIPPING: 'Đang giao', COMPLETED: 'Hoàn thành', CANCELLED: 'Đã hủy',
+  AWAITING_PAYMENT: 'Chờ thanh toán', PENDING: 'Chờ xác nhận', CONFIRMED: 'Đã xác nhận',
+  PREPARING: 'Đang chuẩn bị', SHIPPING: 'Đang giao', DELIVERED: 'Đã giao',
+  COMPLETED: 'Hoàn tất', CANCELLED: 'Đã hủy', PAID: 'Đã thanh toán',
 };
 export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   UNPAID: 'Chưa thanh toán', PENDING: 'Đang xử lý', PAID: 'Đã thanh toán',

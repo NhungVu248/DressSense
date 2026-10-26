@@ -45,13 +45,9 @@ export async function finalizePayment(v: VerifyResult): Promise<{ handled: boole
         where: { id: tx.id },
         data: { status: 'PAID', providerRef: v.transactionNo ?? null, bankCode: v.bankCode ?? null, responseCode: v.responseCode, message: 'Thanh toán thành công', paidAt: new Date() },
       });
-      // Đơn: Đã thanh toán + chuyển Chờ xác nhận; chốt tồn kho (trừ stock, nhả reserved)
+      // Đơn: Đã thanh toán + chuyển Chờ xác nhận. Tồn kho vẫn ở dạng "giữ chỗ" (reserved),
+      // chỉ trừ stock thật khi đơn Hoàn tất (UC10.3) và nhả reserved khi Hủy (UC10.5).
       await db.order.update({ where: { id: tx.orderId }, data: { paymentStatus: 'PAID', status: 'PENDING', paidAt: new Date() } });
-      for (const it of tx.order.items) {
-        if (it.variantId) {
-          await db.productVariant.update({ where: { id: it.variantId }, data: { stock: { decrement: it.quantity }, reserved: { decrement: it.quantity } } });
-        }
-      }
     });
     return { handled: true, code: '00', message: 'Xác nhận thanh toán thành công' };
   }

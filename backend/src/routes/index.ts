@@ -16,6 +16,7 @@ import wishlistRoutes from './wishlist.routes';
 import voucherRoutes from './voucher.routes';
 import orderRoutes from './order.routes';
 import paymentRoutes from './payment.routes';
+import sellerOrderRoutes from './seller-order.routes';
 
 const router = Router();
 router.use('/auth', authRoutes);
@@ -35,5 +36,6 @@ router.use('/wishlist', wishlistRoutes); // UC8.2 - Danh sách yêu thích
 router.use('/vouchers', voucherRoutes);  // UC8.3 - Mã giảm giá
 router.use('/orders', orderRoutes);      // UC9.1 - Đặt hàng
 router.use('/payments', paymentRoutes);  // UC9.2/9.3 - Thanh toán & lịch sử giao dịch
+router.use('/seller', sellerOrderRoutes); // UC10.4 - Người bán quản lý đơn hàng
 
 export default router;

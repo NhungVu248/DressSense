@@ -463,12 +463,15 @@ model CartItem {
 }
 
 enum OrderStatus {
-  PENDING          // chờ xác nhận (đã đặt, COD hoặc đã thanh toán online)
   AWAITING_PAYMENT // chờ thanh toán (đơn online chưa thanh toán thành công)
-  PAID
-  SHIPPING
-  COMPLETED
-  CANCELLED
+  PENDING          // chờ xác nhận (đã đặt, COD hoặc đã thanh toán online)
+  CONFIRMED        // đã xác nhận (người bán nhận đơn) - UC10.4
+  PREPARING        // đang chuẩn bị hàng - UC10.4
+  SHIPPING         // đang giao
+  DELIVERED        // đã giao (chờ khách xác nhận) - UC10.2
+  COMPLETED        // hoàn tất (khách đã nhận) - UC10.3
+  CANCELLED        // đã hủy - UC10.5
+  PAID             // (giữ để tương thích; luồng thanh toán online đặt đơn về PENDING)
 }
 
 // UC9.2 - phương thức thanh toán (MoMo tạm bỏ; Visa đi qua VNPAY thẻ quốc tế)
@@ -516,6 +519,24 @@ model Order {
   paymentMethod PaymentMethod
   paymentStatus PaymentStatus @default(UNPAID)
   note          String?
+
+  // UC10.2/10.4 - thông tin giao nhận (chỉ hiện khi người bán đã cập nhật)
+  carrier           String?   // đơn vị vận chuyển
+  trackingNumber    String?   // mã vận đơn
+  estimatedDelivery DateTime? // thời gian giao dự kiến
+
+  // UC10 - mốc thời gian từng trạng thái (lưu thời điểm mỗi lần đổi)
+  confirmedAt DateTime?
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+
+  // UC10.5 - hủy đơn
+  cancelRequested Boolean @default(false) // khách yêu cầu hủy (chờ người bán duyệt)
+  cancelReason    String?
+  cancelledBy     String? // CUSTOMER | SELLER | SYSTEM
+  refundStatus    String? // null | PENDING | DONE (đơn đã thanh toán -> chờ UC11.4)
 
   paidAt    DateTime?
   createdAt DateTime  @default(now())

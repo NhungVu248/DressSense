@@ -123,6 +123,7 @@ export default function Navbar() {
                   <MenuLink to="/profile/sizes" label="Thông tin size" />
                   <MenuLink to="/recommendations" label="Gợi ý cho bạn" />
                   {user.role === 'SELLER' && <MenuLink to="/manage/products" label="Quản lý gian hàng" />}
+                  {user.role === 'SELLER' && <MenuLink to="/manage/orders" label="Quản lý đơn hàng" />}
                   {user.role === 'ADMIN' && <MenuLink to="/admin" label="Trang quản trị" />}
                   <button onClick={logout} className="w-full text-left px-4 py-2 text-red-500 hover:bg-cream">Đăng xuất</button>
                 </div>
@@ -155,6 +156,7 @@ export default function Navbar() {
                   </Link>
                   <Link to="/recommendations" onClick={() => setMobile(false)} className="py-2.5 hover:text-brand border-b border-black/5">Gợi ý cho bạn</Link>
                   {user.role === 'SELLER' && <Link to="/manage/products" onClick={() => setMobile(false)} className="py-2.5 border-b border-black/5">Quản lý gian hàng</Link>}
+                  {user.role === 'SELLER' && <Link to="/manage/orders" onClick={() => setMobile(false)} className="py-2.5 border-b border-black/5">Quản lý đơn hàng</Link>}
                   {user.role === 'ADMIN' && <Link to="/admin" onClick={() => setMobile(false)} className="py-2.5 border-b border-black/5">Trang quản trị</Link>}
                   <button onClick={() => { setMobile(false); logout(); }} className="py-2.5 text-left text-red-500">Đăng xuất</button>
                 </>

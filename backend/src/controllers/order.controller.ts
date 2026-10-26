@@ -5,6 +5,8 @@ import { SHIPPING_METHODS, shippingFeeFor } from '../constants/shipping';
 import { computeVoucher } from './voucher.controller';
 import { startOnlinePayment } from '../services/payment.service';
 import { vnpayEnabled } from '../config/env';
+import { releaseReserved, finalizeStock } from '../services/order.service';
+import { CANCELLABLE_DIRECT, CANCELLABLE_REQUEST, type OrderStatusValue } from '../constants/order-status';
 
 // ============================================================
 //  UC9.1 - Đặt hàng. Tính tiền ở phía hệ thống, kiểm tra lại giá/tồn kho/voucher
@@ -153,15 +155,78 @@ function serializeOrder(o: any) {
   return { ...o, items: o.items };
 }
 
-// GET /api/orders - danh sách đơn của khách
+const VALID_STATUS = ['AWAITING_PAYMENT', 'PENDING', 'CONFIRMED', 'PREPARING', 'SHIPPING', 'DELIVERED', 'COMPLETED', 'CANCELLED', 'PAID'];
+
+// GET /api/orders?status= - danh sách đơn của khách (UC10.1 - lọc theo trạng thái)
 export async function listOrders(req: Request, res: Response, next: NextFunction) {
   try {
+    const status = typeof req.query.status === 'string' && VALID_STATUS.includes(req.query.status) ? req.query.status : undefined;
     const orders = await prisma.order.findMany({
-      where: { userId: req.user!.userId },
+      where: { userId: req.user!.userId, ...(status ? { status: status as any } : {}) },
       orderBy: { createdAt: 'desc' },
       include: { items: true },
     });
     res.json({ orders: orders.map(serializeOrder) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PATCH /api/orders/:id/confirm-receipt - UC10.3 khách xác nhận đã nhận hàng
+export async function confirmReceipt(req: Request, res: Response, next: NextFunction) {
+  try {
+    const order = await prisma.order.findFirst({ where: { id: Number(req.params.id), userId: req.user!.userId }, include: { items: true } });
+    if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' }); // 2E
+    if (order.status === 'COMPLETED') return res.status(400).json({ message: 'Đơn đã được xác nhận nhận hàng.' }); // 5E
+    if (order.status !== 'DELIVERED') return res.status(400).json({ message: 'Đơn chưa ở trạng thái Đã giao nên chưa thể xác nhận.' }); // 2E
+
+    const now = new Date();
+    await prisma.$transaction(async (db) => {
+      await db.order.update({ where: { id: order.id }, data: { status: 'COMPLETED', completedAt: now } });
+      await finalizeStock(db, order.items); // chốt tồn kho khi hoàn tất
+    });
+    res.json({ ok: true, status: 'COMPLETED', completedAt: now });
+  } catch (err) {
+    next(err);
+  }
+}
+
+const cancelSchema = z.object({ reason: z.string().trim().min(1, 'Vui lòng chọn lý do hủy.') });
+
+// POST /api/orders/:id/cancel - UC10.5 khách hủy đơn (trực tiếp hoặc tạo yêu cầu hủy)
+export async function cancelOrder(req: Request, res: Response, next: NextFunction) {
+  try {
+    const body = cancelSchema.safeParse(req.body);
+    if (!body.success) return res.status(400).json({ message: 'Vui lòng chọn lý do hủy.' });
+    const order = await prisma.order.findFirst({ where: { id: Number(req.params.id), userId: req.user!.userId }, include: { items: true } });
+    if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' }); // 2E
+    const st = order.status as OrderStatusValue;
+
+    // 3E - đã hoàn tất/đã hủy: không cho hủy
+    if (st === 'COMPLETED' || st === 'CANCELLED') return res.status(400).json({ message: 'Đơn đã hoàn tất hoặc đã hủy, không thể hủy.' });
+
+    // Chờ xác nhận / chờ thanh toán: hủy trực tiếp
+    if (CANCELLABLE_DIRECT.includes(st)) {
+      const needRefund = order.paymentStatus === 'PAID'; // 9a COD chưa trả -> không hoàn tiền
+      await prisma.$transaction(async (db) => {
+        await db.order.update({
+          where: { id: order.id },
+          data: { status: 'CANCELLED', cancelledAt: new Date(), cancelledBy: 'CUSTOMER', cancelReason: body.data.reason, cancelRequested: false, refundStatus: needRefund ? 'PENDING' : null },
+        });
+        await releaseReserved(db, order.items); // hoàn kho
+      });
+      return res.json({ ok: true, status: 'CANCELLED', refund: needRefund });
+    }
+
+    // Đã xác nhận / đang chuẩn bị: tạo yêu cầu hủy, chờ người bán duyệt (3a)
+    if (CANCELLABLE_REQUEST.includes(st)) {
+      if (order.cancelRequested) return res.status(400).json({ message: 'Đã gửi yêu cầu hủy, đang chờ người bán duyệt.' });
+      await prisma.order.update({ where: { id: order.id }, data: { cancelRequested: true, cancelReason: body.data.reason } });
+      return res.json({ requested: true, message: 'Đã gửi yêu cầu hủy, chờ người bán duyệt.' });
+    }
+
+    // Đang giao trở đi (3d/3E.1): không cho hủy trực tiếp
+    return res.status(409).json({ message: 'Đơn đã được bàn giao vận chuyển, không thể hủy. Vui lòng dùng đổi/trả hoặc khiếu nại (UC11).', code: 'NOT_CANCELLABLE' });
   } catch (err) {
     next(err);
   }

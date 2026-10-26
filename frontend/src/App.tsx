@@ -37,6 +37,8 @@ import AdminUsersPage from './pages/admin/AdminUsersPage';
 // UC6 - Quản lý sản phẩm & danh mục (Người bán / Quản trị viên)
 import ProductManagePage from './pages/manage/ProductManagePage';
 import ProductFormPage from './pages/manage/ProductFormPage';
+// UC10.4 - Người bán quản lý đơn hàng
+import SellerOrdersPage from './pages/manage/SellerOrdersPage';
 import CategoryManagePage from './pages/admin/CategoryManagePage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminLayout from './components/AdminLayout';
@@ -106,6 +108,7 @@ export default function App() {
       <Route path="/admin/products/:id/edit" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductFormPage basePath="/admin/products" /></AdminLayout></RequireAuth>} />
 
       {/* UC6 - Người bán quản lý sản phẩm của gian hàng (trong giao diện shop) */}
+      <Route path="/manage/orders" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><SellerOrdersPage /></ShopLayout></RequireAuth>} />
       <Route path="/manage/products" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductManagePage /></ShopLayout></RequireAuth>} />
       <Route path="/manage/products/new" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductFormPage /></ShopLayout></RequireAuth>} />
       <Route path="/manage/products/:id/edit" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductFormPage /></ShopLayout></RequireAuth>} />
