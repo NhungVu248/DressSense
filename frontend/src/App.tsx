@@ -46,6 +46,7 @@ import AdminComplaintsPage from './pages/admin/AdminComplaintsPage';
 // UC12 - Đánh giá, hỏi đáp, thông báo
 import NotificationsPage from './pages/NotificationsPage';
 import SellerReviewsPage from './pages/manage/SellerReviewsPage';
+import AdminReviewsPage from './pages/admin/AdminReviewsPage';
 import CategoryManagePage from './pages/admin/CategoryManagePage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminLayout from './components/AdminLayout';
@@ -117,6 +118,7 @@ export default function App() {
       <Route path="/admin" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminUsersPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/categories" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><CategoryManagePage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/complaints" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminComplaintsPage /></AdminLayout></RequireAuth>} />
+      <Route path="/admin/reviews" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminReviewsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/products" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductManagePage basePath="/admin/products" /></AdminLayout></RequireAuth>} />
       <Route path="/admin/products/new" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductFormPage basePath="/admin/products" /></AdminLayout></RequireAuth>} />
       <Route path="/admin/products/:id/edit" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductFormPage basePath="/admin/products" /></AdminLayout></RequireAuth>} />

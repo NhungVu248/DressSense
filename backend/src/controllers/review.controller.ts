@@ -51,11 +51,21 @@ export async function createReview(req: Request, res: Response, next: NextFuncti
   }
 }
 
-// GET /api/reviews/product/:id - danh sách đánh giá của sản phẩm (công khai)
+// POST /api/reviews/upload - tải ảnh đánh giá, trả về URL (UC12.1)
+export async function uploadReviewImagesHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const files = (req.files as Express.Multer.File[]) ?? [];
+    res.json({ urls: files.map((f) => `/uploads/reviews/${f.filename}`) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /api/reviews/product/:id - danh sách đánh giá của sản phẩm (công khai, chỉ hiện đánh giá chưa bị ẩn)
 export async function getProductReviews(req: Request, res: Response, next: NextFunction) {
   try {
     const rows = await prisma.review.findMany({
-      where: { productId: Number(req.params.id) }, orderBy: { createdAt: 'desc' },
+      where: { productId: Number(req.params.id), status: 'VISIBLE' }, orderBy: { createdAt: 'desc' },
       include: { user: { select: { fullName: true } } },
     });
     const count = rows.length;
@@ -116,6 +126,43 @@ export async function replyReview(req: Request, res: Response, next: NextFunctio
     // UC12.2 - thông báo cho khách
     notify(r.review.userId, 'REVIEW', 'Người bán đã phản hồi đánh giá', `Phản hồi cho đánh giá sản phẩm "${r.review.product.name}".`, `/products/${r.review.productId}`);
     res.json({ review: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ============================================================
+//  UC12.1 - Kiểm duyệt đánh giá (Quản trị viên). Người bán KHÔNG được ẩn/xóa.
+// ============================================================
+
+// GET /api/admin/reviews?status= - danh sách đánh giá để kiểm duyệt
+export async function listAdminReviews(req: Request, res: Response, next: NextFunction) {
+  try {
+    const status = typeof req.query.status === 'string' && ['VISIBLE', 'HIDDEN'].includes(req.query.status) ? req.query.status : undefined;
+    const rows = await prisma.review.findMany({
+      where: status ? { status: status as any } : {},
+      orderBy: { createdAt: 'desc' },
+      include: { user: { select: { fullName: true } }, product: { select: { name: true } } },
+    });
+    res.json({ reviews: rows });
+  } catch (err) {
+    next(err);
+  }
+}
+
+const moderateSchema = z.object({ hide: z.boolean(), note: z.string().trim().optional() });
+
+// PATCH /api/admin/reviews/:id/moderate - ẩn/hiện đánh giá vi phạm
+export async function moderateReview(req: Request, res: Response, next: NextFunction) {
+  try {
+    const body = moderateSchema.safeParse(req.body);
+    if (!body.success) return res.status(400).json({ message: 'Dữ liệu không hợp lệ.' });
+    const review = await prisma.review.findUnique({ where: { id: Number(req.params.id) } });
+    if (!review) return res.status(404).json({ message: 'Không tìm thấy đánh giá.' });
+    const updated = await prisma.review.update({ where: { id: review.id }, data: { status: body.data.hide ? 'HIDDEN' : 'VISIBLE' } });
+    // thông báo cho khách khi đánh giá bị ẩn do vi phạm
+    if (body.data.hide) notify(review.userId, 'REVIEW', 'Đánh giá đã bị ẩn', body.data.note || 'Đánh giá của bạn đã bị ẩn do vi phạm quy định nội dung.');
+    res.json({ ok: true, status: updated.status });
   } catch (err) {
     next(err);
   }

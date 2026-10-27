@@ -619,10 +619,17 @@ model Review {
   // UC12.2 - phản hồi của người bán
   sellerReply   String?   @db.Text
   sellerReplyAt DateTime?
+  // UC12.1 - kiểm duyệt nội dung (Quản trị viên có thể ẩn đánh giá vi phạm)
+  status    ReviewStatus @default(VISIBLE)
   createdAt DateTime @default(now())
 
   @@unique([orderId, productId])
   @@index([productId])
+}
+
+enum ReviewStatus {
+  VISIBLE
+  HIDDEN
 }
 
 enum BehaviorAction {

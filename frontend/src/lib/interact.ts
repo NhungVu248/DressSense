@@ -23,6 +23,12 @@ export async function getProductReviews(productId: number | string): Promise<Pro
 export async function createReview(body: { orderId: number; productId: number; rating: number; comment?: string; images?: string[] }) {
   return (await api.post('/reviews', body)).data;
 }
+// UC12.1 - tải ảnh đánh giá, trả về danh sách URL
+export async function uploadReviewImages(files: File[]): Promise<string[]> {
+  const fd = new FormData();
+  files.forEach((f) => fd.append('images', f));
+  return (await api.post('/reviews/upload', fd)).data.urls;
+}
 
 // ---- Hỏi đáp (UC12.3) ----
 export async function getProductQuestions(productId: number | string): Promise<PublicQuestion[]> {
@@ -50,3 +56,8 @@ export async function getSellerReviews(): Promise<SellerReview[]> { return (awai
 export async function replyReview(id: number, reply: string) { return (await api.patch(`/seller/reviews/${id}/reply`, { reply })).data; }
 export async function getSellerQuestions(): Promise<SellerQuestion[]> { return (await api.get('/seller/questions')).data.questions; }
 export async function answerQuestion(id: number, answer: string) { return (await api.patch(`/seller/questions/${id}/answer`, { answer })).data; }
+
+// ---- Quản trị viên: kiểm duyệt đánh giá (UC12.1) ----
+export interface AdminReview { id: number; rating: number; comment: string | null; status: 'VISIBLE' | 'HIDDEN'; images: string[] | null; createdAt: string; user?: { fullName: string }; product?: { name: string } }
+export async function getAdminReviews(status?: string): Promise<AdminReview[]> { return (await api.get('/admin/reviews', { params: status ? { status } : {} })).data.reviews; }
+export async function moderateReview(id: number, hide: boolean, note?: string) { return (await api.patch(`/admin/reviews/${id}/moderate`, { hide, note })).data; }

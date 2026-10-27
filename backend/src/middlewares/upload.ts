@@ -53,6 +53,27 @@ export const uploadBodyPhoto = multer({
   },
 }).single('photo');
 
+// ---------- UC12.1 - Ảnh đánh giá sản phẩm (nhiều ảnh) ----------
+const REVIEW_DIR = path.join(process.cwd(), 'uploads', 'reviews');
+fs.mkdirSync(REVIEW_DIR, { recursive: true });
+
+const reviewStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, REVIEW_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `rv-u${req.user?.userId}-${Date.now()}-${Math.round(Math.random() * 1e4)}${ext}`);
+  },
+});
+
+export const uploadReviewImages = multer({
+  storage: reviewStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB mỗi ảnh - 6E
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_MIME.includes(file.mimetype)) return cb(new Error('INVALID_IMAGE_TYPE')); // 6E
+    cb(null, true);
+  },
+}).array('images', 5); // tối đa 5 ảnh
+
 // ---------- UC6.7 - Tệp CSV nhập sản phẩm: giữ trong bộ nhớ ----------
 export const uploadCsv = multer({
   storage: multer.memoryStorage(),

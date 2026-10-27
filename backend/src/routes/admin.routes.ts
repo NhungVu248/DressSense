@@ -6,6 +6,7 @@ import {
   listAuditLogs,
 } from '../controllers/admin.controller';
 import { listAdminComplaints, adminResolveComplaint } from '../controllers/complaint.controller';
+import { listAdminReviews, moderateReview } from '../controllers/review.controller';
 import { authenticate, authorize } from '../middlewares/auth';
 
 const router = Router();
@@ -21,5 +22,9 @@ router.get('/audit-logs', listAuditLogs);
 // UC11.2 - phân xử khiếu nại
 router.get('/complaints', listAdminComplaints);
 router.patch('/complaints/:id/resolve', adminResolveComplaint);
+
+// UC12.1 - kiểm duyệt đánh giá
+router.get('/reviews', listAdminReviews);
+router.patch('/reviews/:id/moderate', moderateReview);
 
 export default router;

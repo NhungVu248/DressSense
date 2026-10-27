@@ -9,6 +9,7 @@ const NAV = [
   { to: '/admin/products', label: 'Sản phẩm' },
   { to: '/admin/categories', label: 'Danh mục' },
   { to: '/admin/complaints', label: 'Khiếu nại' },
+  { to: '/admin/reviews', label: 'Đánh giá' },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

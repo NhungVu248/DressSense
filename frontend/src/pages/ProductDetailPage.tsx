@@ -257,6 +257,10 @@ function SizeModal({ kind, category, onClose }: { kind: 'chart' | 'guide'; categ
   );
 }
 
+// Ảnh tải lên có URL tương đối /uploads/... -> thêm origin của API để hiển thị
+const MEDIA_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace('/api', '');
+const mediaUrl = (u: string) => (u.startsWith('http') ? u : MEDIA_ORIGIN + u);
+
 // UC12.1 - tab Đánh giá sản phẩm
 function Stars({ n }: { n: number }) {
   return <span className="text-amber-500">{'★'.repeat(n)}<span className="text-gray-200">{'★'.repeat(5 - n)}</span></span>;
@@ -277,7 +281,7 @@ function ReviewsTab({ productId }: { productId: number }) {
           <li key={r.id} className="border-b border-black/5 pb-3">
             <div className="flex items-center gap-2"><Stars n={r.rating} /><span className="text-xs text-gray-400">{r.userName} · {new Date(r.createdAt).toLocaleDateString('vi-VN')}</span></div>
             {r.comment && <p className="text-ink mt-1">{r.comment}</p>}
-            {r.images.length > 0 && <div className="flex gap-2 mt-2">{r.images.map((u, i) => <img key={i} src={u} alt="" className="w-16 h-16 object-cover rounded-lg bg-brand-light" onError={(e) => { e.currentTarget.style.display = 'none'; }} />)}</div>}
+            {r.images.length > 0 && <div className="flex gap-2 mt-2">{r.images.map((u, i) => <img key={i} src={mediaUrl(u)} alt="" className="w-16 h-16 object-cover rounded-lg bg-brand-light" onError={(e) => { e.currentTarget.style.display = 'none'; }} />)}</div>}
             {r.sellerReply && <div className="bg-brand-light/50 rounded-lg p-3 mt-2 text-sm"><span className="text-gray-500">Phản hồi của người bán:</span> <span className="text-ink">{r.sellerReply}</span></div>}
           </li>
         ))}

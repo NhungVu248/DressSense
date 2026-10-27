@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE `review` ADD COLUMN `status` ENUM('VISIBLE', 'HIDDEN') NOT NULL DEFAULT 'VISIBLE';
+
