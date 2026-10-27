@@ -43,6 +43,9 @@ import SellerOrdersPage from './pages/manage/SellerOrdersPage';
 import SupportPage from './pages/SupportPage';
 import SellerSupportPage from './pages/manage/SellerSupportPage';
 import AdminComplaintsPage from './pages/admin/AdminComplaintsPage';
+// UC12 - Đánh giá, hỏi đáp, thông báo
+import NotificationsPage from './pages/NotificationsPage';
+import SellerReviewsPage from './pages/manage/SellerReviewsPage';
 import CategoryManagePage from './pages/admin/CategoryManagePage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminLayout from './components/AdminLayout';
@@ -103,6 +106,9 @@ export default function App() {
       {/* UC11 - Đổi/trả & khiếu nại (khách) */}
       <Route path="/support" element={<RequireAuth><ShopLayout><SupportPage /></ShopLayout></RequireAuth>} />
 
+      {/* UC12.4 - Thông báo (khách) */}
+      <Route path="/notifications" element={<RequireAuth><ShopLayout><NotificationsPage /></ShopLayout></RequireAuth>} />
+
       {/* UC5 - Gợi ý sản phẩm cá nhân hóa */}
       <Route path="/recommendations" element={<RequireAuth><ShopLayout><RecommendationsPage /></ShopLayout></RequireAuth>} />
 
@@ -118,6 +124,7 @@ export default function App() {
       {/* UC6 - Người bán quản lý sản phẩm của gian hàng (trong giao diện shop) */}
       <Route path="/manage/orders" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><SellerOrdersPage /></ShopLayout></RequireAuth>} />
       <Route path="/manage/support" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><SellerSupportPage /></ShopLayout></RequireAuth>} />
+      <Route path="/manage/reviews" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><SellerReviewsPage /></ShopLayout></RequireAuth>} />
       <Route path="/manage/products" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductManagePage /></ShopLayout></RequireAuth>} />
       <Route path="/manage/products/new" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductFormPage /></ShopLayout></RequireAuth>} />
       <Route path="/manage/products/:id/edit" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductFormPage /></ShopLayout></RequireAuth>} />

@@ -7,7 +7,7 @@ import {
   ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, PAYMENT_METHOD_LABEL,
   type Order, type OrderStatus,
 } from '../lib/order';
-import { ReturnModal, ComplaintModal } from '../components/SupportModals';
+import { ReturnModal, ComplaintModal, ReviewModal } from '../components/SupportModals';
 
 const STATUS_CLS: Record<OrderStatus, string> = {
   AWAITING_PAYMENT: 'bg-orange-100 text-orange-700', PENDING: 'bg-amber-100 text-amber-700',
@@ -130,6 +130,7 @@ export function OrderDetailPage() {
   const [showCancel, setShowCancel] = useState(false);
   const [showReturn, setShowReturn] = useState(false);
   const [showComplaint, setShowComplaint] = useState(false);
+  const [reviewItem, setReviewItem] = useState<Order['items'][number] | null>(null);
   const [reason, setReason] = useState(CANCEL_REASONS[0]);
   const [busy, setBusy] = useState(false);
 
@@ -163,6 +164,7 @@ export function OrderDetailPage() {
   const canCancelDirect = o.status === 'PENDING' || o.status === 'AWAITING_PAYMENT';
   const canCancelRequest = (o.status === 'CONFIRMED' || o.status === 'PREPARING') && !o.cancelRequested;
   const canReturn = o.status === 'DELIVERED' || o.status === 'COMPLETED'; // UC11.1
+  const canReview = o.status === 'DELIVERED' || o.status === 'COMPLETED'; // UC12.1
   const canComplain = ['CONFIRMED', 'PREPARING', 'SHIPPING', 'DELIVERED', 'COMPLETED'].includes(o.status); // UC11.2
 
   return (
@@ -202,8 +204,9 @@ export function OrderDetailPage() {
         <h2 className="font-medium text-ink mb-2 text-sm">Sản phẩm</h2>
         <ul className="divide-y divide-black/5">
           {o.items.map((it) => (
-            <li key={it.id} className="flex items-center justify-between py-2 text-sm">
-              <span className="text-ink">{it.name}{it.size && <span className="text-gray-400"> · Size {it.size}</span>} <span className="text-gray-400">× {it.quantity}</span></span>
+            <li key={it.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+              <span className="text-ink flex-1">{it.name}{it.size && <span className="text-gray-400"> · Size {it.size}</span>} <span className="text-gray-400">× {it.quantity}</span></span>
+              {canReview && <button onClick={() => setReviewItem(it)} className="text-xs text-brand border border-brand/30 rounded-full px-2.5 py-1 hover:bg-brand-light whitespace-nowrap">Đánh giá</button>}
               <span>{formatVND(it.price * it.quantity)}</span>
             </li>
           ))}
@@ -228,6 +231,7 @@ export function OrderDetailPage() {
 
       {showReturn && <ReturnModal order={o} onClose={() => setShowReturn(false)} onDone={() => { setShowReturn(false); refresh(); }} />}
       {showComplaint && <ComplaintModal orderId={o.id} onClose={() => setShowComplaint(false)} onDone={() => setShowComplaint(false)} />}
+      {reviewItem && <ReviewModal orderId={o.id} item={reviewItem} onClose={() => setReviewItem(null)} onDone={() => setReviewItem(null)} />}
 
       {showCancel && (
         <div className="fixed inset-0 z-50 grid place-items-center p-4">

@@ -5,6 +5,8 @@ import {
 import { listSellerReturns, approveReturn, rejectReturn } from '../controllers/return.controller';
 import { listSellerComplaints, sellerRespondComplaint } from '../controllers/complaint.controller';
 import { createIncident, resolveIncident, listSellerIncidents } from '../controllers/incident.controller';
+import { listSellerReviews, replyReview } from '../controllers/review.controller';
+import { listSellerQuestions, answerQuestion } from '../controllers/question.controller';
 import { authenticate, authorize } from '../middlewares/auth';
 
 const router = Router();
@@ -31,5 +33,13 @@ router.patch('/complaints/:id/respond', sellerRespondComplaint);
 router.get('/incidents', listSellerIncidents);
 router.post('/orders/:orderId/incident', createIncident);
 router.patch('/incidents/:id/resolve', resolveIncident);
+
+// UC12.2 - phản hồi đánh giá
+router.get('/reviews', listSellerReviews);
+router.patch('/reviews/:id/reply', replyReview);
+
+// UC12.3 - trả lời hỏi đáp
+router.get('/questions', listSellerQuestions);
+router.patch('/questions/:id/answer', answerQuestion);
 
 export default router;

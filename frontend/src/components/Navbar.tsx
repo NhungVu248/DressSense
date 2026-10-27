@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { getCartCount } from '../lib/cart';
+import { notificationCount } from '../lib/interact';
 import { DEFAULT_AVATAR } from '../lib/placeholder';
 import SearchBar from './SearchBar';
 
@@ -39,6 +40,8 @@ export default function Navbar() {
 
   // UC8.1 - số mục trong giỏ (badge)
   const { data: cartCount } = useQuery({ queryKey: ['cart-count'], queryFn: getCartCount, enabled: !!user, staleTime: 30_000 });
+  // UC12.4 - số thông báo chưa đọc (badge)
+  const { data: notifCount } = useQuery({ queryKey: ['notif-count'], queryFn: notificationCount, enabled: !!user, staleTime: 30_000 });
 
   useEffect(() => {
     const h = (e: MouseEvent) => { if (accRef.current && !accRef.current.contains(e.target as Node)) setMenu(false); };
@@ -82,6 +85,11 @@ export default function Navbar() {
 
           {/* Icon phải */}
           <div className="flex items-center gap-1 sm:gap-2 ml-auto md:ml-2 text-gray-600">
+            {user && (
+              <Link to="/notifications" className="p-2 hover:text-brand" title="Thông báo" aria-label="Thông báo">
+                <Icon path="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" badge={notifCount} />
+              </Link>
+            )}
             <Link to="/wishlist" className="p-2 hover:text-brand" title="Yêu thích" aria-label="Sản phẩm yêu thích">
               <Icon path="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
             </Link>
@@ -126,6 +134,7 @@ export default function Navbar() {
                   {user.role === 'SELLER' && <MenuLink to="/manage/products" label="Quản lý gian hàng" />}
                   {user.role === 'SELLER' && <MenuLink to="/manage/orders" label="Quản lý đơn hàng" />}
                   {user.role === 'SELLER' && <MenuLink to="/manage/support" label="Hỗ trợ sau bán" />}
+                  {user.role === 'SELLER' && <MenuLink to="/manage/reviews" label="Đánh giá & Hỏi đáp" />}
                   {user.role === 'ADMIN' && <MenuLink to="/admin" label="Trang quản trị" />}
                   <button onClick={logout} className="w-full text-left px-4 py-2 text-red-500 hover:bg-cream">Đăng xuất</button>
                 </div>

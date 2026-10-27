@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { formatVND } from '../lib/products';
 import { createReturn, createComplaint, type ReturnType } from '../lib/support';
-import type { Order } from '../lib/order';
+import { createReview } from '../lib/interact';
+import type { Order, OrderItem } from '../lib/order';
 
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   return (
@@ -105,6 +106,38 @@ export function ComplaintModal({ orderId, onClose, onDone }: { orderId: number; 
       <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Mô tả vấn đề bạn gặp phải" rows={4} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-2" />
       <input value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="Link ảnh/video bằng chứng (tuỳ chọn)" className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-4" />
       <button onClick={submit} disabled={busy} className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-2.5 text-sm">{busy ? 'Đang gửi…' : 'Gửi khiếu nại'}</button>
+    </Modal>
+  );
+}
+
+// UC12.1 - đánh giá sản phẩm (từ đơn đã nhận)
+export function ReviewModal({ orderId, item, onClose, onDone }: { orderId: number; item: OrderItem; onClose: () => void; onDone: () => void }) {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [images, setImages] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    setBusy(true);
+    try {
+      const imgs = images.split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
+      await createReview({ orderId, productId: item.productId, rating, comment: comment || undefined, images: imgs.length ? imgs : undefined });
+      onDone(); alert('Cảm ơn bạn đã đánh giá!');
+    } catch (e: any) { alert(e?.response?.data?.message ?? 'Không gửi được đánh giá.'); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <Modal title="Đánh giá sản phẩm" onClose={onClose}>
+      <p className="text-sm text-ink mb-3">{item.name}{item.size && ` · Size ${item.size}`}</p>
+      <div className="flex gap-1 mb-4 text-3xl">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button key={n} onClick={() => setRating(n)} className={n <= rating ? 'text-amber-500' : 'text-gray-300'}>★</button>
+        ))}
+      </div>
+      <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Chia sẻ cảm nhận của bạn (tuỳ chọn)" rows={3} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-2" />
+      <input value={images} onChange={(e) => setImages(e.target.value)} placeholder="Link ảnh thực tế, phân tách bằng dấu phẩy (tuỳ chọn)" className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-4" />
+      <button onClick={submit} disabled={busy} className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-2.5 text-sm">{busy ? 'Đang gửi…' : 'Gửi đánh giá'}</button>
     </Modal>
   );
 }

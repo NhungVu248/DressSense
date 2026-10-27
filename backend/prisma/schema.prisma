@@ -66,6 +66,8 @@ model User {
   orders       Order[]
   returnRequests ReturnRequest[] // UC11.1
   complaints     Complaint[]     // UC11.2
+  questions      ProductQuestion[] // UC12.3
+  notifications  Notification[]    // UC12.4
   reviews      Review[]
   behaviors    UserBehavior[]
   addresses    Address[]
@@ -368,6 +370,7 @@ model Product {
   behaviors  UserBehavior[]
   bodyFits   ProductBodyFit[] // UC4 - điểm tương thích theo từng dáng người
   analysis   ProductAnalysis? // UC4.1 - kết quả phân tích thuộc tính (đề xuất + xác nhận)
+  questions  ProductQuestion[] // UC12.3 - hỏi đáp sản phẩm
 
   @@index([categoryId])
   @@index([sellerId])
@@ -549,6 +552,7 @@ model Order {
   returnRequests ReturnRequest[]   // UC11.1
   complaints     Complaint[]       // UC11.2
   incidents      DeliveryIncident[] // UC11.3
+  reviews        Review[]          // UC12.1
 
   @@index([userId])
 }
@@ -608,8 +612,16 @@ model Review {
   user      User     @relation(fields: [userId], references: [id])
   rating    Int
   comment   String?  @db.Text
+  // UC12.1 - liên kết đơn đã mua (mỗi SP trong 1 đơn chỉ đánh giá 1 lần) + ảnh
+  orderId   Int?
+  order     Order?   @relation(fields: [orderId], references: [id])
+  images    Json?    // URL ảnh đánh giá (chưa làm upload file)
+  // UC12.2 - phản hồi của người bán
+  sellerReply   String?   @db.Text
+  sellerReplyAt DateTime?
   createdAt DateTime @default(now())
 
+  @@unique([orderId, productId])
   @@index([productId])
 }
 
@@ -885,4 +897,50 @@ model DeliveryIncident {
   resolvedAt DateTime?
 
   @@index([orderId])
+}
+
+// ============================================================
+//  UC12 - Đánh giá & tương tác
+// ============================================================
+
+// UC12.3 - hỏi đáp sản phẩm
+model ProductQuestion {
+  id         Int      @id @default(autoincrement())
+  productId  Int
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  question   String   @db.Text
+  answer     String?  @db.Text
+  answeredBy Int? // id người bán trả lời
+  answeredAt DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([productId])
+}
+
+enum NotificationType {
+  ORDER     // trạng thái đơn hàng
+  PAYMENT   // thanh toán / hoàn tiền
+  RETURN    // đổi/trả
+  COMPLAINT // khiếu nại
+  REVIEW    // phản hồi đánh giá
+  QA        // trả lời hỏi đáp
+  PROMO     // khuyến mãi (marketing - có thể tắt)
+  SUGGEST   // gợi ý sản phẩm (marketing - có thể tắt)
+}
+
+// UC12.4 - thông báo cho khách hàng
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  content   String           @db.Text
+  link      String? // liên kết nghiệp vụ (vd /orders/3)
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
 }

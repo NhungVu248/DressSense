@@ -19,6 +19,9 @@ import paymentRoutes from './payment.routes';
 import sellerOrderRoutes from './seller-order.routes';
 import returnRoutes from './return.routes';
 import complaintRoutes from './complaint.routes';
+import reviewRoutes from './review.routes';
+import questionRoutes from './question.routes';
+import notificationRoutes from './notification.routes';
 
 const router = Router();
 router.use('/auth', authRoutes);
@@ -41,5 +44,8 @@ router.use('/payments', paymentRoutes);  // UC9.2/9.3 - Thanh toán & lịch s�
 router.use('/seller', sellerOrderRoutes); // UC10.4/UC11 - Người bán quản lý đơn hàng
 router.use('/returns', returnRoutes);     // UC11.1 - Đổi/trả hàng
 router.use('/complaints', complaintRoutes); // UC11.2 - Khiếu nại
+router.use('/reviews', reviewRoutes);     // UC12.1 - Đánh giá sản phẩm
+router.use('/questions', questionRoutes); // UC12.3 - Hỏi đáp sản phẩm
+router.use('/notifications', notificationRoutes); // UC12.4 - Thông báo
 
 export default router;

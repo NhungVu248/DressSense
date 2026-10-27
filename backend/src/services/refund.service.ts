@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma';
+import { notify } from './notification.service';
 
 // ============================================================
 //  UC11.4 - Hoàn tiền (mô phỏng - không gọi cổng thật).
@@ -48,5 +49,7 @@ export async function createRefund(orderId: number, amount: number, reason: stri
     await db.order.update({ where: { id: orderId }, data: { refundStatus: 'DONE', paymentStatus: 'REFUNDED' } });
     return r;
   });
+  // UC12.4 - thông báo hoàn tiền cho khách
+  notify(order.userId, 'PAYMENT', 'Hoàn tiền thành công', `Đơn ${order.code} đã được hoàn ${amount.toLocaleString('vi-VN')}₫.`, `/orders/${order.id}`);
   return { ok: true, message: `Đã hoàn ${amount.toLocaleString('vi-VN')}₫.`, transactionId: tx.id };
 }

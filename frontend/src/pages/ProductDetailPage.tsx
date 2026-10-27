@@ -9,6 +9,7 @@ import {
   type ProductVariant,
 } from '../lib/products';
 import { addToCart as apiAddToCart, addWishlist } from '../lib/cart';
+import { getProductReviews, getProductQuestions, createQuestion } from '../lib/interact';
 import ProductCard from '../components/ProductCard';
 
 type Tab = 'desc' | 'detail' | 'reviews' | 'qa';
@@ -22,6 +23,7 @@ export default function ProductDetailPage() {
   const [size, setSize] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('desc');
   const [modal, setModal] = useState<null | 'chart' | 'guide'>(null);
+  const [adding, setAdding] = useState(false);
 
   const { data: p, isLoading, error } = useQuery({ queryKey: ['product', id], queryFn: () => fetchProduct(id!), enabled: !!id });
   const { data: related } = useQuery({ queryKey: ['related', id], queryFn: () => fetchRelated(id!), enabled: !!id });
@@ -49,8 +51,6 @@ export default function ProductDetailPage() {
   }
 
   const images = p.images.length ? p.images : [{ url: primaryImage(p.images) || PRODUCT_PLACEHOLDER, isPrimary: true }];
-
-  const [adding, setAdding] = useState(false);
 
   async function addToCart() {
     if (!user) { alert('Vui lòng đăng nhập để thêm vào giỏ hàng.'); nav('/login'); return; } // 17E.1
@@ -190,19 +190,8 @@ export default function ProductDetailPage() {
               ))}
           </dl>
         )}
-        {tab === 'reviews' && (
-          ratingCount === 0 ? <p className="text-gray-400">Chưa có đánh giá nào.</p> : (
-            <ul className="space-y-4">
-              {p.reviews.map((r) => (
-                <li key={r.id} className="border-b border-black/5 pb-3">
-                  <span className="text-amber-500">{'★'.repeat(r.rating)}<span className="text-gray-200">{'★'.repeat(5 - r.rating)}</span></span>
-                  {r.comment && <p className="text-ink mt-1">{r.comment}</p>}
-                </li>
-              ))}
-            </ul>
-          )
-        )}
-        {tab === 'qa' && <p className="text-gray-400">Chưa có câu hỏi nào cho sản phẩm này.</p>}
+        {tab === 'reviews' && <ReviewsTab productId={p.id} />}
+        {tab === 'qa' && <QaTab productId={p.id} loggedIn={!!user} onLogin={() => nav('/login')} />}
       </div>
 
       {/* Sản phẩm liên quan */}
@@ -264,6 +253,69 @@ function SizeModal({ kind, category, onClose }: { kind: 'chart' | 'guide'; categ
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// UC12.1 - tab Đánh giá sản phẩm
+function Stars({ n }: { n: number }) {
+  return <span className="text-amber-500">{'★'.repeat(n)}<span className="text-gray-200">{'★'.repeat(5 - n)}</span></span>;
+}
+function ReviewsTab({ productId }: { productId: number }) {
+  const { data } = useQuery({ queryKey: ['reviews', productId], queryFn: () => getProductReviews(productId) });
+  if (!data) return <p className="text-gray-400">Đang tải…</p>;
+  if (data.count === 0) return <p className="text-gray-400">Chưa có đánh giá nào. Mua và nhận hàng để đánh giá sản phẩm.</p>;
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        <span className="font-display text-2xl text-ink">{data.average.toFixed(1)}</span>
+        <Stars n={Math.round(data.average)} />
+        <span className="text-gray-400">({data.count} đánh giá)</span>
+      </div>
+      <ul className="space-y-4">
+        {data.reviews.map((r) => (
+          <li key={r.id} className="border-b border-black/5 pb-3">
+            <div className="flex items-center gap-2"><Stars n={r.rating} /><span className="text-xs text-gray-400">{r.userName} · {new Date(r.createdAt).toLocaleDateString('vi-VN')}</span></div>
+            {r.comment && <p className="text-ink mt-1">{r.comment}</p>}
+            {r.images.length > 0 && <div className="flex gap-2 mt-2">{r.images.map((u, i) => <img key={i} src={u} alt="" className="w-16 h-16 object-cover rounded-lg bg-brand-light" onError={(e) => { e.currentTarget.style.display = 'none'; }} />)}</div>}
+            {r.sellerReply && <div className="bg-brand-light/50 rounded-lg p-3 mt-2 text-sm"><span className="text-gray-500">Phản hồi của người bán:</span> <span className="text-ink">{r.sellerReply}</span></div>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// UC12.3 - tab Hỏi đáp sản phẩm
+function QaTab({ productId, loggedIn, onLogin }: { productId: number; loggedIn: boolean; onLogin: () => void }) {
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ['questions', productId], queryFn: () => getProductQuestions(productId) });
+  const [q, setQ] = useState('');
+  const [busy, setBusy] = useState(false);
+  async function ask() {
+    if (!loggedIn) { onLogin(); return; }
+    if (!q.trim()) return;
+    setBusy(true);
+    try { await createQuestion(productId, q.trim()); setQ(''); qc.invalidateQueries({ queryKey: ['questions', productId] }); alert('Đã gửi câu hỏi. Người bán sẽ trả lời sớm.'); }
+    catch (e: any) { alert(e?.response?.data?.message ?? 'Không gửi được câu hỏi.'); }
+    finally { setBusy(false); }
+  }
+  return (
+    <div>
+      <div className="flex gap-2 mb-5">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Đặt câu hỏi về sản phẩm này…" className="flex-1 border border-black/10 rounded-lg px-3 py-2 text-sm" />
+        <button onClick={ask} disabled={busy} className="bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg px-4 text-sm">Gửi</button>
+      </div>
+      {!data || data.length === 0 ? <p className="text-gray-400">Chưa có câu hỏi nào cho sản phẩm này.</p> : (
+        <ul className="space-y-4">
+          {data.map((item) => (
+            <li key={item.id} className="border-b border-black/5 pb-3">
+              <p className="text-ink"><span className="text-gray-400 text-xs">{item.askedBy} hỏi:</span> {item.question}</p>
+              {item.answer ? <p className="text-sm text-brand mt-1 pl-3 border-l-2 border-brand/30">Người bán: {item.answer}</p> : <p className="text-xs text-amber-600 mt-1">Chờ người bán trả lời</p>}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

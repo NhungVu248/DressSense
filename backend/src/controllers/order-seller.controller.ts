@@ -3,7 +3,13 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { SELLER_NEXT, type OrderStatusValue } from '../constants/order-status';
 import { releaseReserved } from '../services/order.service';
+import { notify } from '../services/notification.service';
 import type { JwtPayload } from '../utils/jwt';
+
+// Nhãn trạng thái để hiển thị trong thông báo (UC12.4)
+const STATUS_VI: Record<string, string> = {
+  CONFIRMED: 'Đã xác nhận', PREPARING: 'Đang chuẩn bị hàng', SHIPPING: 'Đang giao', DELIVERED: 'Đã giao',
+};
 
 // ============================================================
 //  UC10.4 - Người bán cập nhật đơn hàng (Seller Portal).
@@ -80,6 +86,8 @@ export async function updateOrderStatus(req: Request, res: Response, next: NextF
       data.shippedAt = now;
     }
     const updated = await prisma.order.update({ where: { id: order.id }, data });
+    // UC12.4 - thông báo cho khách khi đơn đổi trạng thái
+    notify(order.userId, 'ORDER', 'Cập nhật đơn hàng', `Đơn ${order.code}: ${STATUS_VI[body.data.to] ?? body.data.to}.`, `/orders/${order.id}`);
     res.json({ order: updated });
   } catch (err) {
     next(err);
