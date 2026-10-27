@@ -43,6 +43,14 @@ export async function createComplaint(body: { orderId: number; type: string; con
   return (await api.post('/complaints', body)).data;
 }
 export async function getComplaints(): Promise<Complaint[]> { return (await api.get('/complaints')).data.complaints; }
+
+// UC11 - tải ảnh/video bằng chứng (kind: 'returns' | 'complaints'), trả về URL phân tách bằng dấu phẩy
+export async function uploadEvidence(kind: 'returns' | 'complaints', files: File[]): Promise<string> {
+  const fd = new FormData();
+  files.forEach((f) => fd.append('files', f));
+  const urls: string[] = (await api.post(`/${kind}/upload`, fd)).data.urls;
+  return urls.join(',');
+}
 export async function respondComplaint(id: number, accept: boolean) { return (await api.patch(`/complaints/${id}/respond`, { accept })).data; }
 
 // ---- Người bán ----

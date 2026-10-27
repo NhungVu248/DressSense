@@ -167,3 +167,13 @@ export async function rejectReturn(req: Request, res: Response, next: NextFuncti
     next(err);
   }
 }
+
+// POST /api/returns/upload hoặc /api/complaints/upload - tải ảnh/video bằng chứng (UC11)
+export async function uploadEvidenceHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const files = (req.files as Express.Multer.File[]) ?? [];
+    res.json({ urls: files.map((f) => `/uploads/evidence/${f.filename}`) });
+  } catch (err) {
+    next(err);
+  }
+}

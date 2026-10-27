@@ -74,6 +74,28 @@ export const uploadReviewImages = multer({
   },
 }).array('images', 5); // tối đa 5 ảnh
 
+// ---------- UC11 - Ảnh/video bằng chứng đổi/trả & khiếu nại ----------
+const EVIDENCE_DIR = path.join(process.cwd(), 'uploads', 'evidence');
+fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
+const EVIDENCE_MIME = [...ALLOWED_MIME, 'video/mp4', 'video/webm', 'video/quicktime'];
+
+const evidenceStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, EVIDENCE_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.bin';
+    cb(null, `ev-u${req.user?.userId}-${Date.now()}-${Math.round(Math.random() * 1e4)}${ext}`);
+  },
+});
+
+export const uploadEvidence = multer({
+  storage: evidenceStorage,
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB/tệp (cho phép video ngắn) - 7E
+  fileFilter: (_req, file, cb) => {
+    if (!EVIDENCE_MIME.includes(file.mimetype)) return cb(new Error('INVALID_EVIDENCE_TYPE'));
+    cb(null, true);
+  },
+}).array('files', 5);
+
 // ---------- UC6.7 - Tệp CSV nhập sản phẩm: giữ trong bộ nhớ ----------
 export const uploadCsv = multer({
   storage: multer.memoryStorage(),

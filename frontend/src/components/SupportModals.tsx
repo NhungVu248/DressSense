@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { formatVND } from '../lib/products';
-import { createReturn, createComplaint, type ReturnType } from '../lib/support';
+import { createReturn, createComplaint, uploadEvidence, type ReturnType } from '../lib/support';
 import { createReview, uploadReviewImages } from '../lib/interact';
 import type { Order, OrderItem } from '../lib/order';
 
@@ -27,7 +27,7 @@ export function ReturnModal({ order, onClose, onDone }: { order: Order; onClose:
   const [picked, setPicked] = useState<Record<number, number>>(() => Object.fromEntries(order.items.map((i) => [i.id, 0])));
   const [reason, setReason] = useState(RETURN_REASONS[0]);
   const [description, setDescription] = useState('');
-  const [evidence, setEvidence] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
   const [exchangeSize, setExchangeSize] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -37,7 +37,8 @@ export function ReturnModal({ order, onClose, onDone }: { order: Order; onClose:
     if (items.length === 0) { alert('Vui lòng chọn ít nhất một sản phẩm.'); return; }
     setBusy(true);
     try {
-      await createReturn({ orderId: order.id, type, items, reason, description: description || undefined, evidence: evidence || undefined, exchangeSize: type === 'EXCHANGE' ? exchangeSize || undefined : undefined });
+      const evidence = files.length ? await uploadEvidence('returns', files) : undefined;
+      await createReturn({ orderId: order.id, type, items, reason, description: description || undefined, evidence, exchangeSize: type === 'EXCHANGE' ? exchangeSize || undefined : undefined });
       onDone(); alert('Đã gửi yêu cầu đổi/trả. Người bán sẽ xét duyệt.');
     } catch (e: any) { alert(e?.response?.data?.message ?? 'Không gửi được yêu cầu.'); }
     finally { setBusy(false); }
@@ -73,7 +74,7 @@ export function ReturnModal({ order, onClose, onDone }: { order: Order; onClose:
         {RETURN_REASONS.map((r) => <option key={r}>{r}</option>)}
       </select>
       <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả chi tiết (tuỳ chọn)" rows={2} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-2" />
-      <input value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="Link ảnh/video bằng chứng (tuỳ chọn)" className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-4" />
+      <EvidencePicker files={files} setFiles={setFiles} />
       <button onClick={submit} disabled={busy} className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-2.5 text-sm">{busy ? 'Đang gửi…' : 'Gửi yêu cầu'}</button>
     </Modal>
   );
@@ -85,14 +86,15 @@ const COMPLAINT_TYPES = ['Giao hàng chậm', 'Chưa nhận được hàng', 'S�
 export function ComplaintModal({ orderId, onClose, onDone }: { orderId: number; onClose: () => void; onDone: () => void }) {
   const [type, setType] = useState(COMPLAINT_TYPES[0]);
   const [content, setContent] = useState('');
-  const [evidence, setEvidence] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
 
   async function submit() {
     if (!content.trim()) { alert('Vui lòng nhập nội dung khiếu nại.'); return; }
     setBusy(true);
     try {
-      await createComplaint({ orderId, type, content, evidence: evidence || undefined });
+      const evidence = files.length ? await uploadEvidence('complaints', files) : undefined;
+      await createComplaint({ orderId, type, content, evidence });
       onDone(); alert('Đã gửi khiếu nại. Người bán sẽ phản hồi.');
     } catch (e: any) { alert(e?.response?.data?.message ?? 'Không gửi được khiếu nại.'); }
     finally { setBusy(false); }
@@ -104,7 +106,7 @@ export function ComplaintModal({ orderId, onClose, onDone }: { orderId: number; 
         {COMPLAINT_TYPES.map((t) => <option key={t}>{t}</option>)}
       </select>
       <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Mô tả vấn đề bạn gặp phải" rows={4} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-2" />
-      <input value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="Link ảnh/video bằng chứng (tuỳ chọn)" className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-4" />
+      <EvidencePicker files={files} setFiles={setFiles} />
       <button onClick={submit} disabled={busy} className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-2.5 text-sm">{busy ? 'Đang gửi…' : 'Gửi khiếu nại'}</button>
     </Modal>
   );
@@ -144,5 +146,18 @@ export function ReviewModal({ orderId, item, onClose, onDone }: { orderId: numbe
       </label>
       <button onClick={submit} disabled={busy} className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-2.5 text-sm">{busy ? 'Đang gửi…' : 'Gửi đánh giá'}</button>
     </Modal>
+  );
+}
+
+// UC11 - chọn ảnh/video bằng chứng (dùng chung cho đổi/trả & khiếu nại)
+function EvidencePicker({ files, setFiles }: { files: File[]; setFiles: (f: File[]) => void }) {
+  return (
+    <label className="block mb-4">
+      <span className="block text-xs text-gray-500 mb-1">Ảnh/video bằng chứng (tối đa 5 tệp, 20MB/tệp, tuỳ chọn)</span>
+      <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" multiple
+        onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 5))}
+        className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border file:border-black/15 file:bg-cream file:px-3 file:py-1.5 file:text-sm" />
+      {files.length > 0 && <span className="block text-xs text-gray-400 mt-1">{files.length} tệp đã chọn</span>}
+    </label>
   );
 }

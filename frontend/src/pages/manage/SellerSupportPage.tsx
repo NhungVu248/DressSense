@@ -10,6 +10,23 @@ import {
 
 type Tab = 'returns' | 'complaints' | 'incidents';
 
+const MEDIA_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace('/api', '');
+// UC11 - hiển thị ảnh/video bằng chứng (evidence lưu dưới dạng URL phân tách bằng dấu phẩy)
+function Evidence({ value }: { value: string | null | undefined }) {
+  const urls = (value ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (!urls.length) return null;
+  return (
+    <div className="flex gap-2 mt-2 flex-wrap">
+      {urls.map((u, i) => {
+        const src = u.startsWith('http') ? u : MEDIA_ORIGIN + u;
+        return /\.(mp4|webm|mov)$/i.test(u)
+          ? <a key={i} href={src} target="_blank" rel="noreferrer" className="text-xs text-brand underline">▶ Video {i + 1}</a>
+          : <a key={i} href={src} target="_blank" rel="noreferrer"><img src={src} alt="" className="w-14 h-14 object-cover rounded-lg bg-brand-light" /></a>;
+      })}
+    </div>
+  );
+}
+
 // UC11 - Người bán xử lý đổi/trả, khiếu nại, sự cố giao hàng
 export default function SellerSupportPage() {
   const qc = useQueryClient();
@@ -50,6 +67,7 @@ export default function SellerSupportPage() {
               </div>
               <p className="text-sm text-gray-500 mt-1">Đơn {r.order?.code} · Lý do: {r.reason}{r.refundAmount != null && ` · Hoàn ${formatVND(r.refundAmount)}`}</p>
               {r.description && <p className="text-xs text-gray-400 mt-1">{r.description}</p>}
+              <Evidence value={r.evidence} />
               {r.status === 'PENDING' && (
                 <div className="flex gap-2 mt-3">
                   <button onClick={() => approve(r.id)} className="bg-brand text-white rounded-lg px-4 py-1.5 text-sm">Chấp thuận</button>
@@ -69,6 +87,7 @@ export default function SellerSupportPage() {
                 <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{COMPLAINT_STATUS_LABEL[c.status]}</span>
               </div>
               <p className="text-sm text-gray-600 mt-1">Đơn {c.order?.code}: {c.content}</p>
+              <Evidence value={c.evidence} />
               {c.sellerProposal && <p className="text-xs text-gray-500 mt-1">Phương án: {c.sellerProposal}</p>}
               {(c.status === 'PENDING' || c.status === 'SELLER_RESPONDED') && (
                 <button onClick={() => respond(c.id)} className="mt-3 bg-brand text-white rounded-lg px-4 py-1.5 text-sm">{c.status === 'PENDING' ? 'Đề xuất phương án' : 'Cập nhật phương án'}</button>
