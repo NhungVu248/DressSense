@@ -27,10 +27,18 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
 
   const subtotal = data?.subtotal ?? 0;
-  const shipFee = useMemo(() => {
-    if (subtotal >= FREE_SHIP) return 0;
-    return data?.shippingMethods.find((m) => m.code === shipping)?.fee ?? 0;
-  }, [data, shipping, subtotal]);
+  const methodFee = data?.shippingMethods.find((m) => m.code === shipping)?.fee ?? 0;
+  // Multi-shop: nhóm theo gian hàng; phí vận chuyển tính riêng mỗi gian hàng (miễn phí nếu đạt ngưỡng)
+  const shops = useMemo(() => {
+    const valid = (data?.items ?? []).filter((i) => i.valid);
+    const map = new Map<number, { seller: string; items: typeof valid; subtotal: number }>();
+    for (const it of valid) {
+      if (!map.has(it.sellerId)) map.set(it.sellerId, { seller: it.seller, items: [], subtotal: 0 });
+      const g = map.get(it.sellerId)!; g.items.push(it); g.subtotal += it.lineTotal;
+    }
+    return [...map.values()].map((g) => ({ ...g, shipFee: g.subtotal >= FREE_SHIP ? 0 : methodFee }));
+  }, [data, methodFee]);
+  const shipFee = shops.reduce((a, s) => a + s.shipFee, 0);
   const discount = applied?.discount ?? 0;
   const total = Math.max(0, subtotal - discount + shipFee);
 
@@ -55,8 +63,10 @@ export default function CheckoutPage() {
     try {
       const res = await placeOrder({ addressId: selectedAddr, shippingMethod: shipping, paymentMethod: payment, voucherCode: applied?.code, note: note || undefined });
       qc.invalidateQueries({ queryKey: ['cart-count'] });
-      if (res.payUrl) { window.location.href = res.payUrl; return; } // chuyển sang cổng VNPAY
-      nav(`/checkout/result?orderId=${res.order.id}&status=success&cod=1`);
+      if (res.payUrl) { window.location.href = res.payUrl; return; } // chuyển sang cổng VNPAY (thanh toán gộp)
+      // COD: một checkout có thể tạo nhiều đơn (theo gian hàng) -> về danh sách đơn
+      if (res.orders.length === 1) nav(`/checkout/result?orderId=${res.orders[0].id}&status=success&cod=1`);
+      else nav('/orders');
     } catch (e: any) {
       setError(e?.response?.data?.message ?? 'Không đặt được hàng, vui lòng thử lại.');
     } finally { setPlacing(false); }
@@ -113,10 +123,11 @@ export default function CheckoutPage() {
                     <input type="radio" name="ship" checked={shipping === m.code} onChange={() => setShipping(m.code)} className="accent-brand" />
                     <span><span className="text-ink">{m.label}</span> <span className="text-gray-400">· {m.eta}</span></span>
                   </span>
-                  <span className="text-sm">{subtotal >= FREE_SHIP ? <span className="text-brand">Miễn phí</span> : formatVND(m.fee)}</span>
+                  <span className="text-sm text-gray-500">{formatVND(m.fee)}/gian hàng</span>
                 </label>
               ))}
             </div>
+            <p className="text-xs text-gray-400 mt-2">Miễn phí vận chuyển cho mỗi gian hàng có đơn từ {formatVND(FREE_SHIP)}.</p>
           </section>
 
           {/* Thanh toán */}
@@ -135,17 +146,30 @@ export default function CheckoutPage() {
               className="w-full mt-3 border border-black/10 rounded-lg px-3 py-2 text-sm" />
           </section>
 
-          {/* Sản phẩm */}
+          {/* Sản phẩm - nhóm theo gian hàng (multi-shop: mỗi gian hàng tạo 1 đơn riêng) */}
           <section className="bg-white rounded-xl border border-black/5 p-5">
-            <h2 className="font-medium text-ink mb-3">Sản phẩm ({validItems.length})</h2>
-            <ul className="divide-y divide-black/5">
-              {validItems.map((it) => (
-                <li key={it.cartItemId} className="flex items-center justify-between py-2 text-sm">
-                  <span className="text-ink">{it.name} {it.size && <span className="text-gray-400">· Size {it.size}</span>} <span className="text-gray-400">× {it.quantity}</span></span>
-                  <span>{formatVND(it.lineTotal)}</span>
-                </li>
+            <h2 className="font-medium text-ink mb-3">Sản phẩm {shops.length > 1 && <span className="text-sm text-gray-400">· {shops.length} gian hàng → {shops.length} đơn</span>}</h2>
+            <div className="space-y-4">
+              {shops.map((shop) => (
+                <div key={shop.seller} className="border border-black/5 rounded-lg p-3">
+                  <p className="text-sm font-medium text-ink mb-1.5 flex items-center gap-1.5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="text-gray-400"><path d="M3 9l1-5h16l1 5M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M4 9h16" /></svg>
+                    {shop.seller}
+                  </p>
+                  <ul className="divide-y divide-black/5">
+                    {shop.items.map((it) => (
+                      <li key={it.cartItemId} className="flex items-center justify-between py-1.5 text-sm">
+                        <span className="text-ink">{it.name} {it.size && <span className="text-gray-400">· Size {it.size}</span>} <span className="text-gray-400">× {it.quantity}</span></span>
+                        <span>{formatVND(it.lineTotal)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex justify-between text-xs text-gray-500 mt-1.5 pt-1.5 border-t border-black/5">
+                    <span>Vận chuyển</span><span>{shop.shipFee === 0 ? 'Miễn phí' : formatVND(shop.shipFee)}</span>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
           </section>
         </div>
 

@@ -46,7 +46,13 @@ export async function retryPayment(req: Request, res: Response, next: NextFuncti
     if (order.status === 'CANCELLED') return res.status(400).json({ message: 'Đơn hàng đã bị hủy.' });
 
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || '127.0.0.1';
-    const { payUrl } = await startOnlinePayment(order, ip); // tạo giao dịch MỚI, KHÔNG tạo đơn mới (4d)
+    // Multi-shop: thanh toán lại GỘP tổng các đơn cùng nhóm checkout còn chờ thanh toán
+    let amount: number | undefined;
+    if (order.checkoutCode) {
+      const group = await prisma.order.findMany({ where: { checkoutCode: order.checkoutCode, paymentStatus: { not: 'PAID' } }, select: { total: true } });
+      amount = group.reduce((a, o) => a + o.total, 0);
+    }
+    const { payUrl } = await startOnlinePayment(order, ip, amount); // tạo giao dịch MỚI, KHÔNG tạo đơn mới (4d)
     res.json({ payUrl });
   } catch (err) {
     next(err);

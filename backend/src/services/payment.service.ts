@@ -10,17 +10,19 @@ function randomCode(prefix: string): string {
 }
 
 // Tạo giao dịch thanh toán (PENDING) cho đơn online + trả URL thanh toán VNPAY.
-export async function startOnlinePayment(order: { id: number; code: string; total: number; paymentMethod: string }, ipAddr: string) {
+// amount: cho phép ghi đè bằng TỔNG của cả nhóm checkout (thanh toán gộp nhiều gian hàng).
+export async function startOnlinePayment(order: { id: number; code: string; total: number; paymentMethod: string }, ipAddr: string, amount?: number) {
+  const amt = amount ?? order.total;
   let code = randomCode('DSTX');
   // đảm bảo mã giao dịch duy nhất
   while (await prisma.paymentTransaction.findUnique({ where: { code } })) code = randomCode('DSTX');
 
   const tx = await prisma.paymentTransaction.create({
-    data: { code, orderId: order.id, method: order.paymentMethod as any, amount: order.total, status: 'PENDING' },
+    data: { code, orderId: order.id, method: order.paymentMethod as any, amount: amt, status: 'PENDING' },
   });
   const payUrl = buildPaymentUrl({
     txnRef: code,
-    amount: order.total,
+    amount: amt,
     orderInfo: `Thanh toan don hang ${order.code}`,
     ipAddr,
     intcard: order.paymentMethod === 'VISA', // Visa -> thẻ quốc tế
@@ -47,7 +49,12 @@ export async function finalizePayment(v: VerifyResult): Promise<{ handled: boole
       });
       // Đơn: Đã thanh toán + chuyển Chờ xác nhận. Tồn kho vẫn ở dạng "giữ chỗ" (reserved),
       // chỉ trừ stock thật khi đơn Hoàn tất (UC10.3) và nhả reserved khi Hủy (UC10.5).
-      await db.order.update({ where: { id: tx.orderId }, data: { paymentStatus: 'PAID', status: 'PENDING', paidAt: new Date() } });
+      // Multi-shop: thanh toán gộp -> cập nhật TẤT CẢ đơn cùng nhóm checkout.
+      if (tx.order.checkoutCode) {
+        await db.order.updateMany({ where: { checkoutCode: tx.order.checkoutCode, paymentStatus: { not: 'PAID' } }, data: { paymentStatus: 'PAID', status: 'PENDING', paidAt: new Date() } });
+      } else {
+        await db.order.update({ where: { id: tx.orderId }, data: { paymentStatus: 'PAID', status: 'PENDING', paidAt: new Date() } });
+      }
     });
     return { handled: true, code: '00', message: 'Xác nhận thanh toán thành công' };
   }

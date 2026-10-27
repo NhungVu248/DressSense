@@ -502,6 +502,9 @@ model Order {
   code   String      @unique // mã đơn hàng hiển thị (DSxxxxxxxx)
   userId Int
   user   User        @relation(fields: [userId], references: [id])
+  // UC multi-shop - mỗi đơn thuộc MỘT gian hàng; một lần checkout có thể tạo nhiều đơn
+  sellerId     Int?    // gian hàng sở hữu đơn (null cho đơn cũ trước khi tách)
+  checkoutCode String? // mã nhóm các đơn tạo cùng một lần checkout (thanh toán gộp)
   status OrderStatus @default(PENDING)
 
   // Snapshot địa chỉ giao hàng tại thời điểm đặt (UC9.1 - lưu thông tin khi đặt)
@@ -555,6 +558,8 @@ model Order {
   reviews        Review[]          // UC12.1
 
   @@index([userId])
+  @@index([sellerId])
+  @@index([checkoutCode])
 }
 
 model OrderItem {

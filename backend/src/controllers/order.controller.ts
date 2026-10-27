@@ -49,7 +49,7 @@ export async function getCheckoutInfo(req: Request, res: Response, next: NextFun
       return {
         cartItemId: it.id, productId: it.product.id, name: it.product.name, price: it.product.price,
         size: it.variant?.size ?? null, quantity: it.quantity, lineTotal: it.product.price * it.quantity,
-        seller: it.product.seller.shopName || it.product.seller.fullName, valid,
+        sellerId: it.product.seller.id, seller: it.product.seller.shopName || it.product.seller.fullName, valid,
       };
     });
     const subtotal = items.filter((i) => i.valid).reduce((a, i) => a + i.lineTotal, 0);
@@ -67,7 +67,12 @@ const placeSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
-// POST /api/orders - đặt hàng (UC9.1 bước 9-12)
+function genCheckoutCode(): string {
+  return 'CK' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 5).toUpperCase();
+}
+
+// POST /api/orders - đặt hàng (UC9.1). MULTI-SHOP: tách theo gian hàng -> MỘT đơn/mỗi shop,
+// gộp cùng một checkoutCode (thanh toán gộp cho đơn online).
 export async function placeOrder(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = req.user!.userId;
@@ -98,54 +103,74 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
     }
 
     // Tính tiền ở phía hệ thống (không tin số từ frontend)
-    const subtotal = rows.reduce((a, it) => a + it.product.price * it.quantity, 0);
+    const totalSubtotal = rows.reduce((a, it) => a + it.product.price * it.quantity, 0);
     let discount = 0;
     if (voucherCode) {
-      const v = await computeVoucher(voucherCode, subtotal);
+      const v = await computeVoucher(voucherCode, totalSubtotal);
       if (!v.valid) return res.status(400).json({ message: v.message, code: 'VOUCHER_INVALID' }); // 10c
       discount = v.discount;
     }
-    const shippingFee = shippingFeeFor(shippingMethod, subtotal);
-    const total = Math.max(0, subtotal - discount + shippingFee);
-    const code = await genOrderCode();
 
-    // Nguyên tử: tạo đơn + mục + giữ chỗ tồn kho + xóa mục khỏi giỏ + tăng lượt voucher (11E)
-    const order = await prisma.$transaction(async (db) => {
-      const o = await db.order.create({
-        data: {
-          code, userId,
-          status: online ? 'AWAITING_PAYMENT' : 'PENDING',
-          paymentMethod, paymentStatus: online ? 'PENDING' : 'UNPAID',
-          recipientName: address.recipientName, phone: address.phone,
-          province: address.province, district: address.district, ward: address.ward, addressDetail: address.detail,
-          subtotal, discount, voucherCode: voucherCode ?? null, shippingMethod, shippingFee, total, note: note ?? null,
-          items: {
-            create: rows.map((it) => ({
-              productId: it.product.id, variantId: it.variantId,
-              name: it.product.name, size: it.variant?.size ?? null,
-              quantity: it.quantity, price: it.product.price,
-            })),
+    // Nhóm các mục theo gian hàng (sellerId)
+    const groups = new Map<number, typeof rows>();
+    for (const it of rows) {
+      const sid = it.product.seller.id;
+      if (!groups.has(sid)) groups.set(sid, []);
+      groups.get(sid)!.push(it);
+    }
+    // Chuẩn bị số tiền từng đơn; voucher PHÂN BỔ theo tỷ lệ subtotal (đơn cuối nhận phần dư)
+    const entries = [...groups.entries()];
+    let allocated = 0;
+    const prepared = entries.map(([sid, items], idx) => {
+      const subtotal = items.reduce((a, it) => a + it.product.price * it.quantity, 0);
+      const d = idx === entries.length - 1 ? discount - allocated : Math.floor((discount * subtotal) / totalSubtotal);
+      allocated += d;
+      const shippingFee = shippingFeeFor(shippingMethod, subtotal); // phí ship tính theo từng gian hàng
+      return { sid, items, subtotal, discount: d, shippingFee, total: Math.max(0, subtotal - d + shippingFee) };
+    });
+    const checkoutCode = genCheckoutCode();
+
+    // Nguyên tử: tạo N đơn + giữ chỗ tồn kho + xóa mục khỏi giỏ + tăng lượt voucher (11E)
+    const orders = await prisma.$transaction(async (db) => {
+      const created = [];
+      for (const g of prepared) {
+        const code = await genOrderCode();
+        const o = await db.order.create({
+          data: {
+            code, userId, sellerId: g.sid, checkoutCode,
+            status: online ? 'AWAITING_PAYMENT' : 'PENDING',
+            paymentMethod, paymentStatus: online ? 'PENDING' : 'UNPAID',
+            recipientName: address.recipientName, phone: address.phone,
+            province: address.province, district: address.district, ward: address.ward, addressDetail: address.detail,
+            subtotal: g.subtotal, discount: g.discount, voucherCode: voucherCode ?? null, shippingMethod, shippingFee: g.shippingFee, total: g.total, note: note ?? null,
+            items: {
+              create: g.items.map((it) => ({
+                productId: it.product.id, variantId: it.variantId,
+                name: it.product.name, size: it.variant?.size ?? null,
+                quantity: it.quantity, price: it.product.price,
+              })),
+            },
           },
-        },
-      });
-      // giữ chỗ tồn kho (reserved) để tránh bán vượt
+        });
+        created.push(o);
+      }
+      // giữ chỗ tồn kho (reserved) cho toàn bộ mục
       for (const it of rows) {
         if (it.variantId) await db.productVariant.update({ where: { id: it.variantId }, data: { reserved: { increment: it.quantity } } });
       }
-      // xóa các mục đã đặt khỏi giỏ
       await db.cartItem.deleteMany({ where: { id: { in: rows.map((r) => r.id) } } });
-      // UC8.3 - đánh dấu đã dùng voucher theo đơn
-      if (voucherCode && discount > 0) await db.voucher.updateMany({ where: { code: voucherCode.toUpperCase() }, data: { usedCount: { increment: 1 } } });
-      return o;
+      if (voucherCode && discount > 0) await db.voucher.updateMany({ where: { code: voucherCode.toUpperCase() }, data: { usedCount: { increment: 1 } } }); // 1 lần/checkout
+      return created;
     });
 
-    // Online -> tạo giao dịch + URL thanh toán (chuyển UC9.2)
+    // Online -> MỘT giao dịch gộp cho tổng tất cả đơn (UC9.2)
     if (online) {
+      const combinedTotal = orders.reduce((a, o) => a + o.total, 0);
       const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || '127.0.0.1';
-      const { payUrl } = await startOnlinePayment(order, ip);
-      return res.status(201).json({ order, payUrl });
+      const { payUrl } = await startOnlinePayment(orders[0], ip, combinedTotal);
+      return res.status(201).json({ orders, payUrl, checkoutCode });
     }
-    res.status(201).json({ order });
+    res.status(201).json({ orders, checkoutCode });
   } catch (err) {
     next(err);
   }

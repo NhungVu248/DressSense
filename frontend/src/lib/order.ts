@@ -8,7 +8,7 @@ export interface Address {
 export interface ShippingMethod { code: string; label: string; fee: number; eta: string }
 export interface CheckoutItem {
   cartItemId: number; productId: number; name: string; price: number;
-  size: string | null; quantity: number; lineTotal: number; seller: string; valid: boolean;
+  size: string | null; quantity: number; lineTotal: number; sellerId: number; seller: string; valid: boolean;
 }
 export interface CheckoutInfo {
   addresses: Address[]; shippingMethods: ShippingMethod[];
@@ -58,7 +58,7 @@ export interface PlaceOrderBody {
 export async function getCheckoutInfo(): Promise<CheckoutInfo> {
   return (await api.get('/orders/checkout')).data;
 }
-export async function placeOrder(body: PlaceOrderBody): Promise<{ order: Order; payUrl?: string }> {
+export async function placeOrder(body: PlaceOrderBody): Promise<{ orders: Order[]; payUrl?: string; checkoutCode?: string }> {
   return (await api.post('/orders', body)).data;
 }
 export async function getOrders(status?: string): Promise<Order[]> {
