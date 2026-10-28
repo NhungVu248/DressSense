@@ -1,0 +1,5 @@
+# Giữ LF cho script shell & file dùng trong container Linux (tránh lỗi CRLF khi checkout trên Windows)
+*.sh text eol=lf
+docker-entrypoint.sh text eol=lf
+Dockerfile text eol=lf
+*.conf text eol=lf
