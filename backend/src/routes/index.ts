@@ -22,6 +22,10 @@ import complaintRoutes from './complaint.routes';
 import reviewRoutes from './review.routes';
 import questionRoutes from './question.routes';
 import notificationRoutes from './notification.routes';
+import promotionRoutes from './promotion.routes';
+import bannerRoutes from './banner.routes';
+import publicBannerRoutes from './public-banner.routes';
+import campaignRoutes from './campaign.routes';
 
 const router = Router();
 router.use('/auth', authRoutes);
@@ -47,5 +51,9 @@ router.use('/complaints', complaintRoutes); // UC11.2 - Khiếu nại
 router.use('/reviews', reviewRoutes);     // UC12.1 - Đánh giá sản phẩm
 router.use('/questions', questionRoutes); // UC12.3 - Hỏi đáp sản phẩm
 router.use('/notifications', notificationRoutes); // UC12.4 - Thông báo
+router.use('/promotions', promotionRoutes); // UC13.1 - Khuyến mãi (voucher + Flash Sale)
+router.use('/banners', publicBannerRoutes); // UC13.2 - Banner (công khai)
+router.use('/admin/banners', bannerRoutes); // UC13.2 - Quản lý banner (Admin)
+router.use('/admin/campaigns', campaignRoutes); // UC13.3 - Chiến dịch thông báo (Admin)
 
 export default router;

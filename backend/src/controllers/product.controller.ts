@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { analyzeProduct, analyzeMany } from '../services/product-analysis.service';
+import { flashPriceMapByProduct, getRunningFlashSales } from '../services/promotion.service';
 
 // UC4.1 - chỉ Người bán (SP của mình) hoặc Quản trị viên mới được phân tích/xác nhận nhãn
 async function assertCanEdit(req: Request, productId: number): Promise<{ ok: true } | { ok: false; code: number; message: string }> {
@@ -87,11 +88,14 @@ export async function listProducts(req: Request, res: Response, next: NextFuncti
       prisma.product.count({ where }),
     ]);
 
+    // UC13.1 - giá Flash Sale hiển thị (nếu còn suất)
+    const flashMap = await flashPriceMapByProduct(rows.map((p) => p.id));
     const items = rows.map((p) => {
       const ratingCount = p.reviews.length;
       const ratingAvg = ratingCount ? p.reviews.reduce((a, r) => a + r.rating, 0) / ratingCount : 0;
       const inStock = p.variants.some((v) => v.stock > 0);
       const { reviews, _count, ...rest } = p as any;
+      const salePrice = flashMap.get(p.id) ?? null;
       return {
         ...rest,
         sizes: [...new Set(p.variants.map((v) => v.size))],
@@ -99,6 +103,8 @@ export async function listProducts(req: Request, res: Response, next: NextFuncti
         ratingCount,
         soldCount: p._count.orderItems,
         inStock,
+        salePrice: salePrice != null && salePrice < p.price ? salePrice : null, // giá Flash Sale
+        onSale: salePrice != null && salePrice < p.price,
       };
     });
 
@@ -196,7 +202,16 @@ export async function getProduct(req: Request, res: Response, next: NextFunction
       },
     });
     if (!product || product.deletedAt || product.status !== 'ACTIVE') return res.status(404).json({ message: 'Không tìm thấy sản phẩm' }); // UC6 - chỉ hiện SP đang bán
-    res.json({ product });
+
+    // UC13.1 - Flash Sale đang diễn ra (giá ưu đãi + số suất còn lại + hạn)
+    const sales = await getRunningFlashSales([product.id]);
+    const best = sales.filter((s) => s.variantId == null || product.variants.some((v) => v.id === s.variantId))
+      .reduce((b, s) => (!b || s.salePrice < b.salePrice ? s : b), null as (typeof sales)[number] | null);
+    const full = await prisma.flashSale.findUnique({ where: { id: best?.id ?? -1 } });
+    const flashSale = best && full
+      ? { salePrice: best.salePrice, variantId: best.variantId, remaining: Math.max(0, best.quantity - best.soldCount), perUserLimit: best.perUserLimit, endsAt: full.endsAt }
+      : null;
+    res.json({ product: { ...product, salePrice: flashSale ? flashSale.salePrice : null, onSale: !!flashSale }, flashSale });
   } catch (err) {
     next(err);
   }

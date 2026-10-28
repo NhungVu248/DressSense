@@ -10,6 +10,7 @@ function publicUser(u: any) {
   return {
     id: u.id, email: u.email, phone: u.phone, fullName: u.fullName,
     role: u.role, status: u.status, avatarUrl: u.avatarUrl, shopName: u.shopName,
+    marketingOptIn: u.marketingOptIn, // UC13.3 - nhận thông báo khuyến mãi
     provider: u.provider, createdAt: u.createdAt,
   };
 }
@@ -55,6 +56,7 @@ export async function getMyProfile(req: Request, res: Response, next: NextFuncti
 const updateSchema = z.object({
   fullName: z.string().min(1, 'Vui lòng nhập họ tên').optional(),
   phone: z.string().optional(), // đổi trực tiếp CHỈ khi chưa có SĐT (lần đầu khai báo)
+  marketingOptIn: z.boolean().optional(), // UC13.3 10a - bật/tắt nhận thông báo khuyến mãi
 });
 
 // PATCH /api/users/me - cập nhật các trường không nhạy cảm
@@ -66,6 +68,7 @@ export async function updateMyProfile(req: Request, res: Response, next: NextFun
 
     const patch: Record<string, unknown> = {};
     if (data.fullName !== undefined) patch.fullName = data.fullName;
+    if (data.marketingOptIn !== undefined) patch.marketingOptIn = data.marketingOptIn;
 
     // Khai báo SĐT lần đầu (chưa có) không cần OTP; đổi SĐT đã có -> dùng luồng OTP riêng (3b)
     if (data.phone !== undefined && !current.phone) {

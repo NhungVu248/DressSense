@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { computeVoucher } from './voucher.controller';
+import { getRunningFlashSales, pickFlashSale, effectivePrice } from '../services/promotion.service';
 
 // ============================================================
 //  UC8.1 - Quản lý giỏ hàng
@@ -67,10 +68,21 @@ function serializeItem(it: Awaited<ReturnType<typeof loadUserCart>>[number]) {
   };
 }
 
+// UC13.1 - áp giá Flash Sale (nếu còn suất) lên các mục đã chuẩn hóa; thêm originalPrice/flashSale.
+type SerializedItem = ReturnType<typeof serializeItem>;
+async function applyFlashPricing(items: SerializedItem[]): Promise<(SerializedItem & { originalPrice: number; flashSale: boolean })[]> {
+  const sales = await getRunningFlashSales(items.map((i) => i.product.id));
+  return items.map((i) => {
+    const fs = pickFlashSale(sales, i.product.id, i.variant?.id ?? null);
+    const price = effectivePrice(i.price, fs);
+    return { ...i, price, originalPrice: i.price, flashSale: price < i.price, lineTotal: price * i.quantity };
+  });
+}
+
 // GET /api/cart - giỏ hàng, nhóm theo gian hàng + tổng tạm tính của các mục đang chọn
 export async function getCart(req: Request, res: Response, next: NextFunction) {
   try {
-    const items = (await loadUserCart(req.user!.userId)).map(serializeItem);
+    const items = await applyFlashPricing((await loadUserCart(req.user!.userId)).map(serializeItem));
     // Nhóm theo gian hàng (UC8.1 - giỏ có thể chứa SP từ nhiều Người bán)
     const shopMap = new Map<number, { seller: { id: number; name: string }; items: typeof items }>();
     for (const it of items) {
@@ -222,7 +234,7 @@ const checkoutSchema = z.object({ voucherCode: z.string().trim().optional() });
 export async function checkoutPreview(req: Request, res: Response, next: NextFunction) {
   try {
     const body = checkoutSchema.safeParse(req.body ?? {});
-    const items = (await loadUserCart(req.user!.userId)).map(serializeItem);
+    const items = await applyFlashPricing((await loadUserCart(req.user!.userId)).map(serializeItem));
     const selected = items.filter((i) => i.selected);
     if (selected.length === 0) return res.status(400).json({ message: 'Chưa chọn sản phẩm nào để thanh toán.', code: 'EMPTY_SELECTION' });
 
@@ -235,11 +247,12 @@ export async function checkoutPreview(req: Request, res: Response, next: NextFun
 
     const subtotal = valid.reduce((a, i) => a + i.lineTotal, 0);
 
-    // UC8.3 - áp voucher (nếu có)
+    // UC8.3/UC13.1 - áp voucher (nếu có), kèm ngữ cảnh giỏ cho phạm vi/gian hàng/giới hạn khách
     let voucher = null as Awaited<ReturnType<typeof computeVoucher>> | null;
     const code = body.success ? body.data.voucherCode : undefined;
     if (code) {
-      voucher = await computeVoucher(code, subtotal);
+      const ctxItems = valid.map((i) => ({ productId: i.product.id, categoryId: i.product.category.id, sellerId: i.seller.id, lineTotal: i.lineTotal }));
+      voucher = await computeVoucher(code, subtotal, { userId: req.user!.userId, items: ctxItems });
       if (!voucher.valid) return res.status(400).json({ message: voucher.message, code: 'VOUCHER_INVALID' });
     }
     const discount = voucher?.valid ? voucher.discount : 0;

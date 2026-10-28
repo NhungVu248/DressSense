@@ -21,10 +21,10 @@ enum Role {
 
 // Trạng thái tài khoản
 enum AccountStatus {
-  ACTIVE            // đã kích hoạt (Khách hàng sau xác thực)
-  PENDING_APPROVAL  // Người bán chờ Quản trị viên kiểm duyệt (UC16.3)
-  LOCKED            // tạm khóa (vd brute-force)
-  DISABLED          // vô hiệu hóa
+  ACTIVE // đã kích hoạt (Khách hàng sau xác thực)
+  PENDING_APPROVAL // Người bán chờ Quản trị viên kiểm duyệt (UC16.3)
+  LOCKED // tạm khóa (vd brute-force)
+  DISABLED // vô hiệu hóa
 }
 
 // Phương thức xác thực
@@ -37,7 +37,7 @@ model User {
   id        Int           @id @default(autoincrement())
   email     String?       @unique
   phone     String?       @unique
-  password  String?       // null nếu đăng nhập qua mạng xã hội (OAuth)
+  password  String? // null nếu đăng nhập qua mạng xã hội (OAuth)
   fullName  String
   avatarUrl String?
   role      Role          @default(CUSTOMER)
@@ -45,10 +45,13 @@ model User {
   provider  AuthProvider  @default(LOCAL)
 
   // Cổng Người bán: tên gian hàng dự kiến khai báo khi đăng ký (UC1.1)
-  shopName  String?
+  shopName String?
 
   // UC3.1 - Đồng ý xử lý dữ liệu cơ thể (informed consent), null = chưa đồng ý
   bodyDataConsentAt DateTime?
+
+  // UC13.3 - cho phép nhận thông báo marketing (khuyến mãi/gợi ý); tách khỏi thông báo giao dịch
+  marketingOptIn Boolean @default(true)
 
   // Chống dò mật khẩu (brute-force) - UC1.2
   failedLoginAttempts Int       @default(0)
@@ -57,22 +60,28 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profile      CustomerProfile?
-  bodyProfiles BodyProfile[]
+  profile              CustomerProfile?
+  bodyProfiles         BodyProfile[]
   bodyDataDeletionLogs BodyDataDeletionLog[]
-  products     Product[]        @relation("SellerProducts")
-  cartItems    CartItem[]
-  wishlist     Wishlist[] // UC8.2 - danh sách yêu thích
-  orders       Order[]
-  returnRequests ReturnRequest[] // UC11.1
-  complaints     Complaint[]     // UC11.2
-  questions      ProductQuestion[] // UC12.3
-  notifications  Notification[]    // UC12.4
-  reviews      Review[]
-  behaviors    UserBehavior[]
-  addresses    Address[]
-  roleLogsAsActor  RoleChangeLog[] @relation("AuditActor")
-  roleLogsAsTarget RoleChangeLog[] @relation("AuditTarget")
+  products             Product[]             @relation("SellerProducts")
+  cartItems            CartItem[]
+  wishlist             Wishlist[] // UC8.2 - danh sách yêu thích
+  orders               Order[]
+  returnRequests       ReturnRequest[] // UC11.1
+  complaints           Complaint[] // UC11.2
+  questions            ProductQuestion[] // UC12.3
+  notifications        Notification[] // UC12.4
+  reviews              Review[]
+  behaviors            UserBehavior[]
+  addresses            Address[]
+  roleLogsAsActor      RoleChangeLog[]       @relation("AuditActor")
+  roleLogsAsTarget     RoleChangeLog[]       @relation("AuditTarget")
+
+  // UC13 - khuyến mãi & tiếp thị
+  vouchers        Voucher[]        @relation("SellerVouchers") // voucher do gian hàng này tạo
+  flashSales      FlashSale[]      @relation("SellerFlashSales") // flash sale do gian hàng này tạo
+  voucherUsages   VoucherUsage[] // lượt dùng voucher của Khách hàng
+  flashSaleUsages FlashSaleUsage[] // số suất flash sale đã mua của Khách hàng
 }
 
 // ---------- Mã OTP xác thực (UC1.1 đăng ký, UC1.3 khôi phục MK) ----------
@@ -84,10 +93,10 @@ enum OtpPurpose {
 
 model OtpCode {
   id        Int        @id @default(autoincrement())
-  target    String     // email hoặc SĐT nhận mã
-  codeHash  String     // OTP được băm, không lưu dạng thuần
+  target    String // email hoặc SĐT nhận mã
+  codeHash  String // OTP được băm, không lưu dạng thuần
   purpose   OtpPurpose
-  payload   Json?      // dữ liệu đăng ký tạm (chờ xác thực mới tạo tài khoản)
+  payload   Json? // dữ liệu đăng ký tạm (chờ xác thực mới tạo tài khoản)
   attempts  Int        @default(0) // số lần nhập sai
   consumed  Boolean    @default(false)
   expiresAt DateTime
@@ -103,10 +112,10 @@ model Address {
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   recipientName String
   phone         String
-  province      String   // tỉnh/thành
-  district      String   // quận/huyện
-  ward          String   // phường/xã
-  detail        String   // địa chỉ chi tiết
+  province      String // tỉnh/thành
+  district      String // quận/huyện
+  ward          String // phường/xã
+  detail        String // địa chỉ chi tiết
   isDefault     Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -136,20 +145,20 @@ model RoleChangeLog {
 
 // UC2.1c - Dịp sử dụng chuẩn (ánh xạ thuộc tính "dịp sử dụng" của sản phẩm - UC4, UC6)
 enum OccasionType {
-  WORK    // đi làm
-  SCHOOL  // đi học
-  STREET  // dạo phố
-  PARTY   // tiệc & sự kiện
-  SPORT   // thể thao
-  TRAVEL  // du lịch
-  CUSTOM  // dịp tùy chỉnh do khách hàng tự đặt (luồng 4e)
+  WORK // đi làm
+  SCHOOL // đi học
+  STREET // dạo phố
+  PARTY // tiệc & sự kiện
+  SPORT // thể thao
+  TRAVEL // du lịch
+  CUSTOM // dịp tùy chỉnh do khách hàng tự đặt (luồng 4e)
 }
 
 // UC2.1c - Mức độ thường xuyên sử dụng
 enum FrequencyLevel {
-  RARELY    // hiếm khi
+  RARELY // hiếm khi
   SOMETIMES // thỉnh thoảng
-  OFTEN     // thường xuyên
+  OFTEN // thường xuyên
 }
 
 // UC2.1 - Hồ sơ cá nhân hóa: sở thích/phong cách + ngân sách + dịp sử dụng
@@ -159,16 +168,16 @@ model CustomerProfile {
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // (a) Sở thích và phong cách - danh mục chuẩn hóa, lưu dạng JSON để linh hoạt nhiều lựa chọn
-  preferredStyles    Json?    // [{ style: string, priority: number }] - có ưu tiên (nhiều lựa chọn)
-  preferredColors    Json?    // string[] - màu ưa thích
-  avoidColors        Json?    // string[] - màu muốn tránh
-  preferredGarments  Json?    // string[] - kiểu trang phục thường mặc
-  avoidGarments      Json?    // string[] - kiểu trang phục không mặc
-  preferredMaterials Json?    // string[] - chất liệu ưu tiên
-  preferredBrands    Json?    // string[] - thương hiệu yêu thích (tùy chọn)
+  preferredStyles    Json? // [{ style: string, priority: number }] - có ưu tiên (nhiều lựa chọn)
+  preferredColors    Json? // string[] - màu ưa thích
+  avoidColors        Json? // string[] - màu muốn tránh
+  preferredGarments  Json? // string[] - kiểu trang phục thường mặc
+  avoidGarments      Json? // string[] - kiểu trang phục không mặc
+  preferredMaterials Json? // string[] - chất liệu ưu tiên
+  preferredBrands    Json? // string[] - thương hiệu yêu thích (tùy chọn)
   styleDeclaredAt    DateTime? // null = chưa khai báo -> luồng 4b dùng gợi ý mặc định
 
-  budgets   ProfileBudget[]   // (b) Ngân sách theo nhóm sản phẩm
+  budgets   ProfileBudget[] // (b) Ngân sách theo nhóm sản phẩm
   occasions ProfileOccasion[] // (c) Dịp sử dụng thường xuyên
 
   sizes CustomerSize[] // UC2.2 - thông tin size theo danh mục
@@ -177,7 +186,7 @@ model CustomerProfile {
   // onDelete SetNull -> tự hủy liên kết khi Body Profile bị xóa (UC3.4 b8).
   bodyProfileId       Int?         @unique
   bodyProfile         BodyProfile? @relation("SyncedBodyProfile", fields: [bodyProfileId], references: [id], onDelete: SetNull)
-  bodyProfileSyncedAt DateTime?    // thời điểm đồng bộ gần nhất (version lấy qua bodyProfile.version)
+  bodyProfileSyncedAt DateTime? // thời điểm đồng bộ gần nhất (version lấy qua bodyProfile.version)
   bodyProfileAutoSync Boolean      @default(false) // 2a - khách hàng bật tự đồng bộ khi có bản mới
 
   createdAt DateTime @default(now())
@@ -191,8 +200,8 @@ model ProfileBudget {
   profile    CustomerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   categoryId Int
   category   Category        @relation(fields: [categoryId], references: [id])
-  minPrice   Int             // VND, số không âm
-  maxPrice   Int             // VND, >= minPrice
+  minPrice   Int // VND, số không âm
+  maxPrice   Int // VND, >= minPrice
   updatedAt  DateTime        @updatedAt
 
   @@unique([profileId, categoryId])
@@ -205,7 +214,7 @@ model ProfileOccasion {
   profileId   Int
   profile     CustomerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   occasion    OccasionType
-  customLabel String?         // bắt buộc khi occasion = CUSTOM (luồng 4e)
+  customLabel String? // bắt buộc khi occasion = CUSTOM (luồng 4e)
   frequency   FrequencyLevel  @default(SOMETIMES)
   createdAt   DateTime        @default(now())
 
@@ -215,8 +224,8 @@ model ProfileOccasion {
 
 // UC2.2 - Hệ size khai báo
 enum SizeSystem {
-  STANDARD    // S/M/L/XL...
-  NUMERIC     // theo số (vd quần 29, giày EU 39)
+  STANDARD // S/M/L/XL...
+  NUMERIC // theo số (vd quần 29, giày EU 39)
   MEASUREMENT // nhập số đo cơ thể, hệ thống quy đổi
 }
 
@@ -228,8 +237,8 @@ model CustomerSize {
   categoryId   Int
   category     Category        @relation(fields: [categoryId], references: [id])
   sizeSystem   SizeSystem      @default(STANDARD)
-  sizeValue    String          // giá trị size cuối cùng (chuẩn hoặc suy ra từ số đo)
-  measurements Json?           // số đo cơ thể khi sizeSystem = MEASUREMENT
+  sizeValue    String // giá trị size cuối cùng (chuẩn hoặc suy ra từ số đo)
+  measurements Json? // số đo cơ thể khi sizeSystem = MEASUREMENT
   source       String          @default("MANUAL") // MANUAL | BODY_PROFILE (dành cho UC2.3 sau này)
   updatedAt    DateTime        @updatedAt
   createdAt    DateTime        @default(now())
@@ -250,19 +259,19 @@ enum BodyShape {
 // UC3.1/UC3.2 - Nguồn dữ liệu đầu vào để phân tích
 enum BodyProfileSource {
   MANUAL // nhập số đo thủ công
-  PHOTO  // tải/chụp ảnh toàn thân (có AI hỗ trợ nhận diện dáng qua vai/hông)
+  PHOTO // tải/chụp ảnh toàn thân (có AI hỗ trợ nhận diện dáng qua vai/hông)
 }
 
 // UC3.3 - Body Profile: mỗi lần phân tích tạo 1 bản ghi mới (lưu phiên bản, truy vết -
 // bản hiện hành = bản có createdAt lớn nhất của user). UC3.1 gọi include tới UC3.2 (xử lý)
 // và UC3.3 (sinh hồ sơ) để tạo ra bản ghi này.
 model BodyProfile {
-  id            Int               @id @default(autoincrement())
-  userId        Int
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bodyShape     BodyShape
-  source        BodyProfileSource @default(MANUAL)
-  version       Int               @default(1) // UC3.3 - số phiên bản; mỗi lần sinh tạo bản mới để truy vết (5a)
+  id        Int               @id @default(autoincrement())
+  userId    Int
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bodyShape BodyShape
+  source    BodyProfileSource @default(MANUAL)
+  version   Int               @default(1) // UC3.3 - số phiên bản; mỗi lần sinh tạo bản mới để truy vết (5a)
 
   height   Float? // cm
   weight   Float? // kg
@@ -289,17 +298,17 @@ model BodyProfile {
 
 // UC3.4 - Ghi nhận tối thiểu thao tác xóa dữ liệu cơ thể (không lưu lại nội dung đã xóa)
 enum BodyDataDeleteScope {
-  PHOTO_ONLY  // 3a: chỉ xóa ảnh, giữ Body Profile
-  PROFILE     // chỉ xóa Body Profile, giữ ảnh (hiếm dùng nhưng hỗ trợ "một phần")
-  ALL         // xóa toàn bộ dữ liệu cơ thể
+  PHOTO_ONLY // 3a: chỉ xóa ảnh, giữ Body Profile
+  PROFILE // chỉ xóa Body Profile, giữ ảnh (hiếm dùng nhưng hỗ trợ "một phần")
+  ALL // xóa toàn bộ dữ liệu cơ thể
 }
 
 model BodyDataDeletionLog {
-  id        Int                  @id @default(autoincrement())
+  id        Int                 @id @default(autoincrement())
   userId    Int
-  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   scope     BodyDataDeleteScope
-  deletedAt DateTime             @default(now())
+  deletedAt DateTime            @default(now())
 
   @@index([userId])
 }
@@ -356,7 +365,7 @@ model Product {
   targetGender String? // Nữ | Nam | Unisex
   brand        String? // thương hiệu (đồng bộ CustomerProfile.preferredBrands - UC2.1)
   occasion     String? // dịp dùng chính: WORK|PARTY|STREET|SPORT|TRAVEL|SCHOOL (ánh xạ UC2.1c)
-  tags         Json?   // nhãn thuộc tính linh hoạt (kiểu DeepFashion attributes)
+  tags         Json? // nhãn thuộc tính linh hoạt (kiểu DeepFashion attributes)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -371,6 +380,7 @@ model Product {
   bodyFits   ProductBodyFit[] // UC4 - điểm tương thích theo từng dáng người
   analysis   ProductAnalysis? // UC4.1 - kết quả phân tích thuộc tính (đề xuất + xác nhận)
   questions  ProductQuestion[] // UC12.3 - hỏi đáp sản phẩm
+  flashSales FlashSale[] // UC13.1 - chương trình Flash Sale của sản phẩm
 
   @@index([categoryId])
   @@index([sellerId])
@@ -419,8 +429,8 @@ model ProductBodyFit {
   productId Int
   product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   bodyShape BodyShape
-  score     Float     // 0..1 - càng cao càng hợp dáng
-  reasons   Json?     // các lý do khớp/không khớp (phục vụ giải thích ở UC5)
+  score     Float // 0..1 - càng cao càng hợp dáng
+  reasons   Json? // các lý do khớp/không khớp (phục vụ giải thích ở UC5)
   updatedAt DateTime  @updatedAt
 
   @@unique([productId, bodyShape])
@@ -436,13 +446,13 @@ model ProductImage {
 }
 
 model ProductVariant {
-  id        Int     @id @default(autoincrement())
-  productId Int
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  size      String
-  stock     Int     @default(0)
+  id                Int     @id @default(autoincrement())
+  productId         Int
+  product           Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size              String
+  stock             Int     @default(0)
   // UC6.6 - quản lý tồn kho theo biến thể
-  reserved          Int  @default(0) // số đang giữ chỗ cho đơn chưa hoàn tất (UC9) - không được bán vượt
+  reserved          Int     @default(0) // số đang giữ chỗ cho đơn chưa hoàn tất (UC9) - không được bán vượt
   lowStockThreshold Int? // ngưỡng cảnh báo tồn kho thấp
 
   cartItems  CartItem[]
@@ -469,14 +479,14 @@ model CartItem {
 
 enum OrderStatus {
   AWAITING_PAYMENT // chờ thanh toán (đơn online chưa thanh toán thành công)
-  PENDING          // chờ xác nhận (đã đặt, COD hoặc đã thanh toán online)
-  CONFIRMED        // đã xác nhận (người bán nhận đơn) - UC10.4
-  PREPARING        // đang chuẩn bị hàng - UC10.4
-  SHIPPING         // đang giao
-  DELIVERED        // đã giao (chờ khách xác nhận) - UC10.2
-  COMPLETED        // hoàn tất (khách đã nhận) - UC10.3
-  CANCELLED        // đã hủy - UC10.5
-  PAID             // (giữ để tương thích; luồng thanh toán online đặt đơn về PENDING)
+  PENDING // chờ xác nhận (đã đặt, COD hoặc đã thanh toán online)
+  CONFIRMED // đã xác nhận (người bán nhận đơn) - UC10.4
+  PREPARING // đang chuẩn bị hàng - UC10.4
+  SHIPPING // đang giao
+  DELIVERED // đã giao (chờ khách xác nhận) - UC10.2
+  COMPLETED // hoàn tất (khách đã nhận) - UC10.3
+  CANCELLED // đã hủy - UC10.5
+  PAID // (giữ để tương thích; luồng thanh toán online đặt đơn về PENDING)
 }
 
 // UC9.2 - phương thức thanh toán (MoMo tạm bỏ; Visa đi qua VNPAY thẻ quốc tế)
@@ -488,8 +498,8 @@ enum PaymentMethod {
 
 // UC9.2/9.3 - trạng thái thanh toán, tách riêng khỏi trạng thái đơn hàng
 enum PaymentStatus {
-  UNPAID   // chưa thanh toán (COD trước khi thu tiền)
-  PENDING  // đang chờ kết quả cổng thanh toán
+  UNPAID // chưa thanh toán (COD trước khi thu tiền)
+  PENDING // đang chờ kết quả cổng thanh toán
   PAID
   FAILED
   CANCELLED
@@ -498,14 +508,14 @@ enum PaymentStatus {
 }
 
 model Order {
-  id     Int         @id @default(autoincrement())
-  code   String      @unique // mã đơn hàng hiển thị (DSxxxxxxxx)
-  userId Int
-  user   User        @relation(fields: [userId], references: [id])
+  id           Int         @id @default(autoincrement())
+  code         String      @unique // mã đơn hàng hiển thị (DSxxxxxxxx)
+  userId       Int
+  user         User        @relation(fields: [userId], references: [id])
   // UC multi-shop - mỗi đơn thuộc MỘT gian hàng; một lần checkout có thể tạo nhiều đơn
-  sellerId     Int?    // gian hàng sở hữu đơn (null cho đơn cũ trước khi tách)
+  sellerId     Int? // gian hàng sở hữu đơn (null cho đơn cũ trước khi tách)
   checkoutCode String? // mã nhóm các đơn tạo cùng một lần checkout (thanh toán gộp)
-  status OrderStatus @default(PENDING)
+  status       OrderStatus @default(PENDING)
 
   // Snapshot địa chỉ giao hàng tại thời điểm đặt (UC9.1 - lưu thông tin khi đặt)
   recipientName String
@@ -517,10 +527,10 @@ model Order {
 
   // Tiền (tính ở phía hệ thống - UC9.1 quy tắc nghiệp vụ)
   subtotal       Int
-  discount       Int    @default(0)
+  discount       Int     @default(0)
   voucherCode    String?
-  shippingMethod String @default("STANDARD")
-  shippingFee    Int    @default(0)
+  shippingMethod String  @default("STANDARD")
+  shippingFee    Int     @default(0)
   total          Int
 
   // Thanh toán (UC9.2 - trạng thái thanh toán tách khỏi trạng thái đơn)
@@ -529,8 +539,8 @@ model Order {
   note          String?
 
   // UC10.2/10.4 - thông tin giao nhận (chỉ hiện khi người bán đã cập nhật)
-  carrier           String?   // đơn vị vận chuyển
-  trackingNumber    String?   // mã vận đơn
+  carrier           String? // đơn vị vận chuyển
+  trackingNumber    String? // mã vận đơn
   estimatedDelivery DateTime? // thời gian giao dự kiến
 
   // UC10 - mốc thời gian từng trạng thái (lưu thời điểm mỗi lần đổi)
@@ -550,12 +560,12 @@ model Order {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  items    OrderItem[]
-  payments PaymentTransaction[]
-  returnRequests ReturnRequest[]   // UC11.1
-  complaints     Complaint[]       // UC11.2
+  items          OrderItem[]
+  payments       PaymentTransaction[]
+  returnRequests ReturnRequest[] // UC11.1
+  complaints     Complaint[] // UC11.2
   incidents      DeliveryIncident[] // UC11.3
-  reviews        Review[]          // UC12.1
+  reviews        Review[] // UC12.1
 
   @@index([userId])
   @@index([sellerId])
@@ -586,47 +596,47 @@ enum PaymentKind {
 }
 
 model PaymentTransaction {
-  id          Int           @id @default(autoincrement())
-  code        String        @unique // mã giao dịch (vnp_TxnRef cho VNPAY)
-  orderId     Int
-  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  kind        PaymentKind   @default(PAYMENT) // UC11.4 - thanh toán hay hoàn tiền
-  method      PaymentMethod
-  amount      Int
-  status      PaymentStatus @default(PENDING)
-  providerRef String? // mã giao dịch phía cổng (vnp_TransactionNo)
-  bankCode    String? // mã ngân hàng / loại thẻ
-  cardLast4   String? // 4 số cuối thẻ (nếu có) - KHÔNG lưu CVV/số thẻ đầy đủ
+  id           Int                  @id @default(autoincrement())
+  code         String               @unique // mã giao dịch (vnp_TxnRef cho VNPAY)
+  orderId      Int
+  order        Order                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  kind         PaymentKind          @default(PAYMENT) // UC11.4 - thanh toán hay hoàn tiền
+  method       PaymentMethod
+  amount       Int
+  status       PaymentStatus        @default(PENDING)
+  providerRef  String? // mã giao dịch phía cổng (vnp_TransactionNo)
+  bankCode     String? // mã ngân hàng / loại thẻ
+  cardLast4    String? // 4 số cuối thẻ (nếu có) - KHÔNG lưu CVV/số thẻ đầy đủ
   responseCode String? // mã phản hồi cổng (vnp_ResponseCode)
-  message     String?
+  message      String?
   // UC11.4 - giao dịch hoàn tiền liên kết tới giao dịch thanh toán gốc
-  refundOfId Int?
-  refundOf   PaymentTransaction?  @relation("Refunds", fields: [refundOfId], references: [id])
-  refunds    PaymentTransaction[] @relation("Refunds")
-  createdAt   DateTime      @default(now())
-  paidAt      DateTime?
+  refundOfId   Int?
+  refundOf     PaymentTransaction?  @relation("Refunds", fields: [refundOfId], references: [id])
+  refunds      PaymentTransaction[] @relation("Refunds")
+  createdAt    DateTime             @default(now())
+  paidAt       DateTime?
 
   @@index([orderId])
 }
 
 model Review {
-  id        Int      @id @default(autoincrement())
-  productId Int
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  rating    Int
-  comment   String?  @db.Text
+  id            Int          @id @default(autoincrement())
+  productId     Int
+  product       Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId        Int
+  user          User         @relation(fields: [userId], references: [id])
+  rating        Int
+  comment       String?      @db.Text
   // UC12.1 - liên kết đơn đã mua (mỗi SP trong 1 đơn chỉ đánh giá 1 lần) + ảnh
-  orderId   Int?
-  order     Order?   @relation(fields: [orderId], references: [id])
-  images    Json?    // URL ảnh đánh giá (chưa làm upload file)
+  orderId       Int?
+  order         Order?       @relation(fields: [orderId], references: [id])
+  images        Json? // URL ảnh đánh giá (chưa làm upload file)
   // UC12.2 - phản hồi của người bán
-  sellerReply   String?   @db.Text
+  sellerReply   String?      @db.Text
   sellerReplyAt DateTime?
   // UC12.1 - kiểm duyệt nội dung (Quản trị viên có thể ẩn đánh giá vi phạm)
-  status    ReviewStatus @default(VISIBLE)
-  createdAt DateTime @default(now())
+  status        ReviewStatus @default(VISIBLE)
+  createdAt     DateTime     @default(now())
 
   @@unique([orderId, productId])
   @@index([productId])
@@ -786,10 +796,10 @@ model Wishlist {
   @@index([userId])
 }
 
-// UC8.3 - Mã giảm giá (bản gọn; quản lý đầy đủ thuộc UC13)
+// UC8.3 - Mã giảm giá; UC13.1 - quản lý khuyến mãi đầy đủ (voucher)
 enum VoucherType {
   PERCENT // giảm theo phần trăm (value = %), có thể giới hạn maxDiscount
-  FIXED   // giảm số tiền cố định (value = VND)
+  FIXED // giảm số tiền cố định (value = VND)
 }
 
 model Voucher {
@@ -804,8 +814,33 @@ model Voucher {
   endsAt      DateTime?
   usageLimit  Int? // tổng số lượt được dùng (null = không giới hạn)
   usedCount   Int         @default(0)
-  active      Boolean     @default(true)
-  createdAt   DateTime    @default(now())
+  active      Boolean     @default(true) // bật/tắt thủ công (tương thích UC8.3)
+
+  // UC13.1 - quản lý khuyến mãi đầy đủ
+  sellerId     Int? // null = áp dụng toàn hệ thống (Quản trị viên); else = của một gian hàng
+  seller       User?          @relation("SellerVouchers", fields: [sellerId], references: [id])
+  status       PromoStatus    @default(DRAFT) // vòng đời: Nháp → Lên lịch → Đang diễn ra → Kết thúc/Ngừng
+  perUserLimit Int? // số lần tối đa mỗi Khách hàng được dùng (null = không giới hạn)
+  scope        VoucherScope   @default(ALL) // phạm vi áp dụng
+  scopeIds     Json? // danh sách id sản phẩm/danh mục khi scope = PRODUCT/CATEGORY
+  usages       VoucherUsage[]
+
+  createdAt DateTime @default(now())
+
+  @@index([sellerId])
+}
+
+// UC13.1 - theo dõi số lượt mỗi Khách hàng đã dùng một voucher (enforce perUserLimit)
+model VoucherUsage {
+  id        Int     @id @default(autoincrement())
+  voucherId Int
+  voucher   Voucher @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  count     Int     @default(0)
+
+  @@unique([voucherId, userId])
+  @@index([userId])
 }
 
 // ============================================================
@@ -814,13 +849,13 @@ model Voucher {
 
 enum ReturnType {
   EXCHANGE // đổi hàng (size/màu khác)
-  RETURN   // trả hàng + hoàn tiền
+  RETURN // trả hàng + hoàn tiền
 }
 
 enum RequestStatus {
-  PENDING   // chờ người bán xử lý
-  APPROVED  // đã chấp thuận
-  REJECTED  // bị từ chối
+  PENDING // chờ người bán xử lý
+  APPROVED // đã chấp thuận
+  REJECTED // bị từ chối
   COMPLETED // đã hoàn tất (đổi xong / đã hoàn tiền)
   CANCELLED
 }
@@ -837,10 +872,10 @@ model ReturnRequest {
   reason       String
   description  String?       @db.Text
   evidence     String?       @db.Text // URL/ghi chú bằng chứng (chưa làm upload file)
-  exchangeSize String?       // size muốn đổi (khi EXCHANGE)
+  exchangeSize String? // size muốn đổi (khi EXCHANGE)
   status       RequestStatus @default(PENDING)
-  sellerNote   String?       // lý do khi từ chối / ghi chú xử lý
-  refundAmount Int?          // số tiền hoàn dự kiến (khi RETURN)
+  sellerNote   String? // lý do khi từ chối / ghi chú xử lý
+  refundAmount Int? // số tiền hoàn dự kiến (khi RETURN)
   createdAt    DateTime      @default(now())
   resolvedAt   DateTime?
 
@@ -860,41 +895,41 @@ model ReturnItem {
 }
 
 enum ComplaintStatus {
-  PENDING          // chờ người bán phản hồi
+  PENDING // chờ người bán phản hồi
   SELLER_RESPONDED // người bán đã đề xuất phương án
-  RESOLVED         // hai bên thống nhất
-  ESCALATED        // chuyển quản trị viên phân xử
-  ADMIN_RESOLVED   // quản trị viên đã xử lý
-  REJECTED         // bị từ chối
+  RESOLVED // hai bên thống nhất
+  ESCALATED // chuyển quản trị viên phân xử
+  ADMIN_RESOLVED // quản trị viên đã xử lý
+  REJECTED // bị từ chối
 }
 
 // UC11.2 - khiếu nại đơn hàng
 model Complaint {
-  id            Int             @id @default(autoincrement())
-  code          String          @unique
-  orderId       Int
-  order         Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  userId        Int
-  user          User            @relation(fields: [userId], references: [id])
-  type          String          // loại vấn đề
-  content       String          @db.Text
-  evidence      String?         @db.Text
-  status        ComplaintStatus @default(PENDING)
-  sellerProposal String?        @db.Text // phương án người bán đề xuất
-  adminDecision  String?        @db.Text // quyết định của quản trị viên
-  handledBy      Int?           // id quản trị viên xử lý
-  createdAt     DateTime        @default(now())
-  escalatedAt   DateTime?
-  resolvedAt    DateTime?
+  id             Int             @id @default(autoincrement())
+  code           String          @unique
+  orderId        Int
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId         Int
+  user           User            @relation(fields: [userId], references: [id])
+  type           String // loại vấn đề
+  content        String          @db.Text
+  evidence       String?         @db.Text
+  status         ComplaintStatus @default(PENDING)
+  sellerProposal String?         @db.Text // phương án người bán đề xuất
+  adminDecision  String?         @db.Text // quyết định của quản trị viên
+  handledBy      Int? // id quản trị viên xử lý
+  createdAt      DateTime        @default(now())
+  escalatedAt    DateTime?
+  resolvedAt     DateTime?
 
   @@index([orderId])
   @@index([userId])
 }
 
 enum IncidentType {
-  LATE   // giao chậm
+  LATE // giao chậm
   FAILED // giao thất bại
-  LOST   // thất lạc
+  LOST // thất lạc
 }
 
 // UC11.3 - sự cố giao hàng (người bán xử lý)
@@ -904,7 +939,7 @@ model DeliveryIncident {
   order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
   type       IncidentType
   note       String?      @db.Text
-  resolution String?      // REDELIVER | UPDATE_ETA | LOST_REFUND | ESCALATE
+  resolution String? // REDELIVER | UPDATE_ETA | LOST_REFUND | ESCALATE
   createdAt  DateTime     @default(now())
   resolvedAt DateTime?
 
@@ -917,29 +952,29 @@ model DeliveryIncident {
 
 // UC12.3 - hỏi đáp sản phẩm
 model ProductQuestion {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   productId  Int
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   userId     Int
-  user       User     @relation(fields: [userId], references: [id])
-  question   String   @db.Text
-  answer     String?  @db.Text
+  user       User      @relation(fields: [userId], references: [id])
+  question   String    @db.Text
+  answer     String?   @db.Text
   answeredBy Int? // id người bán trả lời
   answeredAt DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   @@index([productId])
 }
 
 enum NotificationType {
-  ORDER     // trạng thái đơn hàng
-  PAYMENT   // thanh toán / hoàn tiền
-  RETURN    // đổi/trả
+  ORDER // trạng thái đơn hàng
+  PAYMENT // thanh toán / hoàn tiền
+  RETURN // đổi/trả
   COMPLAINT // khiếu nại
-  REVIEW    // phản hồi đánh giá
-  QA        // trả lời hỏi đáp
-  PROMO     // khuyến mãi (marketing - có thể tắt)
-  SUGGEST   // gợi ý sản phẩm (marketing - có thể tắt)
+  REVIEW // phản hồi đánh giá
+  QA // trả lời hỏi đáp
+  PROMO // khuyến mãi (marketing - có thể tắt)
+  SUGGEST // gợi ý sản phẩm (marketing - có thể tắt)
 }
 
 // UC12.4 - thông báo cho khách hàng
@@ -955,4 +990,133 @@ model Notification {
   createdAt DateTime         @default(now())
 
   @@index([userId])
+}
+
+// ============================================================
+//  UC13 - Khuyến mãi & tiếp thị
+// ============================================================
+
+// Vòng đời chung cho voucher / flash sale / banner
+// Bản nháp → Đã lên lịch → Đang diễn ra → Đã kết thúc hoặc Đã ngừng
+enum PromoStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  ENDED
+  STOPPED
+}
+
+// UC13.1 - phạm vi áp dụng voucher
+enum VoucherScope {
+  ALL // toàn bộ sản phẩm trong phạm vi (gian hàng/hệ thống)
+  PRODUCT // chỉ một số sản phẩm (scopeIds = productIds)
+  CATEGORY // chỉ một số danh mục (scopeIds = categoryIds)
+}
+
+// UC13.1 - chương trình Flash Sale (giá ưu đãi + số suất giới hạn theo thời gian)
+model FlashSale {
+  id           Int         @id @default(autoincrement())
+  sellerId     Int
+  seller       User        @relation("SellerFlashSales", fields: [sellerId], references: [id])
+  productId    Int
+  product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId    Int? // null = áp cho mọi biến thể của sản phẩm
+  salePrice    Int // giá khuyến mãi (< giá gốc, >= 0)
+  quantity     Int // tổng số suất dành cho Flash Sale
+  soldCount    Int         @default(0) // số suất đã bán
+  perUserLimit Int? // số suất tối đa mỗi Khách hàng (null = không giới hạn)
+  startsAt     DateTime
+  endsAt       DateTime
+  status       PromoStatus @default(DRAFT)
+  createdAt    DateTime    @default(now())
+
+  usages FlashSaleUsage[]
+
+  @@index([sellerId])
+  @@index([productId])
+  @@index([status])
+}
+
+// UC13.1 - số suất Flash Sale mỗi Khách hàng đã mua (enforce perUserLimit)
+model FlashSaleUsage {
+  id          Int       @id @default(autoincrement())
+  flashSaleId Int
+  flashSale   FlashSale @relation(fields: [flashSaleId], references: [id], onDelete: Cascade)
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quantity    Int       @default(0)
+
+  @@unique([flashSaleId, userId])
+  @@index([userId])
+}
+
+// UC13.2 - vị trí hiển thị banner (định nghĩa sẵn)
+enum BannerPosition {
+  HOME_HERO // banner lớn đầu trang chủ
+  HOME_STRIP // dải banner phụ trang chủ
+  PROMO_PAGE // trang chương trình khuyến mãi
+}
+
+// UC13.2 - loại liên kết đích của banner
+enum BannerLinkType {
+  NONE
+  PRODUCT // linkValue = productId
+  CATEGORY // linkValue = categoryId
+  PROMO // linkValue = mã/đường dẫn chương trình
+  URL // linkValue = đường dẫn nội bộ
+}
+
+// UC13.2 - banner quảng cáo (Quản trị viên quản lý)
+model Banner {
+  id        Int            @id @default(autoincrement())
+  name      String
+  imageUrl  String
+  title     String?
+  subtitle  String?
+  position  BannerPosition @default(HOME_HERO)
+  linkType  BannerLinkType @default(NONE)
+  linkValue String? // id/đường dẫn tùy theo linkType
+  priority  Int            @default(0) // số lớn hiển thị trước khi trùng vị trí
+  startsAt  DateTime?
+  endsAt    DateTime?
+  status    PromoStatus    @default(DRAFT) // STOPPED = tạm ẩn (9b) nhưng giữ dữ liệu
+  createdBy Int?
+  createdAt DateTime       @default(now())
+
+  @@index([position])
+  @@index([status])
+}
+
+// UC13.3 - đối tượng nhận thông báo khuyến mãi
+enum CampaignAudience {
+  ALL // tất cả Khách hàng (có bật nhận marketing)
+  SEGMENT // nhóm Khách hàng theo tiêu chí (segment)
+}
+
+// UC13.3 - vòng đời chiến dịch thông báo
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  CANCELLED
+}
+
+// UC13.3 - chiến dịch thông báo khuyến mãi (Quản trị viên tạo & gửi; hiển thị qua UC12.4)
+model Campaign {
+  id             Int              @id @default(autoincrement())
+  name           String
+  title          String
+  content        String           @db.Text
+  imageUrl       String?
+  link           String? // liên kết tới sản phẩm/chương trình
+  audience       CampaignAudience @default(ALL)
+  segment        Json? // tiêu chí phân nhóm khi audience = SEGMENT
+  status         CampaignStatus   @default(DRAFT)
+  scheduledAt    DateTime? // thời điểm gửi khi lên lịch
+  sentAt         DateTime?
+  recipientCount Int              @default(0) // số người đã nhận (lưu lịch sử)
+  createdBy      Int?
+  createdAt      DateTime         @default(now())
+
+  @@index([status])
 }

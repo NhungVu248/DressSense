@@ -2,7 +2,8 @@ import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { SHIPPING_METHODS, shippingFeeFor } from '../constants/shipping';
-import { computeVoucher } from './voucher.controller';
+import { computeVoucher, voucherEligibleAmount } from './voucher.controller';
+import { priceOrderRows, getRunningFlashSales, pickFlashSale, effectivePrice } from '../services/promotion.service';
 import { startOnlinePayment } from '../services/payment.service';
 import { vnpayEnabled } from '../config/env';
 import { releaseReserved, finalizeStock } from '../services/order.service';
@@ -30,7 +31,7 @@ async function selectedCartItems(userId: number) {
   return prisma.cartItem.findMany({
     where: { userId, selected: true },
     include: {
-      product: { select: { id: true, name: true, price: true, status: true, deletedAt: true, seller: { select: { id: true, shopName: true, fullName: true } } } },
+      product: { select: { id: true, name: true, price: true, categoryId: true, status: true, deletedAt: true, seller: { select: { id: true, shopName: true, fullName: true } } } },
       variant: { select: { id: true, size: true, stock: true, reserved: true } },
     },
   });
@@ -44,11 +45,16 @@ export async function getCheckoutInfo(req: Request, res: Response, next: NextFun
       prisma.address.findMany({ where: { userId }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }] }),
       selectedCartItems(userId),
     ]);
+    // UC13.1 - giá hiệu lực theo Flash Sale (nếu còn suất)
+    const sales = await getRunningFlashSales(rows.map((r) => r.product.id));
     const items = rows.map((it) => {
       const valid = it.product.status === 'ACTIVE' && !it.product.deletedAt && (!it.variant || availableOf(it.variant) >= it.quantity);
+      const fs = pickFlashSale(sales, it.product.id, it.variantId ?? null);
+      const price = effectivePrice(it.product.price, fs);
       return {
-        cartItemId: it.id, productId: it.product.id, name: it.product.name, price: it.product.price,
-        size: it.variant?.size ?? null, quantity: it.quantity, lineTotal: it.product.price * it.quantity,
+        cartItemId: it.id, productId: it.product.id, name: it.product.name, price,
+        originalPrice: it.product.price, flashSale: price < it.product.price,
+        size: it.variant?.size ?? null, quantity: it.quantity, lineTotal: price * it.quantity,
         sellerId: it.product.seller.id, seller: it.product.seller.shopName || it.product.seller.fullName, valid,
       };
     });
@@ -102,13 +108,24 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       });
     }
 
+    // UC13.1 - giá hiệu lực: áp giá Flash Sale (nếu còn suất) rồi mới tính tiền.
+    const { priced, consume } = await priceOrderRows(
+      rows.map((it) => ({ productId: it.product.id, variantId: it.variantId ?? null, quantity: it.quantity, basePrice: it.product.price })),
+      userId,
+    );
+    const priceByCart = new Map(rows.map((it, i) => [it.id, priced[i].price] as const)); // giá sau Flash theo cartItemId
+    const effPrice = (it: (typeof rows)[number]) => priceByCart.get(it.id) ?? it.product.price;
+
     // Tính tiền ở phía hệ thống (không tin số từ frontend)
-    const totalSubtotal = rows.reduce((a, it) => a + it.product.price * it.quantity, 0);
+    const totalSubtotal = rows.reduce((a, it) => a + effPrice(it) * it.quantity, 0);
+    const ctxItems = rows.map((it) => ({ productId: it.product.id, categoryId: it.product.categoryId, sellerId: it.product.seller.id, lineTotal: effPrice(it) * it.quantity }));
     let discount = 0;
+    let voucherInfo: Awaited<ReturnType<typeof computeVoucher>>['voucher'] = null;
     if (voucherCode) {
-      const v = await computeVoucher(voucherCode, totalSubtotal);
+      const v = await computeVoucher(voucherCode, totalSubtotal, { userId, items: ctxItems }); // kiểm lại khi checkout
       if (!v.valid) return res.status(400).json({ message: v.message, code: 'VOUCHER_INVALID' }); // 10c
       discount = v.discount;
+      voucherInfo = v.voucher;
     }
 
     // Nhóm các mục theo gian hàng (sellerId)
@@ -118,19 +135,25 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       if (!groups.has(sid)) groups.set(sid, []);
       groups.get(sid)!.push(it);
     }
-    // Chuẩn bị số tiền từng đơn; voucher PHÂN BỔ theo tỷ lệ subtotal (đơn cuối nhận phần dư)
+    // Voucher PHÂN BỔ theo phần ĐỦ ĐIỀU KIỆN của từng gian hàng (voucher theo shop/phạm vi chỉ giảm đúng đơn liên quan)
     const entries = [...groups.entries()];
+    const groupEligible = entries.map(([, items]) =>
+      voucherInfo ? voucherEligibleAmount(voucherInfo, items.map((it) => ({ productId: it.product.id, categoryId: it.product.categoryId, sellerId: it.product.seller.id, lineTotal: effPrice(it) * it.quantity }))) : 0,
+    );
+    const totalEligible = groupEligible.reduce((a, b) => a + b, 0);
     let allocated = 0;
     const prepared = entries.map(([sid, items], idx) => {
-      const subtotal = items.reduce((a, it) => a + it.product.price * it.quantity, 0);
-      const d = idx === entries.length - 1 ? discount - allocated : Math.floor((discount * subtotal) / totalSubtotal);
+      const subtotal = items.reduce((a, it) => a + effPrice(it) * it.quantity, 0);
+      // đơn cuối (trong các đơn đủ điều kiện) nhận phần dư để tổng giảm khớp tuyệt đối
+      const lastEligibleIdx = groupEligible.reduce((last, amt, i) => (amt > 0 ? i : last), -1);
+      const d = totalEligible <= 0 ? 0 : idx === lastEligibleIdx ? discount - allocated : Math.floor((discount * groupEligible[idx]) / totalEligible);
       allocated += d;
       const shippingFee = shippingFeeFor(shippingMethod, subtotal); // phí ship tính theo từng gian hàng
       return { sid, items, subtotal, discount: d, shippingFee, total: Math.max(0, subtotal - d + shippingFee) };
     });
     const checkoutCode = genCheckoutCode();
 
-    // Nguyên tử: tạo N đơn + giữ chỗ tồn kho + xóa mục khỏi giỏ + tăng lượt voucher (11E)
+    // Nguyên tử: tạo N đơn + giữ chỗ tồn kho + xóa mục khỏi giỏ + trừ suất Flash + ghi lượt voucher
     const orders = await prisma.$transaction(async (db) => {
       const created = [];
       for (const g of prepared) {
@@ -147,7 +170,7 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
               create: g.items.map((it) => ({
                 productId: it.product.id, variantId: it.variantId,
                 name: it.product.name, size: it.variant?.size ?? null,
-                quantity: it.quantity, price: it.product.price,
+                quantity: it.quantity, price: effPrice(it), // snapshot giá đã áp Flash Sale
               })),
             },
           },
@@ -159,7 +182,28 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
         if (it.variantId) await db.productVariant.update({ where: { id: it.variantId }, data: { reserved: { increment: it.quantity } } });
       }
       await db.cartItem.deleteMany({ where: { id: { in: rows.map((r) => r.id) } } });
-      if (voucherCode && discount > 0) await db.voucher.updateMany({ where: { code: voucherCode.toUpperCase() }, data: { usedCount: { increment: 1 } } }); // 1 lần/checkout
+
+      // UC13.1 - trừ suất Flash Sale + ghi nhận số suất theo khách (perUserLimit)
+      for (const [flashSaleId, qty] of consume) {
+        await db.flashSale.update({ where: { id: flashSaleId }, data: { soldCount: { increment: qty } } });
+        await db.flashSaleUsage.upsert({
+          where: { flashSaleId_userId: { flashSaleId, userId } },
+          update: { quantity: { increment: qty } },
+          create: { flashSaleId, userId, quantity: qty },
+        });
+      }
+      // Voucher: tăng tổng lượt (1 lần/checkout) + lượt theo khách (perUserLimit)
+      if (voucherCode && discount > 0) {
+        const vrow = await db.voucher.findUnique({ where: { code: voucherCode.toUpperCase() }, select: { id: true } });
+        if (vrow) {
+          await db.voucher.update({ where: { id: vrow.id }, data: { usedCount: { increment: 1 } } });
+          await db.voucherUsage.upsert({
+            where: { voucherId_userId: { voucherId: vrow.id, userId } },
+            update: { count: { increment: 1 } },
+            create: { voucherId: vrow.id, userId, count: 1 },
+          });
+        }
+      }
       return created;
     });
 

@@ -14,8 +14,9 @@ async function main() {
   for (const v of VOUCHERS) {
     await prisma.voucher.upsert({
       where: { code: v.code },
-      update: { description: v.description, type: v.type, value: v.value, minOrder: v.minOrder, maxDiscount: v.maxDiscount, active: true },
-      create: { ...v, active: true },
+      // UC13.1 - voucher toàn hệ thống đang hiệu lực (status RUNNING, scope ALL)
+      update: { description: v.description, type: v.type, value: v.value, minOrder: v.minOrder, maxDiscount: v.maxDiscount, active: true, status: 'RUNNING' },
+      create: { ...v, active: true, status: 'RUNNING' },
     });
   }
   const count = await prisma.voucher.count();

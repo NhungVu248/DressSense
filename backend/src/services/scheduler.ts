@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma';
 import { finalizeStock } from './order.service';
 import { notify } from './notification.service';
+import { dispatchCampaign } from '../controllers/campaign.controller';
 
 // ============================================================
 //  Tác vụ định kỳ (in-process scheduler).
@@ -32,9 +33,36 @@ export async function runAutoComplete(): Promise<number> {
   return orders.length;
 }
 
+// UC13 - vòng đời khuyến mãi: tự chuyển trạng thái voucher/flash/banner theo thời gian.
+// SCHEDULED -> RUNNING khi tới giờ bắt đầu; RUNNING -> ENDED khi hết giờ (hoặc Flash hết suất).
+export async function runPromoLifecycle(): Promise<void> {
+  const now = new Date();
+  try {
+    // Kích hoạt khi tới giờ
+    await prisma.voucher.updateMany({ where: { status: 'SCHEDULED', startsAt: { lte: now } }, data: { status: 'RUNNING' } });
+    await prisma.flashSale.updateMany({ where: { status: 'SCHEDULED', startsAt: { lte: now } }, data: { status: 'RUNNING' } });
+    await prisma.banner.updateMany({ where: { status: 'SCHEDULED', startsAt: { lte: now } }, data: { status: 'RUNNING' } });
+    // Kết thúc khi hết giờ
+    await prisma.voucher.updateMany({ where: { status: 'RUNNING', endsAt: { lt: now } }, data: { status: 'ENDED' } });
+    await prisma.flashSale.updateMany({ where: { status: 'RUNNING', endsAt: { lt: now } }, data: { status: 'ENDED' } });
+    await prisma.banner.updateMany({ where: { status: 'RUNNING', endsAt: { lt: now } }, data: { status: 'ENDED' } });
+    // Flash Sale hết suất -> kết thúc (SP trở về giá bán thường)
+    const soldOut = await prisma.flashSale.findMany({ where: { status: 'RUNNING' }, select: { id: true, quantity: true, soldCount: true } });
+    const doneIds = soldOut.filter((s) => s.soldCount >= s.quantity).map((s) => s.id);
+    if (doneIds.length) await prisma.flashSale.updateMany({ where: { id: { in: doneIds } }, data: { status: 'ENDED' } });
+
+    // UC13.3 - gửi các chiến dịch đã tới giờ lên lịch
+    const due = await prisma.campaign.findMany({ where: { status: 'SCHEDULED', scheduledAt: { lte: now } }, select: { id: true } });
+    for (const c of due) await dispatchCampaign(c.id).catch(() => {});
+  } catch {
+    /* lỗi vòng đời khuyến mãi không chặn tác vụ khác */
+  }
+}
+
 // Khởi động bộ hẹn giờ: chạy ngay một lượt rồi lặp lại theo chu kỳ
 export function startScheduler() {
   runAutoComplete().catch(() => {});
-  setInterval(() => { runAutoComplete().catch(() => {}); }, RUN_EVERY_MS);
-  console.log(`[scheduler] đã bật - tự hoàn tất đơn Đã giao quá ${AUTO_COMPLETE_DAYS} ngày (mỗi ${RUN_EVERY_MS / 60000} phút).`);
+  runPromoLifecycle().catch(() => {});
+  setInterval(() => { runAutoComplete().catch(() => {}); runPromoLifecycle().catch(() => {}); }, RUN_EVERY_MS);
+  console.log(`[scheduler] đã bật - tự hoàn tất đơn + vòng đời khuyến mãi (mỗi ${RUN_EVERY_MS / 60000} phút).`);
 }
