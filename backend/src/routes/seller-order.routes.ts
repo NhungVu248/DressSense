@@ -7,12 +7,22 @@ import { listSellerComplaints, sellerRespondComplaint } from '../controllers/com
 import { createIncident, resolveIncident, listSellerIncidents } from '../controllers/incident.controller';
 import { listSellerReviews, replyReview } from '../controllers/review.controller';
 import { listSellerQuestions, answerQuestion } from '../controllers/question.controller';
+import { getMyShop, updateMyShop, submitMyShop } from '../controllers/shop.controller';
+import { getSellerReport } from '../controllers/seller-report.controller';
 import { authenticate, authorize } from '../middlewares/auth';
 
 const router = Router();
 
-// UC10.4 / UC11 - chỉ Người bán / Quản trị viên
+// UC10.4 / UC11 / UC14 - chỉ Người bán / Quản trị viên
 router.use(authenticate, authorize('SELLER', 'ADMIN'));
+
+// UC14.1 - quản lý hồ sơ gian hàng
+router.get('/shop', getMyShop);
+router.put('/shop', updateMyShop);
+router.post('/shop/submit', submitMyShop);
+
+// UC14.4 - báo cáo doanh thu gian hàng
+router.get('/report', getSellerReport);
 
 router.get('/orders', listSellerOrders);
 router.patch('/orders/:id/status', updateOrderStatus);          // cập nhật trạng thái theo thứ tự

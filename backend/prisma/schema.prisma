@@ -82,6 +82,62 @@ model User {
   flashSales      FlashSale[]      @relation("SellerFlashSales") // flash sale do gian hàng này tạo
   voucherUsages   VoucherUsage[] // lượt dùng voucher của Khách hàng
   flashSaleUsages FlashSaleUsage[] // số suất flash sale đã mua của Khách hàng
+
+  // UC14.1 - hồ sơ gian hàng (1-1 với Người bán)
+  shop Shop? @relation("UserShop")
+}
+
+// ---------- UC14.1 - Gian hàng (Seller Portal) ----------
+// Trạng thái gian hàng: Bản nháp -> Chờ duyệt -> Đang hoạt động / Bị từ chối; vi phạm -> Tạm ngưng
+enum ShopStatus {
+  DRAFT // Bản nháp (chưa gửi duyệt)
+  PENDING // Chờ duyệt (đã gửi UC16.3)
+  ACTIVE // Đang hoạt động (đã được phê duyệt)
+  REJECTED // Bị từ chối (xem lý do, sửa & gửi lại)
+  SUSPENDED // Tạm ngưng (vi phạm, do Admin xử lý)
+}
+
+model Shop {
+  id      Int    @id @default(autoincrement())
+  ownerId Int    @unique // 1-1: mỗi gian hàng thuộc một Người bán hợp lệ
+  owner   User   @relation("UserShop", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Hồ sơ gian hàng (UC14.1)
+  name         String // tên gian hàng
+  logoUrl      String?
+  coverUrl     String? // ảnh bìa
+  description  String? @db.Text
+  contactEmail String?
+  contactPhone String?
+
+  // Địa chỉ lấy hàng (UC14.1)
+  pickupName     String?
+  pickupPhone    String?
+  pickupProvince String?
+  pickupDistrict String?
+  pickupWard     String?
+  pickupDetail   String?
+
+  // Địa chỉ hoàn hàng (mặc định dùng chung địa chỉ lấy hàng)
+  returnSameAsPickup Boolean @default(true)
+  returnName         String?
+  returnPhone        String?
+  returnProvince     String?
+  returnDistrict     String?
+  returnWard         String?
+  returnDetail       String?
+
+  // Kiểm duyệt (UC16.3)
+  status       ShopStatus @default(DRAFT)
+  rejectReason String?    @db.Text // lý do từ chối (hiển thị cho Người bán sửa lại)
+  submittedAt  DateTime? // lần gửi duyệt gần nhất
+  reviewedAt   DateTime? // thời điểm Admin duyệt/từ chối
+  reviewedById Int? // Admin đã xử lý (không ràng buộc quan hệ ngược để giữ đơn giản)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
 }
 
 // ---------- Mã OTP xác thực (UC1.1 đăng ký, UC1.3 khôi phục MK) ----------
@@ -975,6 +1031,7 @@ enum NotificationType {
   QA // trả lời hỏi đáp
   PROMO // khuyến mãi (marketing - có thể tắt)
   SUGGEST // gợi ý sản phẩm (marketing - có thể tắt)
+  SHOP // UC14.1 - kết quả kiểm duyệt gian hàng (giao dịch, không tắt được)
 }
 
 // UC12.4 - thông báo cho khách hàng
