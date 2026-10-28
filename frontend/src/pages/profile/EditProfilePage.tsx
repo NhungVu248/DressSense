@@ -110,7 +110,7 @@ export default function EditProfilePage() {
 
         <div className="flex items-center gap-4 mb-5">
           <img
-            src={avatarPreview || (user.avatarUrl ? (import.meta.env.VITE_API_URL?.replace('/api', '') + user.avatarUrl) : DEFAULT_AVATAR)}
+            src={avatarPreview || (user.avatarUrl ? ((import.meta.env.VITE_API_URL || '/api').replace('/api', '') + user.avatarUrl) : DEFAULT_AVATAR)}
             alt="avatar" className="w-16 h-16 rounded-full object-cover bg-gray-100"
           />
           <div>

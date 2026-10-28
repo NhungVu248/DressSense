@@ -274,7 +274,7 @@ function SizeModal({ kind, category, onClose }: { kind: 'chart' | 'guide'; categ
 }
 
 // Ảnh tải lên có URL tương đối /uploads/... -> thêm origin của API để hiển thị
-const MEDIA_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace('/api', '');
+const MEDIA_ORIGIN = (import.meta.env.VITE_API_URL || '/api').replace('/api', '');
 const mediaUrl = (u: string) => (u.startsWith('http') ? u : MEDIA_ORIGIN + u);
 
 // UC12.1 - tab Đánh giá sản phẩm

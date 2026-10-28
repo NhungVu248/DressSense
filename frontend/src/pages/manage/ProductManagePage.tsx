@@ -19,7 +19,7 @@ const STATUS_COLOR: Record<string, string> = {
   ACTIVE: 'bg-green-100 text-green-700', HIDDEN: 'bg-gray-200 text-gray-600',
   DRAFT: 'bg-amber-100 text-amber-700', PENDING: 'bg-blue-100 text-blue-700', ARCHIVED: 'bg-red-100 text-red-600',
 };
-const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace('/api', '');
+const API_ORIGIN = (import.meta.env.VITE_API_URL || '/api').replace('/api', '');
 const imgUrl = (u: string | null) => (!u ? PRODUCT_PLACEHOLDER : u.startsWith('/uploads') ? API_ORIGIN + u : u);
 
 export default function ProductManagePage({ basePath = '/manage/products' }: { basePath?: string }) {

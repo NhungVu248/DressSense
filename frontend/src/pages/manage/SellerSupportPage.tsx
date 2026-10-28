@@ -10,7 +10,7 @@ import {
 
 type Tab = 'returns' | 'complaints' | 'incidents';
 
-const MEDIA_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace('/api', '');
+const MEDIA_ORIGIN = (import.meta.env.VITE_API_URL || '/api').replace('/api', '');
 // UC11 - hiển thị ảnh/video bằng chứng (evidence lưu dưới dạng URL phân tách bằng dấu phẩy)
 function Evidence({ value }: { value: string | null | undefined }) {
   const urls = (value ?? '').split(',').map((s) => s.trim()).filter(Boolean);

@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { getToken } from './token';
 
+// Mặc định '/api' (tương đối) -> đi qua proxy Vite/Nginx, cùng origin (hợp với ngrok 1 tunnel).
+// Đặt VITE_API_URL nếu cần trỏ tới backend khác origin.
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:4000/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
 });
 
 api.interceptors.request.use((config) => {

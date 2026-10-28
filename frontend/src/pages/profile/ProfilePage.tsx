@@ -46,7 +46,7 @@ export default function ProfilePage() {
 
       <div className="bg-white rounded-xl border p-6 flex items-start gap-5 mb-5">
         <img
-          src={user.avatarUrl ? (import.meta.env.VITE_API_URL?.replace('/api', '') + user.avatarUrl) : DEFAULT_AVATAR}
+          src={user.avatarUrl ? ((import.meta.env.VITE_API_URL || '/api').replace('/api', '') + user.avatarUrl) : DEFAULT_AVATAR}
           alt="avatar"
           className="w-20 h-20 rounded-full object-cover bg-gray-100"
         />

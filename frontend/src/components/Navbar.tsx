@@ -35,7 +35,7 @@ export default function Navbar() {
   const accRef = useRef<HTMLDivElement>(null);
 
   const avatar = user?.avatarUrl
-    ? (import.meta.env.VITE_API_URL?.replace('/api', '') + user.avatarUrl)
+    ? ((import.meta.env.VITE_API_URL || '/api').replace('/api', '') + user.avatarUrl)
     : DEFAULT_AVATAR;
 
   // UC8.1 - số mục trong giỏ (badge)

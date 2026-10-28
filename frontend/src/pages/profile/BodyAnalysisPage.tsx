@@ -67,7 +67,7 @@ const SHAPE_LABEL: Record<BodyShape, string> = {
   INVERTED_TRIANGLE: 'Tam giác ngược',
 };
 
-const API_ORIGIN = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace('/api', '');
+const API_ORIGIN = (import.meta.env.VITE_API_URL || '/api').replace('/api', '');
 
 // Các trường số đo dùng chung cho cả hai phương thức
 const MEASUREMENT_FIELDS = [
