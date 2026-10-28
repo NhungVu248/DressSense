@@ -110,7 +110,23 @@ export default function ProductDetailPage() {
             {ratingCount > 0 ? <span>{ratingAvg.toFixed(1)} ({ratingCount} đánh giá)</span> : <span className="text-gray-400">Chưa có đánh giá</span>}
           </div>
 
-          <p className="font-display text-3xl text-ink mt-4">{formatVND(p.price)}</p>
+          {/* UC13.1 - giá Flash Sale (nếu đang có) */}
+          {p.flashSale ? (
+            <div className="mt-4">
+              <div className="flex items-baseline gap-3">
+                <span className="font-display text-3xl text-red-600">{formatVND(p.flashSale.salePrice)}</span>
+                <span className="text-lg text-gray-400 line-through">{formatVND(p.price)}</span>
+                <span className="bg-red-600 text-white text-xs font-semibold px-2 py-0.5 rounded">FLASH SALE</span>
+              </div>
+              <p className="text-sm text-red-600 mt-1">
+                ⚡ Chỉ còn {p.flashSale.remaining} suất
+                {p.flashSale.perUserLimit != null && ` · tối đa ${p.flashSale.perUserLimit}/khách`}
+                {` · kết thúc ${new Date(p.flashSale.endsAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
+              </p>
+            </div>
+          ) : (
+            <p className="font-display text-3xl text-ink mt-4">{formatVND(p.price)}</p>
+          )}
           {p.description && <p className="text-sm text-gray-600 leading-relaxed mt-3">{p.description}</p>}
 
           {/* Màu sắc (dữ liệu: 1 màu/sản phẩm) */}

@@ -11,6 +11,7 @@ export interface User {
   status: 'ACTIVE' | 'PENDING_APPROVAL' | 'LOCKED' | 'DISABLED';
   avatarUrl: string | null;
   shopName: string | null;
+  marketingOptIn?: boolean; // UC13.3 - nhận thông báo khuyến mãi
 }
 
 interface LoginResult {

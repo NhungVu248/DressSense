@@ -6,6 +6,7 @@ import {
   type SortKey, type ListParams,
 } from '../lib/products';
 import ProductCard from '../components/ProductCard';
+import HomePromos from '../components/HomePromos';
 
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'newest', label: 'Mới nhất' },
@@ -73,6 +74,9 @@ export default function ProductsPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* UC13 - banner & Flash Sale (chỉ ở trang chủ, khi không tìm kiếm/lọc) */}
+      {!q && activeCount === 0 && <HomePromos />}
+
       {/* Tiêu đề */}
       <div className="mb-6">
         {q ? (

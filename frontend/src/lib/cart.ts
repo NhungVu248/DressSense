@@ -10,6 +10,8 @@ export interface CartItem {
   selected: boolean;
   price: number;
   lineTotal: number;
+  originalPrice?: number; // UC13.1 - giá gốc trước Flash Sale
+  flashSale?: boolean;
   variant: CartVariant | null;
   available: number;
   maxQty: number;

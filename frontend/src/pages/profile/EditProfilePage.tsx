@@ -19,6 +19,9 @@ export default function EditProfilePage() {
   const [saving, setSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
+  // UC13.3 - nhận thông báo khuyến mãi (marketing)
+  const [marketingOptIn, setMarketingOptIn] = useState(true);
+
   // Đổi email/SĐT (đã có sẵn) -> luồng OTP riêng (3b)
   const [showContactForm, setShowContactForm] = useState(false);
   const [newIdentifier, setNewIdentifier] = useState('');
@@ -28,10 +31,20 @@ export default function EditProfilePage() {
   const [contactLoading, setContactLoading] = useState(false);
 
   useEffect(() => {
-    if (user) { setFullName(user.fullName); setPhone(user.phone || ''); }
+    if (user) { setFullName(user.fullName); setPhone(user.phone || ''); setMarketingOptIn(user.marketingOptIn !== false); }
   }, [user]);
 
   if (!user) return null;
+
+  // UC13.3 10a - bật/tắt nhận thông báo khuyến mãi (lưu ngay)
+  async function toggleMarketing(next: boolean) {
+    setMarketingOptIn(next); setError(''); setSuccess('');
+    try {
+      const res = await api.patch('/users/me', { marketingOptIn: next });
+      setSession(getToken()!, res.data.user);
+      setSuccess(next ? 'Đã bật nhận thông báo khuyến mãi.' : 'Đã tắt thông báo khuyến mãi.');
+    } catch (err) { setMarketingOptIn(!next); setError(getErrorMessage(err)); }
+  }
 
   async function saveBasicInfo() {
     setError(''); setSuccess(''); setSaving(true);
@@ -116,6 +129,20 @@ export default function EditProfilePage() {
         <PrimaryButton onClick={saveBasicInfo} disabled={saving}>
           {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
         </PrimaryButton>
+      </div>
+
+      {/* UC13.3 10a - nhận thông báo khuyến mãi */}
+      <div className="bg-white rounded-xl border p-6 mb-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h3 className="font-medium">Thông báo khuyến mãi</h3>
+            <p className="text-sm text-gray-500 mt-0.5">Nhận thông báo về Flash Sale, mã giảm giá và gợi ý. Thông báo đơn hàng, thanh toán vẫn luôn được gửi.</p>
+          </div>
+          <button type="button" role="switch" aria-checked={marketingOptIn} onClick={() => toggleMarketing(!marketingOptIn)}
+            className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${marketingOptIn ? 'bg-brand' : 'bg-gray-300'}`}>
+            <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full transition-transform ${marketingOptIn ? 'translate-x-5' : ''}`} />
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border p-6">

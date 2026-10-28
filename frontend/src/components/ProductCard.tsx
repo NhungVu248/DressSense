@@ -50,7 +50,9 @@ function WishlistButton({ productId }: { productId: number }) {
 }
 
 export default function ProductCard({ p }: { p: Product }) {
-  const badge = isNew(p.createdAt) ? { text: 'MỚI', cls: 'bg-white text-ink' }
+  const onSale = !!p.onSale && p.salePrice != null; // UC13.1 - đang Flash Sale
+  const badge = onSale ? { text: 'FLASH SALE', cls: 'bg-red-600 text-white' }
+    : isNew(p.createdAt) ? { text: 'MỚI', cls: 'bg-white text-ink' }
     : p.soldCount > 0 ? { text: 'BÁN CHẠY', cls: 'bg-brand text-white' } : null;
 
   return (
@@ -85,7 +87,14 @@ export default function ProductCard({ p }: { p: Product }) {
             <span className="text-gray-400">Chưa có đánh giá</span>
           )}
         </div>
-        <p className="mt-1 font-semibold text-ink">{formatVND(p.price)}</p>
+        {onSale ? (
+          <p className="mt-1 flex items-baseline gap-1.5">
+            <span className="font-semibold text-red-600">{formatVND(p.salePrice!)}</span>
+            <span className="text-xs text-gray-400 line-through">{formatVND(p.price)}</span>
+          </p>
+        ) : (
+          <p className="mt-1 font-semibold text-ink">{formatVND(p.price)}</p>
+        )}
       </div>
     </Link>
   );

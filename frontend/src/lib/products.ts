@@ -20,6 +20,17 @@ export interface ProductCard {
   soldCount: number;
   inStock: boolean;
   createdAt: string;
+  salePrice?: number | null; // UC13.1 - giá Flash Sale (nếu đang có)
+  onSale?: boolean;
+}
+
+// UC13.1 - Flash Sale đang diễn ra của sản phẩm (trang chi tiết)
+export interface FlashSaleInfo {
+  salePrice: number;
+  variantId: number | null;
+  remaining: number;
+  perUserLimit: number | null;
+  endsAt: string;
 }
 
 // Chi tiết đầy đủ (UC7.4)
@@ -31,6 +42,9 @@ export interface ProductDetail extends Omit<ProductCard, 'sizes' | 'ratingAvg' |
   garmentType?: string | null;
   variants: ProductVariant[];
   reviews: { id: number; rating: number; comment?: string | null; createdAt: string }[];
+  salePrice?: number | null;
+  onSale?: boolean;
+  flashSale?: FlashSaleInfo | null; // UC13.1
 }
 
 export interface Facets {
@@ -89,7 +103,7 @@ export async function fetchSuggestions(q: string): Promise<Suggestion[]> {
 
 export async function fetchProduct(id: number | string): Promise<ProductDetail> {
   const res = await api.get(`/products/${id}`);
-  return res.data.product;
+  return { ...res.data.product, flashSale: res.data.flashSale ?? null }; // UC13.1 - kèm Flash Sale
 }
 
 export async function fetchRelated(id: number | string): Promise<ProductCard[]> {

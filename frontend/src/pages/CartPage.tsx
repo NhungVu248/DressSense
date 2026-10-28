@@ -159,7 +159,10 @@ function CartRow({ it, onPatch, onRemove }:
             <span className="w-8 text-center text-sm">{it.quantity}</span>
             <button onClick={() => it.quantity < it.maxQty && onPatch(it.id, { quantity: it.quantity + 1 })} disabled={it.quantity >= it.maxQty} className="w-8 h-8 disabled:opacity-30">+</button>
           </div>
-          <span className="font-semibold text-ink text-sm">{formatVND(it.lineTotal)}</span>
+          <div className="text-right">
+            {it.flashSale && it.originalPrice != null && <span className="block text-xs text-gray-400 line-through">{formatVND(it.originalPrice * it.quantity)}</span>}
+            <span className={`font-semibold text-sm ${it.flashSale ? 'text-red-600' : 'text-ink'}`}>{formatVND(it.lineTotal)}</span>
+          </div>
         </div>
       </div>
       <button onClick={() => onRemove(it.id)} className="text-gray-300 hover:text-red-500 self-start" title="Xóa">✕</button>

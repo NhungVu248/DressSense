@@ -39,6 +39,8 @@ import ProductManagePage from './pages/manage/ProductManagePage';
 import ProductFormPage from './pages/manage/ProductFormPage';
 // UC10.4 - Người bán quản lý đơn hàng
 import SellerOrdersPage from './pages/manage/SellerOrdersPage';
+// UC13.1 - Người bán quản lý khuyến mãi (voucher + Flash Sale)
+import PromotionManagePage from './pages/manage/PromotionManagePage';
 // UC11 - Đổi/trả, khiếu nại, hỗ trợ sau bán
 import SupportPage from './pages/SupportPage';
 import SellerSupportPage from './pages/manage/SellerSupportPage';
@@ -48,6 +50,10 @@ import NotificationsPage from './pages/NotificationsPage';
 import SellerReviewsPage from './pages/manage/SellerReviewsPage';
 import AdminReviewsPage from './pages/admin/AdminReviewsPage';
 import CategoryManagePage from './pages/admin/CategoryManagePage';
+// UC13 - Quản trị khuyến mãi / banner / thông báo
+import AdminPromotionsPage from './pages/admin/AdminPromotionsPage';
+import AdminBannersPage from './pages/admin/AdminBannersPage';
+import AdminCampaignsPage from './pages/admin/AdminCampaignsPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminLayout from './components/AdminLayout';
 import RequireAuth from './components/RequireAuth';
@@ -119,12 +125,16 @@ export default function App() {
       <Route path="/admin/categories" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><CategoryManagePage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/complaints" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminComplaintsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/reviews" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminReviewsPage /></AdminLayout></RequireAuth>} />
+      <Route path="/admin/promotions" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminPromotionsPage /></AdminLayout></RequireAuth>} />
+      <Route path="/admin/banners" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminBannersPage /></AdminLayout></RequireAuth>} />
+      <Route path="/admin/campaigns" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminCampaignsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/products" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductManagePage basePath="/admin/products" /></AdminLayout></RequireAuth>} />
       <Route path="/admin/products/new" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductFormPage basePath="/admin/products" /></AdminLayout></RequireAuth>} />
       <Route path="/admin/products/:id/edit" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductFormPage basePath="/admin/products" /></AdminLayout></RequireAuth>} />
 
       {/* UC6 - Người bán quản lý sản phẩm của gian hàng (trong giao diện shop) */}
       <Route path="/manage/orders" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><SellerOrdersPage /></ShopLayout></RequireAuth>} />
+      <Route path="/manage/promotions" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><PromotionManagePage /></ShopLayout></RequireAuth>} />
       <Route path="/manage/support" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><SellerSupportPage /></ShopLayout></RequireAuth>} />
       <Route path="/manage/reviews" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><SellerReviewsPage /></ShopLayout></RequireAuth>} />
       <Route path="/manage/products" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductManagePage /></ShopLayout></RequireAuth>} />
