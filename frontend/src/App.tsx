@@ -56,6 +56,11 @@ import AdminBannersPage from './pages/admin/AdminBannersPage';
 import AdminCampaignsPage from './pages/admin/AdminCampaignsPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminLayout from './components/AdminLayout';
+// UC14 - Seller Portal
+import SellerLayout from './components/SellerLayout';
+import SellerReportPage from './pages/seller/SellerReportPage';
+import ShopProfilePage from './pages/seller/ShopProfilePage';
+import AdminShopsPage from './pages/admin/AdminShopsPage';
 import RequireAuth from './components/RequireAuth';
 
 // Bố cục trang mua sắm (có Navbar)
@@ -125,12 +130,24 @@ export default function App() {
       <Route path="/admin/categories" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><CategoryManagePage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/complaints" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminComplaintsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/reviews" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminReviewsPage /></AdminLayout></RequireAuth>} />
+      <Route path="/admin/shops" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminShopsPage /></AdminLayout></RequireAuth>} />{/* UC14.1/UC16.3 */}
       <Route path="/admin/promotions" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminPromotionsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/banners" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminBannersPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/campaigns" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminCampaignsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/products" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductManagePage basePath="/admin/products" /></AdminLayout></RequireAuth>} />
       <Route path="/admin/products/new" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductFormPage basePath="/admin/products" /></AdminLayout></RequireAuth>} />
       <Route path="/admin/products/:id/edit" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductFormPage basePath="/admin/products" /></AdminLayout></RequireAuth>} />
+
+      {/* ===== UC14 - SELLER PORTAL (khung riêng SellerLayout) ===== */}
+      <Route path="/seller" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerReportPage /></SellerLayout></RequireAuth>} />{/* UC14.4 */}
+      <Route path="/seller/shop" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><ShopProfilePage /></SellerLayout></RequireAuth>} />{/* UC14.1 */}
+      <Route path="/seller/products" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><ProductManagePage basePath="/seller/products" /></SellerLayout></RequireAuth>} />{/* UC14.2 */}
+      <Route path="/seller/products/new" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><ProductFormPage basePath="/seller/products" /></SellerLayout></RequireAuth>} />
+      <Route path="/seller/products/:id/edit" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><ProductFormPage basePath="/seller/products" /></SellerLayout></RequireAuth>} />
+      <Route path="/seller/orders" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerOrdersPage /></SellerLayout></RequireAuth>} />{/* UC14.3 */}
+      <Route path="/seller/promotions" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><PromotionManagePage /></SellerLayout></RequireAuth>} />
+      <Route path="/seller/reviews" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerReviewsPage /></SellerLayout></RequireAuth>} />
+      <Route path="/seller/support" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerSupportPage /></SellerLayout></RequireAuth>} />
 
       {/* UC6 - Người bán quản lý sản phẩm của gian hàng (trong giao diện shop) */}
       <Route path="/manage/orders" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><SellerOrdersPage /></ShopLayout></RequireAuth>} />

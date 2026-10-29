@@ -131,11 +131,7 @@ export default function Navbar() {
                   <MenuLink to="/profile/personalization" label="Hồ sơ cá nhân hóa" />
                   <MenuLink to="/profile/sizes" label="Thông tin size" />
                   <MenuLink to="/recommendations" label="Gợi ý cho bạn" />
-                  {user.role === 'SELLER' && <MenuLink to="/manage/products" label="Quản lý gian hàng" />}
-                  {user.role === 'SELLER' && <MenuLink to="/manage/orders" label="Quản lý đơn hàng" />}
-                  {user.role === 'SELLER' && <MenuLink to="/manage/promotions" label="Khuyến mãi" />}
-                  {user.role === 'SELLER' && <MenuLink to="/manage/support" label="Hỗ trợ sau bán" />}
-                  {user.role === 'SELLER' && <MenuLink to="/manage/reviews" label="Đánh giá & Hỏi đáp" />}
+                  {user.role === 'SELLER' && <MenuLink to="/seller" label="Kênh người bán" />}
                   {user.role === 'ADMIN' && <MenuLink to="/admin" label="Trang quản trị" />}
                   <button onClick={logout} className="w-full text-left px-4 py-2 text-red-500 hover:bg-cream">Đăng xuất</button>
                 </div>
@@ -167,9 +163,7 @@ export default function Navbar() {
                     <img src={avatar} alt="" className="w-7 h-7 rounded-full object-cover bg-gray-100" />{user.fullName}
                   </Link>
                   <Link to="/recommendations" onClick={() => setMobile(false)} className="py-2.5 hover:text-brand border-b border-black/5">Gợi ý cho bạn</Link>
-                  {user.role === 'SELLER' && <Link to="/manage/products" onClick={() => setMobile(false)} className="py-2.5 border-b border-black/5">Quản lý gian hàng</Link>}
-                  {user.role === 'SELLER' && <Link to="/manage/orders" onClick={() => setMobile(false)} className="py-2.5 border-b border-black/5">Quản lý đơn hàng</Link>}
-                  {user.role === 'SELLER' && <Link to="/manage/promotions" onClick={() => setMobile(false)} className="py-2.5 border-b border-black/5">Khuyến mãi</Link>}
+                  {user.role === 'SELLER' && <Link to="/seller" onClick={() => setMobile(false)} className="py-2.5 border-b border-black/5">Kênh người bán</Link>}
                   {user.role === 'ADMIN' && <Link to="/admin" onClick={() => setMobile(false)} className="py-2.5 border-b border-black/5">Trang quản trị</Link>}
                   <button onClick={() => { setMobile(false); logout(); }} className="py-2.5 text-left text-red-500">Đăng xuất</button>
                 </>

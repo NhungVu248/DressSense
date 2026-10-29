@@ -16,6 +16,7 @@ const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: b
   {
     heading: 'Kiểm duyệt',
     items: [
+      { to: '/admin/shops', label: 'Gian hàng' },
       { to: '/admin/complaints', label: 'Khiếu nại' },
       { to: '/admin/reviews', label: 'Đánh giá' },
     ],
