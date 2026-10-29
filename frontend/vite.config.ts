@@ -3,9 +3,11 @@ import react from '@vitejs/plugin-react';
 
 // Proxy /api + /uploads -> backend (http://localhost:4000) để frontend và API CÙNG ORIGIN.
 // Nhờ vậy chỉ cần MỘT tunnel ngrok trỏ vào cổng 5173 là công khai được cả app (HTTPS ở biên ngrok).
+// Đích backend có thể đổi qua VITE_PROXY_TARGET (mặc định cổng 4000).
+const TARGET = process.env.VITE_PROXY_TARGET || 'http://localhost:4000';
 const proxy = {
-  '/api': { target: 'http://localhost:4000', changeOrigin: true },
-  '/uploads': { target: 'http://localhost:4000', changeOrigin: true },
+  '/api': { target: TARGET, changeOrigin: true },
+  '/uploads': { target: TARGET, changeOrigin: true },
 };
 
 export default defineConfig({
