@@ -26,6 +26,7 @@ import promotionRoutes from './promotion.routes';
 import bannerRoutes from './banner.routes';
 import publicBannerRoutes from './public-banner.routes';
 import campaignRoutes from './campaign.routes';
+import analyticsRoutes from './analytics.routes';
 
 const router = Router();
 router.use('/auth', authRoutes);
@@ -55,5 +56,6 @@ router.use('/promotions', promotionRoutes); // UC13.1 - Khuyến mãi (voucher +
 router.use('/banners', publicBannerRoutes); // UC13.2 - Banner (công khai)
 router.use('/admin/banners', bannerRoutes); // UC13.2 - Quản lý banner (Admin)
 router.use('/admin/campaigns', campaignRoutes); // UC13.3 - Chiến dịch thông báo (Admin)
+router.use('/analytics', analyticsRoutes); // UC15 - Phân tích dữ liệu kinh doanh (BI)
 
 export default router;
