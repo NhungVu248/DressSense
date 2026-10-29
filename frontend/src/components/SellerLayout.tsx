@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 // UC14 - Bố cục Seller Portal (Người bán). Đồng bộ phong cách Figma: nền kem,
@@ -53,11 +53,6 @@ export default function SellerLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       ))}
-      <div className="pt-2 border-t border-brand/10">
-        <Link to="/" onClick={() => setOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-ink/60 hover:bg-brand/10 hover:text-brand">
-          ← Về trang mua sắm
-        </Link>
-      </div>
     </nav>
   );
 

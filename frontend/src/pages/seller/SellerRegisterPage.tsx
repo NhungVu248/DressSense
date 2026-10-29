@@ -42,7 +42,7 @@ export default function SellerRegisterPage() {
         Tài khoản tạo với vai trò Người bán, chờ Quản trị viên phê duyệt (UC16.3) trước khi mở đầy đủ quyền bán hàng.
       </p>
       <p className="text-center text-sm text-gray-500 mt-3">
-        Đã có gian hàng? <Link to="/seller/login" className="text-indigo-600 hover:underline">Đăng nhập người bán</Link>
+        Đã có gian hàng? <Link to="/seller/login" className="text-brand hover:underline">Đăng nhập người bán</Link>
       </p>
     </AuthCard>
   );

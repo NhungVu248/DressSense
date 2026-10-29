@@ -14,7 +14,7 @@ export default function SellerPendingPage() {
         Bạn có thể hoàn thiện hồ sơ gian hàng trong lúc chờ; các chức năng bán hàng sẽ mở sau khi được phê duyệt (UC16.3).
       </p>
       <button onClick={logout} className="text-sm text-red-500 hover:underline">Đăng xuất</button>
-      <Link to="/" className="block text-indigo-600 text-sm hover:underline mt-2">← Về trang mua sắm</Link>
+      <Link to="/" className="block text-brand text-sm hover:underline mt-2">← Về trang mua sắm</Link>
     </AuthCard>
   );
 }

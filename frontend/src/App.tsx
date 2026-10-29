@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ProductsPage from './pages/ProductsPage';
 // UC7.4 - Xem chi tiết sản phẩm
@@ -71,6 +71,12 @@ function ShopLayout({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
+}
+
+// Redirect /manage/products/:id/edit -> /seller/products/:id/edit (giữ tham số id)
+function RedirectManageEdit() {
+  const { id } = useParams();
+  return <Navigate to={`/seller/products/${id}/edit`} replace />;
 }
 
 export default function App() {
@@ -149,14 +155,14 @@ export default function App() {
       <Route path="/seller/reviews" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerReviewsPage /></SellerLayout></RequireAuth>} />
       <Route path="/seller/support" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerSupportPage /></SellerLayout></RequireAuth>} />
 
-      {/* UC6 - Người bán quản lý sản phẩm của gian hàng (trong giao diện shop) */}
-      <Route path="/manage/orders" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><SellerOrdersPage /></ShopLayout></RequireAuth>} />
-      <Route path="/manage/promotions" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><PromotionManagePage /></ShopLayout></RequireAuth>} />
-      <Route path="/manage/support" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><SellerSupportPage /></ShopLayout></RequireAuth>} />
-      <Route path="/manage/reviews" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><SellerReviewsPage /></ShopLayout></RequireAuth>} />
-      <Route path="/manage/products" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductManagePage /></ShopLayout></RequireAuth>} />
-      <Route path="/manage/products/new" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductFormPage /></ShopLayout></RequireAuth>} />
-      <Route path="/manage/products/:id/edit" element={<RequireAuth roles={['SELLER', 'ADMIN']}><ShopLayout><ProductFormPage /></ShopLayout></RequireAuth>} />
+      {/* /manage/* cũ -> gộp vào Seller Portal /seller/* (luồng riêng như admin) */}
+      <Route path="/manage/orders" element={<Navigate to="/seller/orders" replace />} />
+      <Route path="/manage/promotions" element={<Navigate to="/seller/promotions" replace />} />
+      <Route path="/manage/support" element={<Navigate to="/seller/support" replace />} />
+      <Route path="/manage/reviews" element={<Navigate to="/seller/reviews" replace />} />
+      <Route path="/manage/products" element={<Navigate to="/seller/products" replace />} />
+      <Route path="/manage/products/new" element={<Navigate to="/seller/products/new" replace />} />
+      <Route path="/manage/products/:id/edit" element={<RedirectManageEdit />} />
     </Routes>
   );
 }

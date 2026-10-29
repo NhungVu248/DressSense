@@ -36,14 +36,14 @@ export default function SellerLoginPage() {
             <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
             Ghi nhớ đăng nhập
           </label>
-          <Link to="/forgot-password" className="text-indigo-600 hover:underline">Quên mật khẩu?</Link>
+          <Link to="/forgot-password" className="text-brand hover:underline">Quên mật khẩu?</Link>
         </div>
         <PrimaryButton type="submit" disabled={loading}>
           {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
         </PrimaryButton>
       </form>
       <p className="text-center text-sm text-gray-500 mt-4">
-        Chưa có gian hàng? <Link to="/seller/register" className="text-indigo-600 hover:underline">Đăng ký người bán</Link>
+        Chưa có gian hàng? <Link to="/seller/register" className="text-brand hover:underline">Đăng ký người bán</Link>
       </p>
       <p className="text-xs text-gray-400 mt-3">
         Tài khoản chờ duyệt đăng nhập được vào khu vực hoàn thiện hồ sơ nhưng chưa mở chức năng bán hàng (UC1.2 – 8a).
