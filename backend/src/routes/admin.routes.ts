@@ -7,7 +7,10 @@ import {
 } from '../controllers/admin.controller';
 import { listAdminComplaints, adminResolveComplaint } from '../controllers/complaint.controller';
 import { listAdminReviews, moderateReview } from '../controllers/review.controller';
-import { listShopsAdmin, approveShop, rejectShop, setShopSuspension } from '../controllers/shop.controller';
+import { listShopsAdmin, approveShop, rejectShop, setShopSuspension, requestInfoShop } from '../controllers/shop.controller';
+import { getAdminDashboard } from '../controllers/admin-dashboard.controller';
+import { listSettings, updateSettings, getSettingHistory } from '../controllers/settings.controller';
+import { listModerationProducts, moderateProduct } from '../controllers/content-moderation.controller';
 import { authenticate, authorize } from '../middlewares/auth';
 
 const router = Router();
@@ -32,6 +35,19 @@ router.patch('/reviews/:id/moderate', moderateReview);
 router.get('/shops', listShopsAdmin);
 router.patch('/shops/:id/approve', approveShop);
 router.patch('/shops/:id/reject', rejectShop);
+router.patch('/shops/:id/request-info', requestInfoShop); // UC16.3 - 5a yêu cầu bổ sung
 router.patch('/shops/:id/suspension', setShopSuspension);
+
+// UC16.1 - Dashboard quản trị
+router.get('/dashboard', getAdminDashboard);
+
+// UC16.4 - Kiểm duyệt nội dung (sản phẩm; đánh giá dùng /admin/reviews sẵn có)
+router.get('/moderation/products', listModerationProducts);
+router.patch('/moderation/products/:id', moderateProduct);
+
+// UC16.5 - Cấu hình hệ thống
+router.get('/settings', listSettings);
+router.put('/settings', updateSettings);
+router.get('/settings/history', getSettingHistory);
 
 export default router;

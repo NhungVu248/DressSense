@@ -169,6 +169,27 @@ export async function rejectShop(req: Request, res: Response, next: NextFunction
   }
 }
 
+// PATCH /api/admin/shops/:id/request-info - 5a yêu cầu bổ sung thông tin
+export async function requestInfoShop(req: Request, res: Response, next: NextFunction) {
+  try {
+    const user = req.user as JwtPayload;
+    const id = Number(req.params.id);
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim() : '';
+    if (!note) return res.status(400).json({ message: 'Vui lòng nhập nội dung cần bổ sung.' });
+    const shop = await prisma.shop.findUnique({ where: { id } });
+    if (!shop) return res.status(404).json({ message: 'Không tìm thấy gian hàng.' });
+    const updated = await prisma.shop.update({
+      where: { id },
+      data: { status: 'NEEDS_INFO', rejectReason: note, reviewedAt: new Date(), reviewedById: user.userId },
+    });
+    await notify(shop.ownerId, 'SHOP', 'Hồ sơ gian hàng cần bổ sung',
+      `Nội dung cần bổ sung: ${note}. Vui lòng cập nhật và gửi lại.`, '/seller/shop');
+    res.json({ shop: updated });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // PATCH /api/admin/shops/:id/suspension - tạm ngưng / mở lại (vi phạm)
 export async function setShopSuspension(req: Request, res: Response, next: NextFunction) {
   try {

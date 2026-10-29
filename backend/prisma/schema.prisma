@@ -92,6 +92,7 @@ model User {
 enum ShopStatus {
   DRAFT // Bản nháp (chưa gửi duyệt)
   PENDING // Chờ duyệt (đã gửi UC16.3)
+  NEEDS_INFO // Yêu cầu bổ sung thông tin (UC16.3 - 5a)
   ACTIVE // Đang hoạt động (đã được phê duyệt)
   REJECTED // Bị từ chối (xem lý do, sửa & gửi lại)
   SUSPENDED // Tạm ngưng (vi phạm, do Admin xử lý)
@@ -1176,4 +1177,29 @@ model Campaign {
   createdAt      DateTime         @default(now())
 
   @@index([status])
+}
+
+// ---------- UC16.5 - Cấu hình hệ thống ----------
+// Tham số dùng chung giữa các module (chính sách đổi/trả, thời gian khiếu nại...).
+model SystemSetting {
+  key         String   @id // khóa duy nhất, vd "returnWindowDays"
+  value       String // lưu dạng chuỗi; type cho biết cách parse
+  type        String   @default("string") // number | string | boolean
+  label       String // nhãn hiển thị
+  description String?  @db.Text
+  group       String   @default("Chung") // nhóm cấu hình
+  updatedById Int?
+  updatedAt   DateTime @updatedAt
+}
+
+// Lịch sử thay đổi cấu hình (UC16.5 - lưu giá trị cũ/mới, người, thời gian)
+model SettingChangeLog {
+  id         Int      @id @default(autoincrement())
+  key        String
+  valueBefore String?
+  valueAfter  String
+  actorId    Int
+  createdAt  DateTime @default(now())
+
+  @@index([key])
 }

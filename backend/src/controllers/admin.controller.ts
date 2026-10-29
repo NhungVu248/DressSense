@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
+import { notify } from '../services/notification.service';
 
 function publicUser(u: any) {
   return {
@@ -90,6 +91,15 @@ export async function updateUserRole(req: Request, res: Response, next: NextFunc
     const newRole = data.role ?? target.role;
     const newStatus = data.status ?? target.status;
 
+    // 6E.1 - không cho Quản trị viên tự khóa/vô hiệu hóa tài khoản đang đăng nhập
+    if (targetId === actorId && (newStatus === 'LOCKED' || newStatus === 'DISABLED')) {
+      return res.status(400).json({ message: 'Không thể tự khóa/vô hiệu hóa tài khoản đang đăng nhập của chính bạn.' });
+    }
+    // Khóa tài khoản phải có lý do (quy tắc nghiệp vụ UC16.2)
+    if ((newStatus === 'LOCKED' || newStatus === 'DISABLED') && target.status !== newStatus && !data.note?.trim()) {
+      return res.status(400).json({ message: 'Vui lòng nhập lý do khóa/vô hiệu hóa tài khoản.' });
+    }
+
     // 7E: ràng buộc số lượng Quản trị viên tối thiểu
     const targetIsCurrentlyActiveAdmin = target.role === 'ADMIN' && target.status === 'ACTIVE';
     const willStillBeActiveAdmin = newRole === 'ADMIN' && newStatus === 'ACTIVE';
@@ -130,6 +140,12 @@ export async function updateUserRole(req: Request, res: Response, next: NextFunc
         },
       }),
     ]);
+
+    // Thông báo cho người dùng bị ảnh hưởng khi khóa/vô hiệu hóa (UC16.2)
+    if (newStatus !== target.status && (newStatus === 'LOCKED' || newStatus === 'DISABLED')) {
+      await notify(targetId, 'SHOP', 'Tài khoản bị hạn chế',
+        `Tài khoản của bạn đã bị ${newStatus === 'LOCKED' ? 'tạm khóa' : 'vô hiệu hóa'}.${data.note ? ' Lý do: ' + data.note : ''}`);
+    }
 
     const updated = await prisma.user.findUnique({ where: { id: targetId } });
     res.json({ message: 'Cập nhật phân quyền thành công', user: publicUser(updated), log });
