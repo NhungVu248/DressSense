@@ -61,6 +61,12 @@ import SellerLayout from './components/SellerLayout';
 import SellerReportPage from './pages/seller/SellerReportPage';
 import ShopProfilePage from './pages/seller/ShopProfilePage';
 import AdminShopsPage from './pages/admin/AdminShopsPage';
+// UC15 - Phân tích dữ liệu kinh doanh (BI) - trang dùng chung cho Seller & Admin
+import RevenueAnalyticsPage from './pages/analytics/RevenueAnalyticsPage';
+import CustomerAnalyticsPage from './pages/analytics/CustomerAnalyticsPage';
+import BehaviorAnalyticsPage from './pages/analytics/BehaviorAnalyticsPage';
+import BodyShapeAnalyticsPage from './pages/analytics/BodyShapeAnalyticsPage';
+import InventoryAnalyticsPage from './pages/analytics/InventoryAnalyticsPage';
 import RequireAuth from './components/RequireAuth';
 
 // Bố cục trang mua sắm (có Navbar)
@@ -137,6 +143,12 @@ export default function App() {
       <Route path="/admin/complaints" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminComplaintsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/reviews" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminReviewsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/shops" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminShopsPage /></AdminLayout></RequireAuth>} />{/* UC14.1/UC16.3 */}
+      {/* UC15 - Phân tích (BI) trong Admin (toàn hệ thống) */}
+      <Route path="/admin/analytics/revenue" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><RevenueAnalyticsPage /></AdminLayout></RequireAuth>} />
+      <Route path="/admin/analytics/customers" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><CustomerAnalyticsPage /></AdminLayout></RequireAuth>} />
+      <Route path="/admin/analytics/behavior" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><BehaviorAnalyticsPage /></AdminLayout></RequireAuth>} />
+      <Route path="/admin/analytics/body-shapes" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><BodyShapeAnalyticsPage /></AdminLayout></RequireAuth>} />
+      <Route path="/admin/analytics/inventory" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><InventoryAnalyticsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/promotions" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminPromotionsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/banners" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminBannersPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/campaigns" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminCampaignsPage /></AdminLayout></RequireAuth>} />
@@ -154,6 +166,12 @@ export default function App() {
       <Route path="/seller/promotions" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><PromotionManagePage /></SellerLayout></RequireAuth>} />
       <Route path="/seller/reviews" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerReviewsPage /></SellerLayout></RequireAuth>} />
       <Route path="/seller/support" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerSupportPage /></SellerLayout></RequireAuth>} />
+      {/* UC15 - Phân tích (BI) trong Seller Portal (phạm vi gian hàng) */}
+      <Route path="/seller/analytics/revenue" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><RevenueAnalyticsPage /></SellerLayout></RequireAuth>} />
+      <Route path="/seller/analytics/customers" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><CustomerAnalyticsPage /></SellerLayout></RequireAuth>} />
+      <Route path="/seller/analytics/behavior" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><BehaviorAnalyticsPage /></SellerLayout></RequireAuth>} />
+      <Route path="/seller/analytics/body-shapes" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><BodyShapeAnalyticsPage /></SellerLayout></RequireAuth>} />
+      <Route path="/seller/analytics/inventory" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><InventoryAnalyticsPage /></SellerLayout></RequireAuth>} />
 
       {/* /manage/* cũ -> gộp vào Seller Portal /seller/* (luồng riêng như admin) */}
       <Route path="/manage/orders" element={<Navigate to="/seller/orders" replace />} />

@@ -29,6 +29,16 @@ const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: b
       { to: '/admin/campaigns', label: 'Thông báo khuyến mãi' },
     ],
   },
+  {
+    heading: 'Phân tích (BI)', // UC15 - toàn hệ thống
+    items: [
+      { to: '/admin/analytics/revenue', label: 'Doanh thu' },
+      { to: '/admin/analytics/customers', label: 'Khách hàng' },
+      { to: '/admin/analytics/behavior', label: 'Hành vi' },
+      { to: '/admin/analytics/body-shapes', label: 'Dáng người' },
+      { to: '/admin/analytics/inventory', label: 'Tồn kho' },
+    ],
+  },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

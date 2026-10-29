@@ -20,6 +20,16 @@ const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: b
     ],
   },
   {
+    heading: 'Phân tích (BI)', // UC15
+    items: [
+      { to: '/seller/analytics/revenue', label: 'Doanh thu' },
+      { to: '/seller/analytics/customers', label: 'Khách hàng' },
+      { to: '/seller/analytics/behavior', label: 'Hành vi' },
+      { to: '/seller/analytics/body-shapes', label: 'Dáng người' },
+      { to: '/seller/analytics/inventory', label: 'Tồn kho' },
+    ],
+  },
+  {
     heading: 'Chăm sóc & tiếp thị',
     items: [
       { to: '/seller/promotions', label: 'Khuyến mãi' },
