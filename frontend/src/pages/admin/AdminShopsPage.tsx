@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  listShopsAdmin, approveShop, rejectShop, setShopSuspension,
+  listShopsAdmin, approveShop, rejectShop, setShopSuspension, requestInfoShop,
   SHOP_STATUS_LABEL, SHOP_STATUS_CLS, type Shop, type ShopStatus,
 } from '../../lib/shop';
 
 // UC14.1 / UC16.3 - Quản trị viên kiểm duyệt gian hàng
 const TABS: { value: string; label: string }[] = [
   { value: 'PENDING', label: 'Chờ duyệt' },
+  { value: 'NEEDS_INFO', label: 'Cần bổ sung' },
   { value: 'ACTIVE', label: 'Đang hoạt động' },
   { value: 'REJECTED', label: 'Bị từ chối' },
   { value: 'SUSPENDED', label: 'Tạm ngưng' },
@@ -25,6 +26,8 @@ export default function AdminShopsPage() {
   const [tab, setTab] = useState('PENDING');
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [reason, setReason] = useState('');
+  const [requestingId, setRequestingId] = useState<number | null>(null);
+  const [reqNote, setReqNote] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-shops', tab],
@@ -40,6 +43,10 @@ export default function AdminShopsPage() {
   const suspendMut = useMutation({
     mutationFn: ({ id, s }: { id: number; s: boolean }) => setShopSuspension(id, s),
     onSuccess: invalidate,
+  });
+  const requestMut = useMutation({
+    mutationFn: ({ id, n }: { id: number; n: string }) => requestInfoShop(id, n),
+    onSuccess: () => { setRequestingId(null); setReqNote(''); invalidate(); },
   });
 
   const counts = data?.counts ?? {};
@@ -102,6 +109,10 @@ export default function AdminShopsPage() {
                     className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 disabled:opacity-50">
                     Phê duyệt
                   </button>
+                  <button onClick={() => { setRequestingId(requestingId === s.id ? null : s.id); setReqNote(''); }}
+                    className="px-4 py-2 rounded-lg border border-sky-300 text-sky-600 text-sm font-medium hover:bg-sky-50">
+                    Yêu cầu bổ sung
+                  </button>
                   <button onClick={() => { setRejectingId(rejectingId === s.id ? null : s.id); setReason(''); }}
                     className="px-4 py-2 rounded-lg border border-red-300 text-red-600 text-sm font-medium hover:bg-red-50">
                     Từ chối
@@ -135,6 +146,23 @@ export default function AdminShopsPage() {
                   disabled={!reason.trim() || rejectMut.isPending}
                   className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50">
                   Xác nhận từ chối
+                </button>
+              </div>
+            )}
+
+            {/* Ô nhập nội dung cần bổ sung (UC16.3 - 5a) */}
+            {requestingId === s.id && (
+              <div className="mt-3 flex flex-wrap items-end gap-2">
+                <label className="flex-1 min-w-[220px]">
+                  <span className="text-xs text-ink/60">Nội dung cần bổ sung</span>
+                  <input value={reqNote} onChange={(e) => setReqNote(e.target.value)} placeholder="VD: bổ sung địa chỉ lấy hàng…"
+                    className="mt-1 w-full border border-brand/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand" />
+                </label>
+                <button
+                  onClick={() => reqNote.trim() && requestMut.mutate({ id: s.id, n: reqNote.trim() })}
+                  disabled={!reqNote.trim() || requestMut.isPending}
+                  className="px-4 py-2 rounded-lg bg-sky-600 text-white text-sm font-medium hover:bg-sky-700 disabled:opacity-50">
+                  Gửi yêu cầu
                 </button>
               </div>
             )}

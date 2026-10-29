@@ -45,7 +45,7 @@ export default function ShopProfilePage() {
   if (isLoading || !shop) return <div className="p-8 text-sm text-ink/50">Đang tải hồ sơ gian hàng…</div>;
 
   const st = f.status ?? shop.status;
-  const canSubmit = st === 'DRAFT' || st === 'REJECTED';
+  const canSubmit = st === 'DRAFT' || st === 'REJECTED' || st === 'NEEDS_INFO';
   const busy = saveMut.isPending || submitMut.isPending;
 
   return (
@@ -67,6 +67,11 @@ export default function ShopProfilePage() {
       {st === 'REJECTED' && shop.rejectReason && (
         <div className="mb-5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3">
           <b>Hồ sơ bị từ chối.</b> Lý do: {shop.rejectReason}. Vui lòng chỉnh sửa và gửi lại.
+        </div>
+      )}
+      {st === 'NEEDS_INFO' && shop.rejectReason && (
+        <div className="mb-5 rounded-xl bg-sky-50 border border-sky-200 text-sky-800 text-sm px-4 py-3">
+          <b>Cần bổ sung thông tin.</b> Yêu cầu từ Quản trị viên: {shop.rejectReason}. Vui lòng cập nhật và gửi lại.
         </div>
       )}
       {st === 'SUSPENDED' && (

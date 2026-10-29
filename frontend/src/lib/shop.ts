@@ -1,11 +1,12 @@
 // UC14 - Gian hàng (Seller Portal): hồ sơ gian hàng, kiểm duyệt, báo cáo doanh thu
 import api from './api';
 
-export type ShopStatus = 'DRAFT' | 'PENDING' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED';
+export type ShopStatus = 'DRAFT' | 'PENDING' | 'NEEDS_INFO' | 'ACTIVE' | 'REJECTED' | 'SUSPENDED';
 
 export const SHOP_STATUS_LABEL: Record<ShopStatus, string> = {
   DRAFT: 'Bản nháp',
   PENDING: 'Chờ duyệt',
+  NEEDS_INFO: 'Cần bổ sung',
   ACTIVE: 'Đang hoạt động',
   REJECTED: 'Bị từ chối',
   SUSPENDED: 'Tạm ngưng',
@@ -14,6 +15,7 @@ export const SHOP_STATUS_LABEL: Record<ShopStatus, string> = {
 export const SHOP_STATUS_CLS: Record<ShopStatus, string> = {
   DRAFT: 'bg-gray-100 text-gray-600',
   PENDING: 'bg-amber-100 text-amber-700',
+  NEEDS_INFO: 'bg-sky-100 text-sky-700',
   ACTIVE: 'bg-green-100 text-green-700',
   REJECTED: 'bg-red-100 text-red-600',
   SUSPENDED: 'bg-orange-100 text-orange-700',
@@ -75,6 +77,9 @@ export async function rejectShop(id: number, reason: string) {
 }
 export async function setShopSuspension(id: number, suspend: boolean) {
   return (await api.patch<{ shop: Shop }>(`/admin/shops/${id}/suspension`, { suspend })).data.shop;
+}
+export async function requestInfoShop(id: number, note: string) {
+  return (await api.patch<{ shop: Shop }>(`/admin/shops/${id}/request-info`, { note })).data.shop;
 }
 
 // ---- UC14.4 Báo cáo doanh thu ----

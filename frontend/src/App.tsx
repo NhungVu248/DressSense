@@ -61,6 +61,10 @@ import SellerLayout from './components/SellerLayout';
 import SellerReportPage from './pages/seller/SellerReportPage';
 import ShopProfilePage from './pages/seller/ShopProfilePage';
 import AdminShopsPage from './pages/admin/AdminShopsPage';
+// UC16 - Quản trị hệ thống
+import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import AdminSettingsPage from './pages/admin/AdminSettingsPage';
+import AdminContentPage from './pages/admin/AdminContentPage';
 // UC15 - Phân tích dữ liệu kinh doanh (BI) - trang dùng chung cho Seller & Admin
 import RevenueAnalyticsPage from './pages/analytics/RevenueAnalyticsPage';
 import CustomerAnalyticsPage from './pages/analytics/CustomerAnalyticsPage';
@@ -138,7 +142,10 @@ export default function App() {
 
       {/* ===== Cổng QUẢN TRỊ VIÊN - luồng riêng (AdminLayout), song song Khách/Người bán ===== */}
       <Route path="/admin/login" element={<AdminLoginPage />} />
-      <Route path="/admin" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminUsersPage /></AdminLayout></RequireAuth>} />
+      <Route path="/admin" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminDashboardPage /></AdminLayout></RequireAuth>} />{/* UC16.1 */}
+      <Route path="/admin/users" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminUsersPage /></AdminLayout></RequireAuth>} />{/* UC16.2 */}
+      <Route path="/admin/content" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminContentPage /></AdminLayout></RequireAuth>} />{/* UC16.4 */}
+      <Route path="/admin/settings" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminSettingsPage /></AdminLayout></RequireAuth>} />{/* UC16.5 */}
       <Route path="/admin/categories" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><CategoryManagePage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/complaints" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminComplaintsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/reviews" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminReviewsPage /></AdminLayout></RequireAuth>} />

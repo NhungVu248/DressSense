@@ -8,15 +8,18 @@ const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: b
   {
     heading: 'Quản trị',
     items: [
-      { to: '/admin', label: 'Người dùng', end: true },
+      { to: '/admin', label: 'Tổng quan', end: true }, // UC16.1
+      { to: '/admin/users', label: 'Người dùng' }, // UC16.2
       { to: '/admin/categories', label: 'Danh mục' },
       { to: '/admin/products', label: 'Sản phẩm' },
+      { to: '/admin/settings', label: 'Cấu hình hệ thống' }, // UC16.5
     ],
   },
   {
     heading: 'Kiểm duyệt',
     items: [
       { to: '/admin/shops', label: 'Gian hàng' },
+      { to: '/admin/content', label: 'Nội dung (SP)' }, // UC16.4
       { to: '/admin/complaints', label: 'Khiếu nại' },
       { to: '/admin/reviews', label: 'Đánh giá' },
     ],
