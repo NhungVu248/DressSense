@@ -25,7 +25,7 @@
 - [ ] **Quản lý doanh thu** hiển thị đủ: **doanh thu tổng + doanh thu thực nhận + phí trả cho sàn TMĐT + thuế**. Phần phí sàn được **trừ/chuyển thẳng cho sàn** (không nằm trong thực nhận của người bán).
 - [ ] **Đăng ký chạy banner quảng cáo**: thanh toán bằng **VNPAY hoặc thẻ**.
 - [ ] **Đăng ký mua voucher giảm giá**: người bán **tự chịu phần tiền giảm giá** đó.
-- [ ] **Quản lý tin nhắn với khách hàng**: chia **Chưa đọc / Đã đọc**, **nút sao (quan trọng)**, **đánh dấu chưa đọc**, có **thông báo tin nhắn mới**.
+- [x] **Quản lý tin nhắn với khách hàng**: lọc Tất cả/**Chưa đọc**/**Quan trọng (sao)**, badge chưa đọc, thông báo tin nhắn mới (`/seller/messages`). *(commit cc064a8)*
 - [ ] **Hồ sơ cá nhân người bán** thiết kế đầy đủ hơn; **mở rộng trường dữ liệu cho sản phẩm**.
 - [ ] **Phương thức giao hàng**: người bán **tự chọn** — (a) **tự giao** (tự chịu rủi ro) hoặc (b) chọn **phương thức được hệ thống cấu hình sẵn**.
 - [ ] **Thiết lập giá**: **giá cuối = giá chưa thuế + tiền thuế (nếu có)**. **Thuế KHÔNG hiển thị ở trang khách** — khách chỉ thấy **giá cuối**.
@@ -35,8 +35,8 @@
 ## C. Quản trị viên (Admin)
 
 - [ ] **Quản lý phương thức thanh toán** + **chính sách đổi/trả & hoàn tiền**: setup sẵn **danh sách lý do hoàn hàng** cho khách chọn; **hoàn 100% tiền hàng** nếu người bán duyệt sản phẩm đủ điều kiện.
-- [ ] **Quản lý tin nhắn với khách hàng**: chia **Chưa đọc / Đã đọc**, **sao quan trọng**, **đánh dấu chưa đọc**, có **thông báo tin nhắn trong mục Thông báo**.
-- [ ] **Thông báo**: bổ sung **thông báo đơn hàng mới**.
+- [x] **Quản lý tin nhắn với khách hàng (CSKH)**: lọc Tất cả/**Chưa đọc**/**Quan trọng (sao)**, thông báo tin nhắn mới (`/admin/messages`). *(commit cc064a8)*
+- [x] **Thông báo đơn hàng mới** cho Admin + Người bán (COD lúc đặt, online khi thanh toán). *(commit cc064a8)*
 - [ ] **Bỏ "Quản lý sản phẩm" ở Admin** (admin không CRUD sản phẩm trực tiếp nữa).
 - [ ] **Banner quảng cáo**: thêm **duyệt đăng ký chạy banner của các gian hàng**, có **bảng timeline theo tuần/tháng** để quản lý lịch chạy.
 - [ ] **Quản lý doanh thu của SÀN**: dashboard báo cáo doanh thu sàn, gồm các **khoản phí** (phí thu từ người bán, phí chạy banner quảng cáo, …). *(cần nghiên cứu thêm mô hình phí)*
@@ -53,10 +53,7 @@
 
 - [ ] **Đánh giá sản phẩm**: chấm **sao** + **ảnh** (tối đa 5, tối thiểu 0) + **video** (giới hạn dung lượng).
 - [ ] **Hoàn trả hàng**: chọn **lý do do sàn setup sẵn** + **ảnh** (tối thiểu 3) + **video** (giới hạn dung lượng) + **mô tả**.
-- [ ] **Hai kênh hỗ trợ**: (1) **liên hệ Người bán**, (2) **liên hệ Admin** qua mục **Chăm sóc khách hàng**.
-  - Vào trang **shop** có **nút nhắn tin**.
-  - **Đơn hàng** có **nút liên hệ**.
-  - Mục **Hỗ trợ/CSKH** → nhắn cho **Admin**.
+- [x] **Hai kênh hỗ trợ**: (1) **liên hệ Người bán** (nút "Nhắn tin với shop" ở trang sản phẩm), (2) **liên hệ Admin** qua mục **Chăm sóc khách hàng** (nút "Nhắn tin CSKH"). Trang Tin nhắn chung `/messages`. *(commit cc064a8)* — *còn: thêm nút liên hệ ở trang chi tiết đơn hàng (nhỏ).*
 - [ ] **Xuất hóa đơn VAT**.
 
 ---
