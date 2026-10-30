@@ -15,7 +15,7 @@
 - [x] **Đăng nhập lần đầu**: bắt buộc **OTP** (trang /verify-login-otp). *(commit ce206f5)*
 - [ ] **Quên mật khẩu**:
   - [x] Khách hàng / Người bán: xác nhận email → nhận **OTP qua email** → đặt mật khẩu mới. *(đã có: /forgot-password → /reset-password)*
-  - [ ] Admin: xác nhận email → **chờ một Admin khác gửi mật khẩu mới** qua email đã đăng ký (có **nút sinh mật khẩu ngẫu nhiên**) + kèm **OTP** → đổi mật khẩu. *(còn lại)*
+  - [x] Admin: xác nhận email → **chờ Admin khác cấp mật khẩu mới** (sinh ngẫu nhiên, gửi email) → đăng nhập kèm **OTP** → buộc đổi. *(commit bf2048a)* ✅ **Nhóm bảo mật mật khẩu HOÀN TẤT**
 
 ---
 
