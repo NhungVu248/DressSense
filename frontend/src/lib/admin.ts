@@ -30,3 +30,13 @@ export const listModProducts = (status?: string) =>
   api.get<{ products: ModProduct[]; counts: Record<string, number> }>('/admin/moderation/products', { params: status ? { status } : {} }).then((r) => r.data);
 export const moderateProduct = (id: number, action: 'approve' | 'hide' | 'reject', reason?: string) =>
   api.patch(`/admin/moderation/products/${id}`, { action, reason }).then((r) => r.data);
+
+// ---- Admin quên mật khẩu (admin khác cấp) ----
+export interface AdminResetReq {
+  id: number; userId: number; requestedAt: string;
+  user: { id: number; fullName: string; email: string | null } | null;
+}
+export const listAdminPasswordResets = () =>
+  api.get<{ resets: AdminResetReq[] }>('/admin/password-resets').then((r) => r.data.resets);
+export const resolveAdminPasswordReset = (id: number) =>
+  api.post<{ message: string; password?: string; email?: string }>(`/admin/password-resets/${id}/resolve`).then((r) => r.data);

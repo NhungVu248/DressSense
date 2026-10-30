@@ -368,6 +368,23 @@ export async function resetPassword(req: Request, res: Response, next: NextFunct
   }
 }
 
+// ---------- Admin quên mật khẩu: tạo yêu cầu, chờ admin khác cấp ----------
+const adminForgotSchema = z.object({ email: z.string().email('Email không hợp lệ') });
+
+export async function requestAdminPasswordReset(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { email } = adminForgotSchema.parse(req.body);
+    const NEUTRAL = { message: 'Nếu tài khoản quản trị tồn tại, yêu cầu đã được ghi nhận. Vui lòng chờ một Quản trị viên khác cấp mật khẩu mới qua email.' };
+    const user = await prisma.user.findFirst({ where: { email, role: 'ADMIN' } });
+    if (!user || user.status === 'DISABLED') return res.json(NEUTRAL); // phản hồi trung lập
+    const existing = await prisma.adminPasswordReset.findFirst({ where: { userId: user.id, status: 'PENDING' } });
+    if (!existing) await prisma.adminPasswordReset.create({ data: { userId: user.id } });
+    res.json(NEUTRAL);
+  } catch (err) {
+    next(err);
+  }
+}
+
 // ---------- Helpers ----------
 function redirectByRole(role: string, status: string): string {
   if (role === 'ADMIN') return '/admin';

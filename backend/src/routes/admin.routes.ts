@@ -4,6 +4,8 @@ import {
   getUserDetail,
   updateUserRole,
   listAuditLogs,
+  listAdminPasswordResets,
+  resolveAdminPasswordReset,
 } from '../controllers/admin.controller';
 import { listAdminComplaints, adminResolveComplaint } from '../controllers/complaint.controller';
 import { listAdminReviews, moderateReview } from '../controllers/review.controller';
@@ -22,6 +24,10 @@ router.get('/users', listUsers);
 router.get('/users/:id', getUserDetail);
 router.patch('/users/:id', updateUserRole);
 router.get('/audit-logs', listAuditLogs);
+
+// Admin cấp lại mật khẩu cho admin quên mật khẩu
+router.get('/password-resets', listAdminPasswordResets);
+router.post('/password-resets/:id/resolve', resolveAdminPasswordReset);
 
 // UC11.2 - phân xử khiếu nại
 router.get('/complaints', listAdminComplaints);

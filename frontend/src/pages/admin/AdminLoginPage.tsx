@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getErrorMessage } from '../../lib/api';
 import { AuthCard, Field, PrimaryButton, ErrorBox } from '../../components/ui';
@@ -41,7 +41,10 @@ export default function AdminLoginPage() {
           {loading ? 'Đang đăng nhập...' : 'Đăng nhập quản trị'}
         </PrimaryButton>
       </form>
-      <p className="text-xs text-gray-400 mt-4">
+      <p className="text-center text-sm text-gray-500 mt-4">
+        <Link to="/admin/forgot-password" className="text-brand hover:underline">Quên mật khẩu?</Link>
+      </p>
+      <p className="text-xs text-gray-400 mt-3">
         Khu vực dành riêng cho Quản trị viên (quản lý người dùng, danh mục, sản phẩm, tri thức thời trang).
         Khách hàng và Người bán đăng nhập ở cổng riêng.
       </p>

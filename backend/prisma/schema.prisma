@@ -1209,3 +1209,16 @@ model SettingChangeLog {
 
   @@index([key])
 }
+
+// ---------- Admin quên mật khẩu (UC bảo mật) ----------
+// Admin gửi yêu cầu -> admin KHÁC duyệt & cấp mật khẩu mới (ngẫu nhiên) qua email.
+model AdminPasswordReset {
+  id           Int       @id @default(autoincrement())
+  userId       Int // admin yêu cầu
+  status       String    @default("PENDING") // PENDING | RESOLVED | CANCELLED
+  requestedAt  DateTime  @default(now())
+  resolvedById Int? // admin đã cấp mật khẩu
+  resolvedAt   DateTime?
+
+  @@index([status])
+}

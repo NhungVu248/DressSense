@@ -10,6 +10,7 @@ import {
   resetPassword,
   verifyLoginOtp,
   changePassword,
+  requestAdminPasswordReset,
 } from '../controllers/auth.controller';
 import { authenticate } from '../middlewares/auth';
 
@@ -30,5 +31,6 @@ router.post('/google', googleAuth); // UC1.1/1.2 - đăng nhập/đăng ký Goog
 // UC1.3 - Khôi phục mật khẩu
 router.post('/password/forgot', forgotPassword);
 router.post('/password/reset', resetPassword);
+router.post('/admin/forgot', requestAdminPasswordReset); // Admin quên MK -> chờ admin khác cấp
 
 export default router;

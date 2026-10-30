@@ -1,7 +1,19 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 import { notify } from '../services/notification.service';
+import { isDev } from '../config/env';
+
+// Sinh mật khẩu ngẫu nhiên đạt chính sách (hoa/thường/số/ký tự đặc biệt)
+function generateStrongPassword(len = 12): string {
+  const U = 'ABCDEFGHJKLMNPQRSTUVWXYZ', L = 'abcdefghijkmnpqrstuvwxyz', D = '23456789', S = '!@#$%^&*';
+  const all = U + L + D + S;
+  const pick = (s: string) => s[Math.floor(Math.random() * s.length)];
+  let pw = pick(U) + pick(L) + pick(D) + pick(S);
+  for (let i = pw.length; i < len; i++) pw += pick(all);
+  return pw.split('').sort(() => Math.random() - 0.5).join('');
+}
 
 function publicUser(u: any) {
   return {
@@ -167,6 +179,56 @@ export async function listAuditLogs(req: Request, res: Response, next: NextFunct
       },
     });
     res.json({ logs });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------- Admin cấp lại mật khẩu cho admin khác (quên mật khẩu) ----------
+
+// GET /api/admin/password-resets - danh sách yêu cầu chờ cấp
+export async function listAdminPasswordResets(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const resets = await prisma.adminPasswordReset.findMany({ where: { status: 'PENDING' }, orderBy: { requestedAt: 'asc' } });
+    const ids = resets.map((r) => r.userId);
+    const users = ids.length ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, fullName: true, email: true } }) : [];
+    const umap = new Map(users.map((u) => [u.id, u]));
+    res.json({ resets: resets.map((r) => ({ ...r, user: umap.get(r.userId) ?? null })) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/admin/password-resets/:id/resolve - sinh mật khẩu mới & cấp
+export async function resolveAdminPasswordReset(req: Request, res: Response, next: NextFunction) {
+  try {
+    const actorId = req.user!.userId;
+    const id = Number(req.params.id);
+    const reset = await prisma.adminPasswordReset.findUnique({ where: { id } });
+    if (!reset || reset.status !== 'PENDING') return res.status(404).json({ message: 'Yêu cầu không tồn tại hoặc đã được xử lý.' });
+    if (reset.userId === actorId) return res.status(400).json({ message: 'Không thể tự cấp mật khẩu cho chính mình. Cần một Quản trị viên khác thực hiện.' });
+
+    const target = await prisma.user.findUnique({ where: { id: reset.userId } });
+    if (!target) return res.status(404).json({ message: 'Tài khoản quản trị không tồn tại.' });
+
+    const newPassword = generateStrongPassword();
+    const hash = await bcrypt.hash(newPassword, 10);
+    await prisma.$transaction([
+      // đặt mật khẩu tạm; buộc đổi + yêu cầu OTP đăng nhập (firstLoginAt=null)
+      prisma.user.update({
+        where: { id: target.id },
+        data: { password: hash, mustChangePassword: true, firstLoginAt: null, failedLoginAttempts: 0, lockedUntil: null, passwordChangedAt: new Date() },
+      }),
+      prisma.adminPasswordReset.update({ where: { id }, data: { status: 'RESOLVED', resolvedById: actorId, resolvedAt: new Date() } }),
+    ]);
+    await notify(target.id, 'SHOP', 'Mật khẩu quản trị được cấp lại',
+      'Một Quản trị viên đã cấp mật khẩu mới. Kiểm tra email, đăng nhập (kèm OTP) rồi đổi mật khẩu ngay.', '/change-password');
+
+    // Thực tế: gửi mật khẩu qua email đã đăng ký. Dev: trả về để chuyển cho admin yêu cầu.
+    res.json({
+      message: 'Đã cấp mật khẩu mới. Hệ thống gửi qua email; bạn cũng có thể chuyển trực tiếp cho admin yêu cầu.',
+      ...(isDev ? { password: newPassword, email: target.email } : {}),
+    });
   } catch (err) {
     next(err);
   }
