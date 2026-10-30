@@ -10,6 +10,7 @@ import {
 } from '../lib/products';
 import { addToCart as apiAddToCart, addWishlist } from '../lib/cart';
 import { getProductReviews, getProductQuestions, createQuestion } from '../lib/interact';
+import { openConversation } from '../lib/messages';
 import ProductCard from '../components/ProductCard';
 
 type Tab = 'desc' | 'detail' | 'reviews' | 'qa';
@@ -181,7 +182,17 @@ export default function ProductDetailPage() {
             </button>
             <button onClick={toggleWishlist} className="w-12 h-12 grid place-items-center border border-black/15 rounded-lg hover:text-red-500" title="Yêu thích">♡</button>
           </div>
-          <button onClick={() => nav('/recommendations')} className="w-full mt-3 border border-black/15 rounded-lg py-3 text-ink hover:border-brand">Xem gợi ý hợp với bạn</button>
+          <div className="flex gap-3 mt-3">
+            <button onClick={() => nav('/recommendations')} className="flex-1 border border-black/15 rounded-lg py-3 text-ink hover:border-brand">Xem gợi ý hợp với bạn</button>
+            <button
+              onClick={async () => {
+                if (!user) return nav('/login');
+                try { const cid = await openConversation({ type: 'SELLER', sellerId: (p as any).sellerId }); nav(`/messages?c=${cid}`); } catch { /* bỏ qua */ }
+              }}
+              className="flex-1 border border-brand/40 text-brand rounded-lg py-3 font-medium hover:bg-brand/5 inline-flex items-center justify-center gap-2">
+              💬 Nhắn tin với shop
+            </button>
+          </div>
 
           <div className="mt-5 space-y-1.5 text-xs text-gray-500">
             <p>• Miễn phí vận chuyển cho đơn từ 699.000₫</p>

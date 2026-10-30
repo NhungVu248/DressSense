@@ -15,15 +15,22 @@ export interface User {
 }
 
 interface LoginResult {
-  redirect: string;
+  redirect?: string;
   pendingApproval?: boolean;
-  user: User;
+  user?: User;
+  // Bảo mật mật khẩu
+  needOtp?: boolean; // đăng nhập lần đầu -> cần OTP
+  target?: string; // nơi nhận OTP (đã che)
+  devOtp?: string; // chỉ ở môi trường dev
+  mustChangePassword?: boolean; // hết hạn/buộc đổi
+  passwordExpiresInDays?: number | null; // cảnh báo sắp hết hạn
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (identifier: string, password: string, rememberMe?: boolean) => Promise<LoginResult>;
+  verifyLoginOtp: (identifier: string, code: string, rememberMe?: boolean) => Promise<LoginResult>;
   setSession: (token: string, user: User) => void;
   logout: () => void;
 }
@@ -45,9 +52,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(identifier: string, password: string, rememberMe?: boolean): Promise<LoginResult> {
     const res = await api.post('/auth/login', { identifier, password, rememberMe });
+    // Đăng nhập lần đầu: chưa có token, chuyển sang bước OTP
+    if (res.data.needOtp) {
+      return { needOtp: true, target: res.data.target, devOtp: res.data.devOtp };
+    }
     setToken(res.data.token);
     setUser(res.data.user);
-    return { redirect: res.data.redirect, pendingApproval: res.data.pendingApproval, user: res.data.user };
+    return {
+      redirect: res.data.redirect, pendingApproval: res.data.pendingApproval, user: res.data.user,
+      mustChangePassword: res.data.mustChangePassword, passwordExpiresInDays: res.data.passwordExpiresInDays,
+    };
+  }
+
+  async function verifyLoginOtp(identifier: string, code: string, rememberMe?: boolean): Promise<LoginResult> {
+    const res = await api.post('/auth/login/verify-otp', { identifier, code, rememberMe });
+    setToken(res.data.token);
+    setUser(res.data.user);
+    return {
+      redirect: res.data.redirect, pendingApproval: res.data.pendingApproval, user: res.data.user,
+      mustChangePassword: res.data.mustChangePassword, passwordExpiresInDays: res.data.passwordExpiresInDays,
+    };
   }
 
   function setSession(token: string, u: User) {
@@ -61,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, setSession, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, verifyLoginOtp, setSession, logout }}>
       {children}
     </AuthContext.Provider>
   );

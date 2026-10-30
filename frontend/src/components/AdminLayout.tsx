@@ -13,6 +13,7 @@ const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: b
       { to: '/admin/categories', label: 'Danh mục' },
       { to: '/admin/products', label: 'Sản phẩm' },
       { to: '/admin/settings', label: 'Cấu hình hệ thống' }, // UC16.5
+      { to: '/admin/password-resets', label: 'Cấp lại mật khẩu' }, // admin quên MK
     ],
   },
   {
@@ -22,6 +23,7 @@ const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: b
       { to: '/admin/content', label: 'Nội dung (SP)' }, // UC16.4
       { to: '/admin/complaints', label: 'Khiếu nại' },
       { to: '/admin/reviews', label: 'Đánh giá' },
+      { to: '/admin/messages', label: 'Tin nhắn CSKH' },
     ],
   },
   {

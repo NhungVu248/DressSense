@@ -19,6 +19,10 @@ import RegisterPage from './pages/auth/RegisterPage';
 import VerifyOtpPage from './pages/auth/VerifyOtpPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+import VerifyLoginOtpPage from './pages/auth/VerifyLoginOtpPage';
+import ChangePasswordPage from './pages/auth/ChangePasswordPage';
+import PasswordExpiryBanner from './components/PasswordExpiryBanner';
+import MessagesPage from './pages/MessagesPage';
 // UC1 - Người bán
 import SellerLoginPage from './pages/seller/SellerLoginPage';
 import SellerRegisterPage from './pages/seller/SellerRegisterPage';
@@ -67,6 +71,8 @@ import AdminShopsPage from './pages/admin/AdminShopsPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminContentPage from './pages/admin/AdminContentPage';
+import AdminForgotPasswordPage from './pages/admin/AdminForgotPasswordPage';
+import AdminPasswordResetsPage from './pages/admin/AdminPasswordResetsPage';
 // UC15 - Phân tích dữ liệu kinh doanh (BI) - trang dùng chung cho Seller & Admin
 import RevenueAnalyticsPage from './pages/analytics/RevenueAnalyticsPage';
 import CustomerAnalyticsPage from './pages/analytics/CustomerAnalyticsPage';
@@ -96,7 +102,9 @@ function RedirectManageEdit() {
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <PasswordExpiryBanner />
+      <Routes>
       {/* UC7 - Tìm kiếm & duyệt sản phẩm */}
       <Route path="/" element={<ShopLayout><HomePage /></ShopLayout>} />
       <Route path="/products" element={<ShopLayout><ProductsPage /></ShopLayout>} />
@@ -108,6 +116,8 @@ export default function App() {
       <Route path="/verify-otp" element={<VerifyOtpPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-login-otp" element={<VerifyLoginOtpPage />} />{/* OTP đăng nhập lần đầu */}
+      <Route path="/change-password" element={<RequireAuth><ChangePasswordPage /></RequireAuth>} />{/* đổi/hết hạn MK */}
 
       {/* UC1 - Cổng Người bán */}
       <Route path="/seller/login" element={<SellerLoginPage />} />
@@ -142,16 +152,20 @@ export default function App() {
 
       {/* UC12.4 - Thông báo (khách) */}
       <Route path="/notifications" element={<RequireAuth><ShopLayout><NotificationsPage /></ShopLayout></RequireAuth>} />
+      <Route path="/messages" element={<RequireAuth><ShopLayout><MessagesPage /></ShopLayout></RequireAuth>} />{/* Tin nhắn/CSKH */}
 
       {/* UC5 - Gợi ý sản phẩm cá nhân hóa */}
       <Route path="/recommendations" element={<RequireAuth><ShopLayout><RecommendationsPage /></ShopLayout></RequireAuth>} />
 
       {/* ===== Cổng QUẢN TRỊ VIÊN - luồng riêng (AdminLayout), song song Khách/Người bán ===== */}
       <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route path="/admin/forgot-password" element={<AdminForgotPasswordPage />} />{/* admin quên MK */}
       <Route path="/admin" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminDashboardPage /></AdminLayout></RequireAuth>} />{/* UC16.1 */}
       <Route path="/admin/users" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminUsersPage /></AdminLayout></RequireAuth>} />{/* UC16.2 */}
       <Route path="/admin/content" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminContentPage /></AdminLayout></RequireAuth>} />{/* UC16.4 */}
       <Route path="/admin/settings" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminSettingsPage /></AdminLayout></RequireAuth>} />{/* UC16.5 */}
+      <Route path="/admin/password-resets" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminPasswordResetsPage /></AdminLayout></RequireAuth>} />{/* admin cấp lại MK */}
+      <Route path="/admin/messages" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><MessagesPage /></AdminLayout></RequireAuth>} />{/* CSKH */}
       <Route path="/admin/categories" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><CategoryManagePage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/complaints" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminComplaintsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/reviews" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminReviewsPage /></AdminLayout></RequireAuth>} />
@@ -179,6 +193,7 @@ export default function App() {
       <Route path="/seller/promotions" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><PromotionManagePage /></SellerLayout></RequireAuth>} />
       <Route path="/seller/reviews" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerReviewsPage /></SellerLayout></RequireAuth>} />
       <Route path="/seller/support" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerSupportPage /></SellerLayout></RequireAuth>} />
+      <Route path="/seller/messages" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><MessagesPage /></SellerLayout></RequireAuth>} />{/* tin nhắn KH */}
       {/* UC15 - Phân tích (BI) trong Seller Portal (phạm vi gian hàng) */}
       <Route path="/seller/analytics/revenue" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><RevenueAnalyticsPage /></SellerLayout></RequireAuth>} />
       <Route path="/seller/analytics/customers" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><CustomerAnalyticsPage /></SellerLayout></RequireAuth>} />
@@ -194,6 +209,7 @@ export default function App() {
       <Route path="/manage/products" element={<Navigate to="/seller/products" replace />} />
       <Route path="/manage/products/new" element={<Navigate to="/seller/products/new" replace />} />
       <Route path="/manage/products/:id/edit" element={<RedirectManageEdit />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }

@@ -57,6 +57,11 @@ model User {
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
 
+  // Bảo mật mật khẩu: hạn 30 ngày + buộc đổi + OTP đăng nhập lần đầu
+  passwordChangedAt  DateTime  @default(now()) // mốc đặt mật khẩu gần nhất (tính hạn 30 ngày)
+  mustChangePassword Boolean   @default(false) // buộc đổi mật khẩu ở lần đăng nhập kế tiếp
+  firstLoginAt       DateTime? // null = chưa đăng nhập lần đầu -> yêu cầu OTP
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -146,6 +151,7 @@ enum OtpPurpose {
   REGISTER
   RESET_PASSWORD
   CHANGE_CONTACT
+  LOGIN // OTP đăng nhập lần đầu
 }
 
 model OtpCode {
@@ -1033,6 +1039,7 @@ enum NotificationType {
   PROMO // khuyến mãi (marketing - có thể tắt)
   SUGGEST // gợi ý sản phẩm (marketing - có thể tắt)
   SHOP // UC14.1 - kết quả kiểm duyệt gian hàng (giao dịch, không tắt được)
+  MESSAGE // tin nhắn mới (CSKH)
 }
 
 // UC12.4 - thông báo cho khách hàng
@@ -1202,4 +1209,56 @@ model SettingChangeLog {
   createdAt  DateTime @default(now())
 
   @@index([key])
+}
+
+// ---------- Admin quên mật khẩu (UC bảo mật) ----------
+// Admin gửi yêu cầu -> admin KHÁC duyệt & cấp mật khẩu mới (ngẫu nhiên) qua email.
+model AdminPasswordReset {
+  id           Int       @id @default(autoincrement())
+  userId       Int // admin yêu cầu
+  status       String    @default("PENDING") // PENDING | RESOLVED | CANCELLED
+  requestedAt  DateTime  @default(now())
+  resolvedById Int? // admin đã cấp mật khẩu
+  resolvedAt   DateTime?
+
+  @@index([status])
+}
+
+// ---------- Tin nhắn / Chăm sóc khách hàng (CSKH) ----------
+enum ConversationType {
+  SELLER // Khách hàng <-> Người bán
+  ADMIN // Khách hàng <-> CSKH (Quản trị viên)
+}
+
+model Conversation {
+  id            Int              @id @default(autoincrement())
+  type          ConversationType
+  customerId    Int // người mở hội thoại (khách hàng)
+  sellerId      Int? // null khi là CSKH admin
+  orderId       Int? // nếu bắt đầu từ một đơn hàng
+  createdAt     DateTime         @default(now())
+  lastMessageAt DateTime         @default(now())
+
+  // Trạng thái theo từng phía: khách & đối tác (người bán hoặc nhóm admin)
+  customerReadAt  DateTime?
+  partnerReadAt   DateTime?
+  customerStarred Boolean   @default(false)
+  partnerStarred  Boolean   @default(false)
+
+  messages Message[]
+
+  @@index([customerId])
+  @@index([sellerId])
+  @@index([type])
+}
+
+model Message {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       Int
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
 }

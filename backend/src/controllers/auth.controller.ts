@@ -218,24 +218,71 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       return res.status(401).json({ message: GENERIC });
     }
 
-    // Thành công: reset bộ đếm, cấp JWT (ghi nhớ đăng nhập -> hạn dài hơn)
+    // Khớp mật khẩu: reset bộ đếm
     await prisma.user.update({
       where: { id: user.id },
       data: { failedLoginAttempts: 0, lockedUntil: null },
     });
 
-    const token = signToken(
-      { userId: user.id, role: user.role },
-      rememberMe ? env.jwtRememberExpiresIn : env.jwtExpiresIn,
-    );
+    // Đăng nhập lần đầu -> yêu cầu OTP (gửi về email/SĐT tài khoản), chưa cấp token
+    if (!user.firstLoginAt) {
+      const target = user.email ?? user.phone!;
+      const { expiresAt, devOtp } = await createAndSendOtp({ target, purpose: 'LOGIN' });
+      return res.json({ needOtp: true, identifier, target: maskTarget(target), expiresAt, ...(isDev ? { devOtp } : {}) });
+    }
 
-    res.json({
-      token,
-      user: publicUser(user),
-      redirect: redirectByRole(user.role, user.status),
-      // 8a: Người bán chờ kiểm duyệt -> chỉ vào khu hoàn thiện hồ sơ
-      pendingApproval: user.role === 'SELLER' && user.status === 'PENDING_APPROVAL',
+    return sendLoginSuccess(res, user, !!rememberMe);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------- OTP đăng nhập lần đầu ----------
+const verifyLoginOtpSchema = z.object({
+  identifier: z.string().min(1),
+  code: z.string().length(6, 'Mã OTP gồm 6 chữ số'),
+  rememberMe: z.boolean().optional(),
+});
+
+export async function verifyLoginOtp(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { identifier, code, rememberMe } = verifyLoginOtpSchema.parse(req.body);
+    const { email, phone } = parseIdentifier(identifier);
+    const user = await prisma.user.findFirst({
+      where: { OR: [email ? { email } : undefined, phone ? { phone } : undefined].filter(Boolean) as any },
     });
+    if (!user) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+    const target = user.email ?? user.phone!;
+    const result = await verifyOtp({ target, purpose: 'LOGIN', code });
+    if (!result.ok) return res.status(400).json({ message: otpErrorMessage(result.error), code: result.error });
+    const updated = await prisma.user.update({ where: { id: user.id }, data: { firstLoginAt: new Date() } });
+    return sendLoginSuccess(res, updated, !!rememberMe);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------- Đổi mật khẩu (đã đăng nhập) ----------
+const changePwSchema = z
+  .object({ currentPassword: z.string().min(1), newPassword: passwordSchema, confirmPassword: z.string() })
+  .refine((d) => d.newPassword === d.confirmPassword, { message: 'Mật khẩu xác nhận không khớp', path: ['confirmPassword'] });
+
+export async function changePassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { currentPassword, newPassword } = changePwSchema.parse(req.body);
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
+    if (!user || !user.password) return res.status(404).json({ message: 'Không tìm thấy tài khoản' });
+    const match = await bcrypt.compare(currentPassword, user.password);
+    if (!match) return res.status(400).json({ message: 'Mật khẩu hiện tại không đúng.' });
+    if (await bcrypt.compare(newPassword, user.password)) {
+      return res.status(400).json({ message: 'Mật khẩu mới phải khác mật khẩu cũ.' });
+    }
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: passwordHash, passwordChangedAt: new Date(), mustChangePassword: false },
+    });
+    res.json({ message: 'Đổi mật khẩu thành công.' });
   } catch (err) {
     next(err);
   }
@@ -311,11 +358,28 @@ export async function resetPassword(req: Request, res: Response, next: NextFunct
     const passwordHash = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({
       where: { id: user.id },
-      // 12a: reset bộ đếm khóa; mật khẩu mới đã mã hóa
-      data: { password: passwordHash, failedLoginAttempts: 0, lockedUntil: null },
+      // 12a: reset bộ đếm khóa; mật khẩu mới đã mã hóa; làm mới hạn mật khẩu
+      data: { password: passwordHash, failedLoginAttempts: 0, lockedUntil: null, passwordChangedAt: new Date(), mustChangePassword: false },
     });
 
     res.json({ message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ---------- Admin quên mật khẩu: tạo yêu cầu, chờ admin khác cấp ----------
+const adminForgotSchema = z.object({ email: z.string().email('Email không hợp lệ') });
+
+export async function requestAdminPasswordReset(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { email } = adminForgotSchema.parse(req.body);
+    const NEUTRAL = { message: 'Nếu tài khoản quản trị tồn tại, yêu cầu đã được ghi nhận. Vui lòng chờ một Quản trị viên khác cấp mật khẩu mới qua email.' };
+    const user = await prisma.user.findFirst({ where: { email, role: 'ADMIN' } });
+    if (!user || user.status === 'DISABLED') return res.json(NEUTRAL); // phản hồi trung lập
+    const existing = await prisma.adminPasswordReset.findFirst({ where: { userId: user.id, status: 'PENDING' } });
+    if (!existing) await prisma.adminPasswordReset.create({ data: { userId: user.id } });
+    res.json(NEUTRAL);
   } catch (err) {
     next(err);
   }
@@ -326,6 +390,27 @@ function redirectByRole(role: string, status: string): string {
   if (role === 'ADMIN') return '/admin';
   if (role === 'SELLER') return status === 'PENDING_APPROVAL' ? '/seller/pending' : '/seller';
   return '/';
+}
+
+// Hạn mật khẩu 30 ngày; cảnh báo khi còn <= 7 ngày (gồm 7/3/24h cuối)
+const PW_EXPIRY_DAYS = 30;
+const PW_WARN_DAYS = 7;
+
+// Cấp token + cờ bảo mật mật khẩu (dùng chung cho login thường & sau OTP lần đầu)
+function sendLoginSuccess(res: Response, user: any, rememberMe: boolean) {
+  const token = signToken({ userId: user.id, role: user.role }, rememberMe ? env.jwtRememberExpiresIn : env.jwtExpiresIn);
+  const ageDays = user.passwordChangedAt ? (Date.now() - new Date(user.passwordChangedAt).getTime()) / 86_400_000 : 0;
+  const remaining = PW_EXPIRY_DAYS - ageDays;
+  const mustChangePassword = user.mustChangePassword || remaining <= 0;
+  const passwordExpiresInDays = !mustChangePassword && remaining <= PW_WARN_DAYS ? Math.max(0, Math.ceil(remaining)) : null;
+  return res.json({
+    token,
+    user: publicUser(user),
+    redirect: redirectByRole(user.role, user.status),
+    pendingApproval: user.role === 'SELLER' && user.status === 'PENDING_APPROVAL',
+    mustChangePassword, // buộc đổi (hết hạn hoặc admin reset)
+    passwordExpiresInDays, // cảnh báo sắp hết hạn (<= 7 ngày), null nếu chưa cần
+  });
 }
 
 function otpErrorMessage(e: string): string {

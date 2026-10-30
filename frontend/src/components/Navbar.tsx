@@ -321,6 +321,20 @@ export default function Navbar() {
                       </Link>
                     ))}
                   </div>
+<<<<<<< HEAD
+=======
+                  <MenuLink to="/profile" label="Hồ sơ của tôi" />
+                  <MenuLink to="/orders" label="Đơn hàng của tôi" />
+                  <MenuLink to="/messages" label="Tin nhắn" />
+                  <MenuLink to="/support" label="Đổi/trả & Khiếu nại" />
+                  <MenuLink to="/transactions" label="Lịch sử giao dịch" />
+                  <MenuLink to="/profile/body" label="Phân tích dáng người" hot />
+                  <MenuLink to="/profile/personalization" label="Hồ sơ cá nhân hóa" />
+                  <MenuLink to="/profile/sizes" label="Thông tin size" />
+                  <MenuLink to="/recommendations" label="Gợi ý cho bạn" />
+                  {user.role === 'ADMIN' && <MenuLink to="/admin" label="Trang quản trị" />}
+                  <button onClick={logout} className="w-full text-left px-4 py-2 text-red-500 hover:bg-cream">Đăng xuất</button>
+>>>>>>> 99022a13f5b85621be386f87823c2ee9982d9b4d
                 </div>
 
                 {user ? (

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
-import { AuthCard, Field, PrimaryButton, OrDivider, ErrorBox } from '../../components/ui';
+import { AuthCard, Field, PrimaryButton, OrDivider, ErrorBox, PasswordChecklist } from '../../components/ui';
 import GoogleLoginButton from '../../components/GoogleLoginButton';
 
 export default function RegisterPage() {
@@ -28,8 +28,9 @@ export default function RegisterPage() {
         <ErrorBox message={error} />
         <Field label="Họ và tên" placeholder="Nguyễn Văn A" value={form.fullName} onChange={set('fullName')} required />
         <Field label="Email hoặc số điện thoại" placeholder="name@example.com" value={form.identifier} onChange={set('identifier')} required />
-        <Field label="Mật khẩu" type="password" placeholder="••••••••" hint="Tối thiểu 8 ký tự, gồm chữ và số"
+        <Field label="Mật khẩu" type="password" placeholder="••••••••"
           value={form.password} onChange={set('password')} required />
+        <PasswordChecklist value={form.password} />
         <Field label="Xác nhận mật khẩu" type="password" placeholder="••••••••"
           value={form.confirmPassword} onChange={set('confirmPassword')} required />
         <PrimaryButton type="submit" disabled={loading}>

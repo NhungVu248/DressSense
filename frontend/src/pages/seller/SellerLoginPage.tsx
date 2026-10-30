@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getErrorMessage } from '../../lib/api';
 import { AuthCard, Field, PrimaryButton, ErrorBox } from '../../components/ui';
+import { routeAfterLogin } from '../../lib/postLogin';
 
 export default function SellerLoginPage() {
   const { login } = useAuth();
@@ -17,8 +18,12 @@ export default function SellerLoginPage() {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const { redirect } = await login(identifier, password, remember);
-      nav(redirect || '/seller');
+      const r = await login(identifier, password, remember);
+      if (r.needOtp) {
+        nav('/verify-login-otp', { state: { identifier, rememberMe: remember, devOtp: r.devOtp, target: r.target } });
+        return;
+      }
+      routeAfterLogin({ ...r, redirect: r.redirect || '/seller' }, nav);
     } catch (err) { setError(getErrorMessage(err)); }
     finally { setLoading(false); }
   }

@@ -7,6 +7,7 @@ import { priceOrderRows, getRunningFlashSales, pickFlashSale, effectivePrice } f
 import { startOnlinePayment } from '../services/payment.service';
 import { vnpayEnabled } from '../config/env';
 import { releaseReserved, finalizeStock } from '../services/order.service';
+import { notify } from '../services/notification.service';
 import { CANCELLABLE_DIRECT, CANCELLABLE_REQUEST, type OrderStatusValue } from '../constants/order-status';
 
 // ============================================================
@@ -206,6 +207,16 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       }
       return created;
     });
+
+    // Thông báo đơn mới: đơn COD vào PENDING ngay -> báo Người bán + Quản trị viên
+    // (đơn online báo sau khi thanh toán thành công, xem payment.service)
+    if (!online) {
+      const admins = await prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE' }, select: { id: true } });
+      for (const o of orders) {
+        if (o.sellerId) await notify(o.sellerId, 'ORDER', 'Đơn hàng mới', `Bạn có đơn hàng mới ${o.code}.`, '/seller/orders');
+        await Promise.all(admins.map((a) => notify(a.id, 'ORDER', 'Đơn hàng mới', `Đơn hàng mới ${o.code} vừa được đặt.`, '/admin')));
+      }
+    }
 
     // Online -> MỘT giao dịch gộp cho tổng tất cả đơn (UC9.2)
     if (online) {

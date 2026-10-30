@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { formatVND } from '../lib/products';
+import { openConversation } from '../lib/messages';
 import {
   getReturns, getComplaints, respondComplaint,
   RETURN_TYPE_LABEL, REQUEST_STATUS_LABEL, COMPLAINT_STATUS_LABEL,
@@ -10,6 +11,7 @@ import {
 // UC11 - Khách theo dõi đổi/trả & khiếu nại
 export default function SupportPage() {
   const qc = useQueryClient();
+  const nav = useNavigate();
   const [tab, setTab] = useState<'returns' | 'complaints'>('returns');
   const { data: returns } = useQuery({ queryKey: ['returns'], queryFn: getReturns });
   const { data: complaints } = useQuery({ queryKey: ['complaints'], queryFn: getComplaints });
@@ -21,7 +23,15 @@ export default function SupportPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="font-display text-3xl text-ink mb-5">Đổi/trả & Khiếu nại</h1>
+      <h1 className="font-display text-3xl text-ink mb-3">Chăm sóc khách hàng</h1>
+      <div className="mb-5 rounded-2xl border border-brand/20 bg-brand/5 p-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="font-medium text-ink">Cần hỗ trợ trực tiếp?</p>
+          <p className="text-sm text-ink/60">Nhắn tin với đội Chăm sóc khách hàng (Quản trị viên) của DressSense.</p>
+        </div>
+        <button onClick={async () => { try { const cid = await openConversation({ type: 'ADMIN' }); nav(`/messages?c=${cid}`); } catch { /* bỏ qua */ } }}
+          className="px-5 py-2.5 rounded-xl bg-brand text-white font-medium hover:bg-brand/90">💬 Nhắn tin CSKH</button>
+      </div>
       <div className="flex gap-2 mb-5">
         <button onClick={() => setTab('returns')} className={`text-sm px-4 py-1.5 rounded-full border ${tab === 'returns' ? 'border-brand bg-brand text-white' : 'border-black/10 text-gray-600'}`}>Đổi/trả ({returns?.length ?? 0})</button>
         <button onClick={() => setTab('complaints')} className={`text-sm px-4 py-1.5 rounded-full border ${tab === 'complaints' ? 'border-brand bg-brand text-white' : 'border-black/10 text-gray-600'}`}>Khiếu nại ({complaints?.length ?? 0})</button>
