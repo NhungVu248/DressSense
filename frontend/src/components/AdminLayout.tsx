@@ -23,6 +23,7 @@ const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: b
       { to: '/admin/content', label: 'Nội dung (SP)' }, // UC16.4
       { to: '/admin/complaints', label: 'Khiếu nại' },
       { to: '/admin/reviews', label: 'Đánh giá' },
+      { to: '/admin/messages', label: 'Tin nhắn CSKH' },
     ],
   },
   {

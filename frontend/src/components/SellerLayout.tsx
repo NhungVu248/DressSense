@@ -34,6 +34,7 @@ const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: b
     items: [
       { to: '/seller/promotions', label: 'Khuyến mãi' },
       { to: '/seller/reviews', label: 'Đánh giá & Hỏi đáp' },
+      { to: '/seller/messages', label: 'Tin nhắn' },
       { to: '/seller/support', label: 'Hỗ trợ' },
     ],
   },

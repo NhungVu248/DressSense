@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { buildPaymentUrl, type VerifyResult } from './vnpay.service';
+import { notify } from './notification.service';
 
 // ============================================================
 //  UC9.2 - Dịch vụ thanh toán dùng chung cho tạo đơn (UC9.1) và xử lý callback.
@@ -56,6 +57,15 @@ export async function finalizePayment(v: VerifyResult): Promise<{ handled: boole
         await db.order.update({ where: { id: tx.orderId }, data: { paymentStatus: 'PAID', status: 'PENDING', paidAt: new Date() } });
       }
     });
+    // Thông báo đơn mới (đã thanh toán online) cho Người bán + Quản trị viên
+    const paidOrders = tx.order.checkoutCode
+      ? await prisma.order.findMany({ where: { checkoutCode: tx.order.checkoutCode }, select: { code: true, sellerId: true } })
+      : await prisma.order.findMany({ where: { id: tx.orderId }, select: { code: true, sellerId: true } });
+    const admins = await prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE' }, select: { id: true } });
+    for (const o of paidOrders) {
+      if (o.sellerId) await notify(o.sellerId, 'ORDER', 'Đơn hàng mới (đã thanh toán)', `Đơn ${o.code} đã thanh toán, chờ xác nhận.`, '/seller/orders');
+      await Promise.all(admins.map((a) => notify(a.id, 'ORDER', 'Đơn hàng mới', `Đơn ${o.code} đã thanh toán.`, '/admin')));
+    }
     return { handled: true, code: '00', message: 'Xác nhận thanh toán thành công' };
   }
 

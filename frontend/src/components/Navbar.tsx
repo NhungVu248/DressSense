@@ -125,6 +125,7 @@ export default function Navbar() {
                   </div>
                   <MenuLink to="/profile" label="Hồ sơ của tôi" />
                   <MenuLink to="/orders" label="Đơn hàng của tôi" />
+                  <MenuLink to="/messages" label="Tin nhắn" />
                   <MenuLink to="/support" label="Đổi/trả & Khiếu nại" />
                   <MenuLink to="/transactions" label="Lịch sử giao dịch" />
                   <MenuLink to="/profile/body" label="Phân tích dáng người" hot />

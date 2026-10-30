@@ -1039,6 +1039,7 @@ enum NotificationType {
   PROMO // khuyến mãi (marketing - có thể tắt)
   SUGGEST // gợi ý sản phẩm (marketing - có thể tắt)
   SHOP // UC14.1 - kết quả kiểm duyệt gian hàng (giao dịch, không tắt được)
+  MESSAGE // tin nhắn mới (CSKH)
 }
 
 // UC12.4 - thông báo cho khách hàng
@@ -1221,4 +1222,43 @@ model AdminPasswordReset {
   resolvedAt   DateTime?
 
   @@index([status])
+}
+
+// ---------- Tin nhắn / Chăm sóc khách hàng (CSKH) ----------
+enum ConversationType {
+  SELLER // Khách hàng <-> Người bán
+  ADMIN // Khách hàng <-> CSKH (Quản trị viên)
+}
+
+model Conversation {
+  id            Int              @id @default(autoincrement())
+  type          ConversationType
+  customerId    Int // người mở hội thoại (khách hàng)
+  sellerId      Int? // null khi là CSKH admin
+  orderId       Int? // nếu bắt đầu từ một đơn hàng
+  createdAt     DateTime         @default(now())
+  lastMessageAt DateTime         @default(now())
+
+  // Trạng thái theo từng phía: khách & đối tác (người bán hoặc nhóm admin)
+  customerReadAt  DateTime?
+  partnerReadAt   DateTime?
+  customerStarred Boolean   @default(false)
+  partnerStarred  Boolean   @default(false)
+
+  messages Message[]
+
+  @@index([customerId])
+  @@index([sellerId])
+  @@index([type])
+}
+
+model Message {
+  id             Int          @id @default(autoincrement())
+  conversationId Int
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       Int
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
 }

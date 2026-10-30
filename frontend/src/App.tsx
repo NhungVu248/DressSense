@@ -20,6 +20,7 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import VerifyLoginOtpPage from './pages/auth/VerifyLoginOtpPage';
 import ChangePasswordPage from './pages/auth/ChangePasswordPage';
 import PasswordExpiryBanner from './components/PasswordExpiryBanner';
+import MessagesPage from './pages/MessagesPage';
 // UC1 - Người bán
 import SellerLoginPage from './pages/seller/SellerLoginPage';
 import SellerRegisterPage from './pages/seller/SellerRegisterPage';
@@ -145,6 +146,7 @@ export default function App() {
 
       {/* UC12.4 - Thông báo (khách) */}
       <Route path="/notifications" element={<RequireAuth><ShopLayout><NotificationsPage /></ShopLayout></RequireAuth>} />
+      <Route path="/messages" element={<RequireAuth><ShopLayout><MessagesPage /></ShopLayout></RequireAuth>} />{/* Tin nhắn/CSKH */}
 
       {/* UC5 - Gợi ý sản phẩm cá nhân hóa */}
       <Route path="/recommendations" element={<RequireAuth><ShopLayout><RecommendationsPage /></ShopLayout></RequireAuth>} />
@@ -157,6 +159,7 @@ export default function App() {
       <Route path="/admin/content" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminContentPage /></AdminLayout></RequireAuth>} />{/* UC16.4 */}
       <Route path="/admin/settings" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminSettingsPage /></AdminLayout></RequireAuth>} />{/* UC16.5 */}
       <Route path="/admin/password-resets" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminPasswordResetsPage /></AdminLayout></RequireAuth>} />{/* admin cấp lại MK */}
+      <Route path="/admin/messages" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><MessagesPage /></AdminLayout></RequireAuth>} />{/* CSKH */}
       <Route path="/admin/categories" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><CategoryManagePage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/complaints" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminComplaintsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/reviews" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminReviewsPage /></AdminLayout></RequireAuth>} />
@@ -184,6 +187,7 @@ export default function App() {
       <Route path="/seller/promotions" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><PromotionManagePage /></SellerLayout></RequireAuth>} />
       <Route path="/seller/reviews" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerReviewsPage /></SellerLayout></RequireAuth>} />
       <Route path="/seller/support" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerSupportPage /></SellerLayout></RequireAuth>} />
+      <Route path="/seller/messages" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><MessagesPage /></SellerLayout></RequireAuth>} />{/* tin nhắn KH */}
       {/* UC15 - Phân tích (BI) trong Seller Portal (phạm vi gian hàng) */}
       <Route path="/seller/analytics/revenue" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><RevenueAnalyticsPage /></SellerLayout></RequireAuth>} />
       <Route path="/seller/analytics/customers" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><CustomerAnalyticsPage /></SellerLayout></RequireAuth>} />
