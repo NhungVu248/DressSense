@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
-import { AuthCard, Field, PrimaryButton, ErrorBox, PendingBadge } from '../../components/ui';
+import { AuthCard, Field, PrimaryButton, ErrorBox, PendingBadge, PasswordChecklist } from '../../components/ui';
 
 export default function SellerRegisterPage() {
   const nav = useNavigate();
@@ -28,8 +28,9 @@ export default function SellerRegisterPage() {
         <ErrorBox message={error} />
         <Field label="Họ và tên chủ tài khoản" placeholder="Trần Thị B" value={form.fullName} onChange={set('fullName')} required />
         <Field label="Email hoặc số điện thoại" placeholder="seller@example.com" value={form.identifier} onChange={set('identifier')} required />
-        <Field label="Mật khẩu" type="password" placeholder="••••••••" hint="Tối thiểu 8 ký tự, gồm chữ và số"
+        <Field label="Mật khẩu" type="password" placeholder="••••••••"
           value={form.password} onChange={set('password')} required />
+        <PasswordChecklist value={form.password} />
         <Field label="Xác nhận mật khẩu" type="password" placeholder="••••••••"
           value={form.confirmPassword} onChange={set('confirmPassword')} required />
         <Field label="Tên gian hàng" placeholder="Gian hàng thời trang B" value={form.shopName} onChange={set('shopName')} required />

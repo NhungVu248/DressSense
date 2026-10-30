@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
-import { AuthCard, Field, PrimaryButton, ErrorBox } from '../../components/ui';
+import { AuthCard, Field, PrimaryButton, ErrorBox, PasswordChecklist } from '../../components/ui';
 
 export default function ResetPasswordPage() {
   const nav = useNavigate();
@@ -37,8 +37,9 @@ export default function ResetPasswordPage() {
     <AuthCard url="dressense.vn/reset-password" title="Bước 3 · Đặt mật khẩu mới">
       <form onSubmit={submit}>
         <ErrorBox message={error} />
-        <Field label="Mật khẩu mới" type="password" placeholder="••••••••" hint="Tối thiểu 8 ký tự, gồm chữ và số"
+        <Field label="Mật khẩu mới" type="password" placeholder="••••••••"
           value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required />
+        <PasswordChecklist value={newPassword} />
         <Field label="Xác nhận mật khẩu mới" type="password" placeholder="••••••••"
           value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
         <PrimaryButton type="submit" disabled={loading}>

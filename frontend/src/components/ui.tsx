@@ -1,4 +1,4 @@
-import type { ReactNode, InputHTMLAttributes, ButtonHTMLAttributes } from 'react';
+import { useState, type ReactNode, type InputHTMLAttributes, type ButtonHTMLAttributes } from 'react';
 
 // Thẻ khung cho các màn hình xác thực (theo mockup)
 export function AuthCard({
@@ -20,20 +20,60 @@ export function AuthCard({
   );
 }
 
-// Nhãn + input
+// Nhãn + input. Ô mật khẩu có nút xem/ẩn (toggle).
 export function Field({
   label, hint, ...props
 }: { label: string; hint?: string } & InputHTMLAttributes<HTMLInputElement>) {
+  const isPassword = props.type === 'password';
+  const [show, setShow] = useState(false);
+  const type = isPassword ? (show ? 'text' : 'password') : props.type;
   return (
     <label className="block mb-4">
       <span className="block text-sm font-medium text-gray-700 mb-1.5">{label}</span>
-      <input
-        {...props}
-        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
-                   focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400"
-      />
+      <div className="relative">
+        <input
+          {...props}
+          type={type}
+          className={`w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 ${isPassword ? 'pr-10' : ''}`}
+        />
+        {isPassword && (
+          <button type="button" tabIndex={-1} onClick={() => setShow((s) => !s)}
+            aria-label={show ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700">
+            {show ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+            )}
+          </button>
+        )}
+      </div>
       {hint && <span className="block text-xs text-gray-400 mt-1">{hint}</span>}
     </label>
+  );
+}
+
+// Quy tắc mật khẩu mạnh (đồng bộ passwordSchema ở backend)
+const PW_RULES: { test: (v: string) => boolean; label: string }[] = [
+  { test: (v) => v.length >= 8, label: 'Tối thiểu 8 ký tự' },
+  { test: (v) => /[a-z]/.test(v), label: 'Có chữ thường' },
+  { test: (v) => /[A-Z]/.test(v), label: 'Có chữ hoa' },
+  { test: (v) => /[0-9]/.test(v), label: 'Có chữ số' },
+  { test: (v) => /[^A-Za-z0-9]/.test(v), label: 'Có ký tự đặc biệt' },
+];
+export const passwordOk = (v: string) => PW_RULES.every((r) => r.test(v));
+
+// Danh sách tiêu chí mật khẩu (hiện khi người dùng bắt đầu nhập)
+export function PasswordChecklist({ value }: { value: string }) {
+  if (!value) return null;
+  return (
+    <ul className="mb-4 -mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
+      {PW_RULES.map((r) => {
+        const ok = r.test(value);
+        return <li key={r.label} className={ok ? 'text-green-600' : 'text-gray-400'}>{ok ? '✓' : '○'} {r.label}</li>;
+      })}
+    </ul>
   );
 }
 

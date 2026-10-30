@@ -36,12 +36,14 @@ export function maskTarget(v: string): string {
   return v.slice(0, 2) + '****' + v.slice(-3);
 }
 
-// Mật khẩu: tối thiểu 8 ký tự, gồm chữ và số
+// Mật khẩu mạnh: tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt
 export const passwordSchema = z
   .string()
   .min(AUTH_RULES.PASSWORD_MIN_LENGTH, `Mật khẩu tối thiểu ${AUTH_RULES.PASSWORD_MIN_LENGTH} ký tự`)
-  .regex(/[A-Za-z]/, 'Mật khẩu phải có chữ')
-  .regex(/[0-9]/, 'Mật khẩu phải có số');
+  .regex(/[a-z]/, 'Mật khẩu phải có chữ thường')
+  .regex(/[A-Z]/, 'Mật khẩu phải có chữ hoa')
+  .regex(/[0-9]/, 'Mật khẩu phải có chữ số')
+  .regex(/[^A-Za-z0-9]/, 'Mật khẩu phải có ký tự đặc biệt');
 
 export const identifierSchema = z
   .string()
