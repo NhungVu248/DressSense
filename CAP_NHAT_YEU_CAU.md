@@ -11,8 +11,8 @@
 - [x] **Băm mật khẩu** khi lưu (bcrypt — đã có).
 - [x] **Độ mạnh mật khẩu**: **≥1 chữ hoa, ≥1 chữ thường, ≥1 chữ số, ≥1 ký tự đặc biệt** (áp dụng khi đăng ký + đặt lại). *(commit 16b772d)*
 - [x] **Nút "xem mật khẩu"** (ẩn/hiện) ở mọi ô nhập mật khẩu + checklist tiêu chí trực tiếp. *(commit 16b772d)*
-- [ ] **Hạn mật khẩu 30 ngày**: hệ thống **thông báo trước 7 ngày, 3 ngày và 24h** của ngày cuối; hết hạn buộc đổi. *(còn lại)*
-- [ ] **Đăng nhập lần đầu**: bắt buộc nhập **mã OTP** kèm theo. *(còn lại)*
+- [x] **Hạn mật khẩu 30 ngày** + cảnh báo khi còn ≤7 ngày + buộc đổi khi hết hạn (trang /change-password). *(commit ce206f5)*
+- [x] **Đăng nhập lần đầu**: bắt buộc **OTP** (trang /verify-login-otp). *(commit ce206f5)*
 - [ ] **Quên mật khẩu**:
   - [x] Khách hàng / Người bán: xác nhận email → nhận **OTP qua email** → đặt mật khẩu mới. *(đã có: /forgot-password → /reset-password)*
   - [ ] Admin: xác nhận email → **chờ một Admin khác gửi mật khẩu mới** qua email đã đăng ký (có **nút sinh mật khẩu ngẫu nhiên**) + kèm **OTP** → đổi mật khẩu. *(còn lại)*
