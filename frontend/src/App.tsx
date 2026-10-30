@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
 // UC7.4 - Xem chi tiết sản phẩm
 import ProductDetailPage from './pages/ProductDetailPage';
@@ -76,9 +78,12 @@ import RequireAuth from './components/RequireAuth';
 // Bố cục trang mua sắm (có Navbar)
 function ShopLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="min-h-screen bg-cream flex flex-col justify-between">
+      <div>
       <Navbar />
-      {children}
+        {children}
+      </div>
+      <Footer />
     </div>
   );
 }
@@ -93,7 +98,8 @@ export default function App() {
   return (
     <Routes>
       {/* UC7 - Tìm kiếm & duyệt sản phẩm */}
-      <Route path="/" element={<ShopLayout><ProductsPage /></ShopLayout>} />
+      <Route path="/" element={<ShopLayout><HomePage /></ShopLayout>} />
+      <Route path="/products" element={<ShopLayout><ProductsPage /></ShopLayout>} />
       <Route path="/products/:id" element={<ShopLayout><ProductDetailPage /></ShopLayout>} />
 
       {/* UC1 - Xác thực Khách hàng (toàn màn hình) */}

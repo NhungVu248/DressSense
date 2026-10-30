@@ -3,8 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { fetchSuggestions, formatVND, type Suggestion } from '../lib/products';
 import { PRODUCT_PLACEHOLDER } from '../lib/placeholder';
 
-// UC7.1 - Ô tìm kiếm có gợi ý/tự hoàn thành
-export default function SearchBar({ className = '', onNavigate }: { className?: string; onNavigate?: () => void }) {
+interface SearchBarProps {
+  className?: string;
+  onNavigate?: () => void;
+  onOpenVisualSearch?: () => void;
+}
+
+// UC7.1 - Ô tìm kiếm có gợi ý/tự hoàn thành + tìm kiếm bằng hình ảnh
+export default function SearchBar({ className = '', onNavigate, onOpenVisualSearch }: SearchBarProps) {
   const nav = useNavigate();
   const [q, setQ] = useState('');
   const [items, setItems] = useState<Suggestion[]>([]);
@@ -32,23 +38,23 @@ export default function SearchBar({ className = '', onNavigate }: { className?: 
 
   function submit(keyword: string) {
     const kw = keyword.trim();
-    if (!kw) return; // 6E - từ khóa rỗng: không tìm
+    if (!kw) return;
     setOpen(false);
     onNavigate?.();
-    nav(`/?q=${encodeURIComponent(kw)}`);
+    nav(`/products?q=${encodeURIComponent(kw)}`);
   }
 
   function goProduct(id: number) {
     setOpen(false);
     onNavigate?.();
-    nav(`/products/${id}`); // 4a - chọn trực tiếp SP trong gợi ý
+    nav(`/products/${id}`);
   }
 
   return (
     <div ref={boxRef} className={`relative ${className}`}>
       <form
         onSubmit={(e) => { e.preventDefault(); submit(q); }}
-        className="flex items-center gap-2 bg-black/[0.04] border border-black/5 rounded-full px-4 h-10 focus-within:border-brand/40"
+        className="flex items-center gap-2 bg-black/[0.04] border border-black/5 rounded-full px-3.5 h-10 focus-within:border-brand/40 focus-within:bg-white transition-all shadow-2xs"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 shrink-0">
           <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" strokeLinecap="round" />
@@ -57,12 +63,26 @@ export default function SearchBar({ className = '', onNavigate }: { className?: 
           value={q}
           onChange={(e) => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
-          placeholder="Tìm phong cách của bạn..."
+          placeholder="Tìm phong cách, sản phẩm..."
           className="bg-transparent outline-none text-sm w-full placeholder:text-gray-400"
           aria-label="Tìm kiếm sản phẩm"
         />
         {q && (
-          <button type="button" onClick={() => { setQ(''); setItems([]); }} className="text-gray-400 hover:text-gray-600 text-sm" aria-label="Xóa">✕</button>
+          <button type="button" onClick={() => { setQ(''); setItems([]); }} className="text-gray-400 hover:text-gray-600 text-sm p-1" aria-label="Xóa">✕</button>
+        )}
+        {onOpenVisualSearch && (
+          <button
+            type="button"
+            onClick={onOpenVisualSearch}
+            className="text-gray-400 hover:text-brand p-1 shrink-0 transition-colors"
+            title="Tìm kiếm bằng hình ảnh (AI)"
+            aria-label="Tìm kiếm bằng hình ảnh"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </button>
         )}
       </form>
 
@@ -92,8 +112,8 @@ export default function SearchBar({ className = '', onNavigate }: { className?: 
               ))}
             </ul>
           )}
-          <button onClick={() => submit(q)} className="w-full text-left px-4 py-3 text-sm border-t hover:bg-cream text-ink">
-            Tìm kiếm “<span className="font-medium">{q.trim()}</span>”
+          <button onClick={() => submit(q)} className="w-full text-left px-4 py-3 text-sm border-t hover:bg-cream text-ink font-medium">
+            Xem tất cả kết quả cho “<span className="text-brand">{q.trim()}</span>”
           </button>
         </div>
       )}

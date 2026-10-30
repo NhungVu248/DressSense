@@ -12,6 +12,7 @@ export interface ProductCard {
   price: number;
   color?: string | null;
   style?: string | null;
+  brand?: string | null;
   category: CategoryRef;
   images: ProductImage[];
   sizes: string[];

@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { recordBehavior } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { addWishlist, removeWishlist, getWishlistIds } from '../lib/cart';
+import { addWishlist, removeWishlist, getWishlistIds, addToCart } from '../lib/cart';
 import { PRODUCT_PLACEHOLDER } from '../lib/placeholder';
 import {
   type ProductCard as Product, formatVND, primaryImage, isNew, colorHex,
@@ -40,8 +41,8 @@ function WishlistButton({ productId }: { productId: number }) {
   return (
     <button
       onClick={toggle}
-      className={`absolute top-3 right-3 w-9 h-9 grid place-items-center rounded-full backdrop-blur
-        bg-white/80 shadow-sm transition-colors ${liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+      className={`absolute top-3 right-3 w-8 h-8 grid place-items-center rounded-full backdrop-blur
+        bg-white/85 shadow-xs transition-colors ${liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
       title={liked ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'} aria-label="Yêu thích"
     >
       {liked ? '♥' : '♡'}
@@ -49,15 +50,73 @@ function WishlistButton({ productId }: { productId: number }) {
   );
 }
 
+function QuickAddToCartButton({ product }: { product: Product }) {
+  const { user } = useAuth();
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  async function handleAdd(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      nav('/login');
+      return;
+    }
+    // Nếu sản phẩm có nhiều size, mở trang chi tiết để chọn đúng size
+    if (product.sizes && product.sizes.length > 1) {
+      nav(`/products/${product.id}`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await addToCart(product.id, null, 1);
+      recordBehavior(product.id, 'ADD_TO_CART');
+      qc.invalidateQueries({ queryKey: ['cart-count'] });
+      qc.invalidateQueries({ queryKey: ['cart'] });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 2000);
+    } catch {
+      nav(`/products/${product.id}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleAdd}
+      disabled={loading || !product.inStock}
+      className={`absolute bottom-3 right-3 w-8 h-8 grid place-items-center rounded-full backdrop-blur transition-all duration-200 shadow-sm ${
+        success
+          ? 'bg-emerald-600 text-white'
+          : 'bg-white/90 text-gray-700 hover:bg-brand hover:text-white'
+      } disabled:opacity-40 disabled:cursor-not-allowed`}
+      title={success ? 'Đã thêm vào giỏ!' : 'Thêm vào giỏ hàng'}
+      aria-label="Thêm vào giỏ hàng"
+    >
+      {success ? (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export default function ProductCard({ p }: { p: Product }) {
   const onSale = !!p.onSale && p.salePrice != null; // UC13.1 - đang Flash Sale
   const badge = onSale ? { text: 'FLASH SALE', cls: 'bg-red-600 text-white' }
-    : isNew(p.createdAt) ? { text: 'MỚI', cls: 'bg-white text-ink' }
+    : isNew(p.createdAt) ? { text: 'MỚI', cls: 'bg-white text-ink shadow-xs' }
     : p.soldCount > 0 ? { text: 'BÁN CHẠY', cls: 'bg-brand text-white' } : null;
 
   return (
     <Link to={`/products/${p.id}`} className="group block">
-      <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-brand-light">
+      <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-brand-light">
         <img
           src={primaryImage(p.images) || PRODUCT_PLACEHOLDER}
           alt={p.name}
@@ -65,19 +124,22 @@ export default function ProductCard({ p }: { p: Product }) {
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
         />
         {badge && (
-          <span className={`absolute top-3 left-3 text-[10px] font-semibold tracking-wide px-2 py-1 rounded ${badge.cls}`}>
+          <span className={`absolute top-3 left-3 text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full ${badge.cls}`}>
             {badge.text}
           </span>
         )}
         <WishlistButton productId={p.id} />
+        <QuickAddToCartButton product={p} />
         {!p.inStock && (
-          <span className="absolute inset-x-0 bottom-0 bg-black/55 text-white text-xs text-center py-1.5">Tạm hết hàng</span>
+          <span className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-xs text-center py-1.5 font-medium">Tạm hết hàng</span>
         )}
       </div>
       <div className="pt-3">
         <div className="flex items-center gap-1.5 mb-1">
-          {p.color && <span className="w-3.5 h-3.5 rounded-full border border-black/10" style={{ background: colorHex(p.color) }} title={p.color} />}
-          <span className="text-[11px] uppercase tracking-wide text-gray-400">{p.category?.name}</span>
+          {p.color && <span className="w-3 h-3 rounded-full border border-black/10 shrink-0" style={{ background: colorHex(p.color) }} title={p.color} />}
+          <span className="text-[11px] uppercase tracking-wide text-gray-400 truncate">
+            {p.brand ? `${p.brand} · ${p.category?.name}` : p.category?.name}
+          </span>
         </div>
         <h3 className="font-medium text-sm text-ink line-clamp-1 group-hover:text-brand transition-colors">{p.name}</h3>
         <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-500">
