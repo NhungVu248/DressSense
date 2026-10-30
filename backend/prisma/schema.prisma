@@ -57,6 +57,11 @@ model User {
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
 
+  // Bảo mật mật khẩu: hạn 30 ngày + buộc đổi + OTP đăng nhập lần đầu
+  passwordChangedAt  DateTime  @default(now()) // mốc đặt mật khẩu gần nhất (tính hạn 30 ngày)
+  mustChangePassword Boolean   @default(false) // buộc đổi mật khẩu ở lần đăng nhập kế tiếp
+  firstLoginAt       DateTime? // null = chưa đăng nhập lần đầu -> yêu cầu OTP
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -146,6 +151,7 @@ enum OtpPurpose {
   REGISTER
   RESET_PASSWORD
   CHANGE_CONTACT
+  LOGIN // OTP đăng nhập lần đầu
 }
 
 model OtpCode {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getErrorMessage } from '../../lib/api';
 import { AuthCard, Field, PrimaryButton, ErrorBox } from '../../components/ui';
+import { routeAfterLogin } from '../../lib/postLogin';
 
 // Cổng đăng nhập QUẢN TRỊ VIÊN (luồng riêng, song song với Khách hàng & Người bán).
 export default function AdminLoginPage() {
@@ -17,9 +18,13 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const { user } = await login(identifier, password);
-      if (user.role !== 'ADMIN') { logout(); setError('Tài khoản này không có quyền quản trị.'); return; }
-      nav('/admin');
+      const r = await login(identifier, password);
+      if (r.needOtp) {
+        nav('/verify-login-otp', { state: { identifier, devOtp: r.devOtp, target: r.target } });
+        return;
+      }
+      if (r.user!.role !== 'ADMIN') { logout(); setError('Tài khoản này không có quyền quản trị.'); return; }
+      routeAfterLogin({ ...r, redirect: '/admin' }, nav);
     } catch (err) { setError(getErrorMessage(err)); }
     finally { setLoading(false); }
   }

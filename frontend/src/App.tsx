@@ -17,6 +17,9 @@ import RegisterPage from './pages/auth/RegisterPage';
 import VerifyOtpPage from './pages/auth/VerifyOtpPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+import VerifyLoginOtpPage from './pages/auth/VerifyLoginOtpPage';
+import ChangePasswordPage from './pages/auth/ChangePasswordPage';
+import PasswordExpiryBanner from './components/PasswordExpiryBanner';
 // UC1 - Người bán
 import SellerLoginPage from './pages/seller/SellerLoginPage';
 import SellerRegisterPage from './pages/seller/SellerRegisterPage';
@@ -91,7 +94,9 @@ function RedirectManageEdit() {
 
 export default function App() {
   return (
-    <Routes>
+    <>
+      <PasswordExpiryBanner />
+      <Routes>
       {/* UC7 - Tìm kiếm & duyệt sản phẩm */}
       <Route path="/" element={<ShopLayout><ProductsPage /></ShopLayout>} />
       <Route path="/products/:id" element={<ShopLayout><ProductDetailPage /></ShopLayout>} />
@@ -102,6 +107,8 @@ export default function App() {
       <Route path="/verify-otp" element={<VerifyOtpPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-login-otp" element={<VerifyLoginOtpPage />} />{/* OTP đăng nhập lần đầu */}
+      <Route path="/change-password" element={<RequireAuth><ChangePasswordPage /></RequireAuth>} />{/* đổi/hết hạn MK */}
 
       {/* UC1 - Cổng Người bán */}
       <Route path="/seller/login" element={<SellerLoginPage />} />
@@ -188,6 +195,7 @@ export default function App() {
       <Route path="/manage/products" element={<Navigate to="/seller/products" replace />} />
       <Route path="/manage/products/new" element={<Navigate to="/seller/products/new" replace />} />
       <Route path="/manage/products/:id/edit" element={<RedirectManageEdit />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }

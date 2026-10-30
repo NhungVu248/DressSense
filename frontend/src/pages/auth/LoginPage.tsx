@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getErrorMessage } from '../../lib/api';
 import { AuthCard, Field, PrimaryButton, OrDivider, ErrorBox } from '../../components/ui';
 import GoogleLoginButton from '../../components/GoogleLoginButton';
+import { routeAfterLogin } from '../../lib/postLogin';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -18,8 +19,12 @@ export default function LoginPage() {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const { redirect } = await login(identifier, password, remember);
-      navigate(redirect || '/');
+      const r = await login(identifier, password, remember);
+      if (r.needOtp) {
+        navigate('/verify-login-otp', { state: { identifier, rememberMe: remember, devOtp: r.devOtp, target: r.target } });
+        return;
+      }
+      routeAfterLogin(r, navigate);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
