@@ -2,7 +2,7 @@
 import api from './api';
 
 export interface Review {
-  id: number; rating: number; comment: string | null; images: string[];
+  id: number; rating: number; comment: string | null; images: string[]; videoUrl?: string | null;
   userName: string; sellerReply: string | null; sellerReplyAt: string | null; createdAt: string;
 }
 export interface ProductReviews { count: number; average: number; reviews: Review[] }
@@ -20,7 +20,7 @@ export const NOTIF_TYPE_LABEL: Record<NotificationType, string> = {
 export async function getProductReviews(productId: number | string): Promise<ProductReviews> {
   return (await api.get(`/reviews/product/${productId}`)).data;
 }
-export async function createReview(body: { orderId: number; productId: number; rating: number; comment?: string; images?: string[] }) {
+export async function createReview(body: { orderId: number; productId: number; rating: number; comment?: string; images?: string[]; videoUrl?: string }) {
   return (await api.post('/reviews', body)).data;
 }
 // UC12.1 - tải ảnh đánh giá, trả về danh sách URL
@@ -28,6 +28,12 @@ export async function uploadReviewImages(files: File[]): Promise<string[]> {
   const fd = new FormData();
   files.forEach((f) => fd.append('images', f));
   return (await api.post('/reviews/upload', fd)).data.urls;
+}
+// Tải video đánh giá (tuỳ chọn), trả về URL
+export async function uploadReviewVideo(file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append('video', file);
+  return (await api.post('/reviews/upload-video', fd)).data.url;
 }
 
 // ---- Hỏi đáp (UC12.3) ----

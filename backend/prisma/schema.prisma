@@ -693,7 +693,8 @@ model Review {
   // UC12.1 - liên kết đơn đã mua (mỗi SP trong 1 đơn chỉ đánh giá 1 lần) + ảnh
   orderId       Int?
   order         Order?       @relation(fields: [orderId], references: [id])
-  images        Json? // URL ảnh đánh giá (chưa làm upload file)
+  images        Json? // URL ảnh đánh giá (tối đa 5)
+  videoUrl      String? // URL video đánh giá (tuỳ chọn, giới hạn dung lượng)
   // UC12.2 - phản hồi của người bán
   sellerReply   String?      @db.Text
   sellerReplyAt DateTime?

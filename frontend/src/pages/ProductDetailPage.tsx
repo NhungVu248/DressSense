@@ -309,6 +309,7 @@ function ReviewsTab({ productId }: { productId: number }) {
             <div className="flex items-center gap-2"><Stars n={r.rating} /><span className="text-xs text-gray-400">{r.userName} · {new Date(r.createdAt).toLocaleDateString('vi-VN')}</span></div>
             {r.comment && <p className="text-ink mt-1">{r.comment}</p>}
             {r.images.length > 0 && <div className="flex gap-2 mt-2">{r.images.map((u, i) => <img key={i} src={mediaUrl(u)} alt="" className="w-16 h-16 object-cover rounded-lg bg-brand-light" onError={(e) => { e.currentTarget.style.display = 'none'; }} />)}</div>}
+            {r.videoUrl && <video src={mediaUrl(r.videoUrl)} controls className="mt-2 w-full max-w-xs rounded-lg" />}
             {r.sellerReply && <div className="bg-brand-light/50 rounded-lg p-3 mt-2 text-sm"><span className="text-gray-500">Phản hồi của người bán:</span> <span className="text-ink">{r.sellerReply}</span></div>}
           </li>
         ))}

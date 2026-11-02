@@ -74,6 +74,17 @@ export const uploadReviewImages = multer({
   },
 }).array('images', 5); // tối đa 5 ảnh
 
+// Video đánh giá (tuỳ chọn, 1 tệp, giới hạn dung lượng)
+const REVIEW_VIDEO_MIME = ['video/mp4', 'video/webm', 'video/quicktime'];
+export const uploadReviewVideo = multer({
+  storage: reviewStorage,
+  limits: { fileSize: 30 * 1024 * 1024 }, // 30MB
+  fileFilter: (_req, file, cb) => {
+    if (!REVIEW_VIDEO_MIME.includes(file.mimetype)) return cb(new Error('INVALID_VIDEO_TYPE'));
+    cb(null, true);
+  },
+}).single('video');
+
 // ---------- UC11 - Ảnh/video bằng chứng đổi/trả & khiếu nại ----------
 const EVIDENCE_DIR = path.join(process.cwd(), 'uploads', 'evidence');
 fs.mkdirSync(EVIDENCE_DIR, { recursive: true });

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { formatVND } from '../lib/products';
 import { createReturn, createComplaint, uploadEvidence, type ReturnType } from '../lib/support';
-import { createReview, uploadReviewImages } from '../lib/interact';
+import { createReview, uploadReviewImages, uploadReviewVideo } from '../lib/interact';
 import type { Order, OrderItem } from '../lib/order';
 
 function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
@@ -33,8 +33,11 @@ export function ReturnModal({ order, onClose, onDone }: { order: Order; onClose:
 
   const items = order.items.filter((i) => picked[i.id] > 0).map((i) => ({ orderItemId: i.id, quantity: picked[i.id] }));
 
+  const imageCount = files.filter((f) => f.type.startsWith('image/')).length;
+
   async function submit() {
     if (items.length === 0) { alert('Vui lòng chọn ít nhất một sản phẩm.'); return; }
+    if (imageCount < 3) { alert('Vui lòng tải lên tối thiểu 3 ảnh sản phẩm để chứng minh.'); return; } // yêu cầu ≥3 ảnh
     setBusy(true);
     try {
       const evidence = files.length ? await uploadEvidence('returns', files) : undefined;
@@ -74,6 +77,7 @@ export function ReturnModal({ order, onClose, onDone }: { order: Order; onClose:
         {RETURN_REASONS.map((r) => <option key={r}>{r}</option>)}
       </select>
       <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả chi tiết (tuỳ chọn)" rows={2} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-2" />
+      <p className={`text-xs mb-1 ${imageCount < 3 ? 'text-red-500' : 'text-green-600'}`}>Bắt buộc tối thiểu 3 ảnh sản phẩm (đang có {imageCount}). Có thể kèm video.</p>
       <EvidencePicker files={files} setFiles={setFiles} />
       <button onClick={submit} disabled={busy} className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-2.5 text-sm">{busy ? 'Đang gửi…' : 'Gửi yêu cầu'}</button>
     </Modal>
@@ -117,13 +121,15 @@ export function ReviewModal({ orderId, item, onClose, onDone }: { orderId: numbe
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  const [video, setVideo] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function submit() {
     setBusy(true);
     try {
-      const imgs = files.length ? await uploadReviewImages(files) : undefined; // UC12.1 - tải ảnh lên trước
-      await createReview({ orderId, productId: item.productId, rating, comment: comment || undefined, images: imgs });
+      const imgs = files.length ? await uploadReviewImages(files) : undefined; // tải ảnh lên trước
+      const vid = video ? await uploadReviewVideo(video) : undefined; // tải video (tuỳ chọn)
+      await createReview({ orderId, productId: item.productId, rating, comment: comment || undefined, images: imgs, videoUrl: vid });
       onDone(); alert('Cảm ơn bạn đã đánh giá!');
     } catch (e: any) { alert(e?.response?.data?.message ?? 'Không gửi được đánh giá.'); }
     finally { setBusy(false); }
@@ -143,6 +149,12 @@ export function ReviewModal({ orderId, item, onClose, onDone }: { orderId: numbe
         <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => setFiles(Array.from(e.target.files ?? []).slice(0, 5))}
           className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border file:border-black/15 file:bg-cream file:px-3 file:py-1.5 file:text-sm" />
         {files.length > 0 && <span className="block text-xs text-gray-400 mt-1">{files.length} ảnh đã chọn</span>}
+      </label>
+      <label className="block mb-4">
+        <span className="block text-xs text-gray-500 mb-1">Video (MP4/WEBM/MOV, tối đa 30MB, tuỳ chọn)</span>
+        <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(e) => setVideo(e.target.files?.[0] ?? null)}
+          className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border file:border-black/15 file:bg-cream file:px-3 file:py-1.5 file:text-sm" />
+        {video && <span className="block text-xs text-gray-400 mt-1">Đã chọn: {video.name}</span>}
       </label>
       <button onClick={submit} disabled={busy} className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-2.5 text-sm">{busy ? 'Đang gửi…' : 'Gửi đánh giá'}</button>
     </Modal>

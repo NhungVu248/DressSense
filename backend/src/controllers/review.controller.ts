@@ -14,7 +14,8 @@ const createSchema = z.object({
   productId: z.coerce.number().int(),
   rating: z.coerce.number().int().min(1).max(5),
   comment: z.string().trim().optional(),
-  images: z.array(z.string().trim()).optional(), // URL ảnh (chưa làm upload file)
+  images: z.array(z.string().trim()).optional(), // URL ảnh (tối đa 5)
+  videoUrl: z.string().trim().optional(), // URL video (tuỳ chọn)
 });
 
 // POST /api/reviews - khách tạo đánh giá
@@ -23,7 +24,7 @@ export async function createReview(req: Request, res: Response, next: NextFuncti
     const userId = req.user!.userId;
     const body = createSchema.safeParse(req.body);
     if (!body.success) return res.status(400).json({ message: 'Dữ liệu đánh giá không hợp lệ.' });
-    const { orderId, productId, rating, comment, images } = body.data;
+    const { orderId, productId, rating, comment, images, videoUrl } = body.data;
 
     const order = await prisma.order.findFirst({ where: { id: orderId, userId }, include: { items: true } });
     if (!order) return res.status(404).json({ message: 'Không tìm thấy đơn hàng.' }); // 3E.1
@@ -40,7 +41,7 @@ export async function createReview(req: Request, res: Response, next: NextFuncti
     if (dup) return res.status(409).json({ message: 'Bạn đã đánh giá sản phẩm này trong đơn hàng.', code: 'ALREADY_REVIEWED' });
 
     const review = await prisma.review.create({
-      data: { productId, userId, orderId, rating, comment: comment ?? null, images: images && images.length ? images : undefined },
+      data: { productId, userId, orderId, rating, comment: comment ?? null, images: images && images.length ? images : undefined, videoUrl: videoUrl || null },
     });
     // thông báo cho người bán có đánh giá mới
     const product = await prisma.product.findUnique({ where: { id: productId }, select: { sellerId: true, name: true } });
@@ -61,6 +62,17 @@ export async function uploadReviewImagesHandler(req: Request, res: Response, nex
   }
 }
 
+// POST /api/reviews/upload-video - tải video đánh giá, trả về URL
+export async function uploadReviewVideoHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) return res.status(400).json({ message: 'Thiếu video.' });
+    res.json({ url: `/uploads/reviews/${file.filename}` });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/reviews/product/:id - danh sách đánh giá của sản phẩm (công khai, chỉ hiện đánh giá chưa bị ẩn)
 export async function getProductReviews(req: Request, res: Response, next: NextFunction) {
   try {
@@ -73,7 +85,7 @@ export async function getProductReviews(req: Request, res: Response, next: NextF
     res.json({
       count, average: Math.round(avg * 10) / 10,
       reviews: rows.map((r) => ({
-        id: r.id, rating: r.rating, comment: r.comment, images: r.images ?? [],
+        id: r.id, rating: r.rating, comment: r.comment, images: r.images ?? [], videoUrl: (r as any).videoUrl ?? null,
         userName: maskName(r.user.fullName), sellerReply: r.sellerReply, sellerReplyAt: r.sellerReplyAt, createdAt: r.createdAt,
       })),
     });
