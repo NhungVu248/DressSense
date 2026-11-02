@@ -51,8 +51,8 @@
 
 ## D. Khách hàng (Client)
 
-- [ ] **Đánh giá sản phẩm**: chấm **sao** + **ảnh** (tối đa 5, tối thiểu 0) + **video** (giới hạn dung lượng).
-- [ ] **Hoàn trả hàng**: chọn **lý do do sàn setup sẵn** + **ảnh** (tối thiểu 3) + **video** (giới hạn dung lượng) + **mô tả**.
+- [x] **Đánh giá sản phẩm**: chấm **sao** + **ảnh** (tối đa 5, tối thiểu 0) + **video** (MP4/WEBM/MOV ≤30MB); video hiển thị trong đánh giá ở trang sản phẩm. *(commit 7b03777)*
+- [x] **Hoàn trả hàng**: chọn **lý do do sàn setup sẵn** + **ảnh** (bắt buộc tối thiểu 3) + **video** (≤20MB) + **mô tả**. *(commit 7b03777)*
 - [x] **Hai kênh hỗ trợ**: (1) **liên hệ Người bán** (nút "Nhắn tin với shop" ở trang sản phẩm), (2) **liên hệ Admin** qua mục **Chăm sóc khách hàng** (nút "Nhắn tin CSKH"). Trang Tin nhắn chung `/messages`. *(commit cc064a8)* — *còn: thêm nút liên hệ ở trang chi tiết đơn hàng (nhỏ).*
 - [ ] **Xuất hóa đơn VAT**.
 
