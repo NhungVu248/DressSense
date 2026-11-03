@@ -40,7 +40,6 @@ const HERO_SLIDES = [
     secondaryCta: 'Khám phá cùng AI',
     secondaryLink: '#ai-recommendations',
     image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1000&auto=format&fit=crop&q=80',
-    tag: 'BỘ SƯU TẬP MỚI',
   },
   {
     id: 2,
@@ -52,7 +51,6 @@ const HERO_SLIDES = [
     secondaryCta: 'Xem trang phục hợp dáng',
     secondaryLink: '/products',
     image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1000&auto=format&fit=crop&q=80',
-    tag: 'TÍNH NĂNG AI ĐỘC QUYỀN',
   },
   {
     id: 3,
@@ -64,7 +62,6 @@ const HERO_SLIDES = [
     secondaryCta: 'Xem gợi ý phối đồ',
     secondaryLink: '#ai-outfits',
     image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=1000&auto=format&fit=crop&q=80',
-    tag: 'XU HƯỚNG MÙA NÀY',
   },
 ];
 
@@ -284,7 +281,6 @@ export default function HomePage() {
         secondaryCta: 'Khám phá cùng AI',
         secondaryLink: '#ai-recommendations',
         image: b.imageUrl,
-        tag: 'BANNER ĐÃ DUYỆT',
       }));
       return [...mapped, ...HERO_SLIDES].slice(0, Math.max(3, mapped.length));
     }
