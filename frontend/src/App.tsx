@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import GlobalToast from './components/Toast';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
 // UC7.4 - Xem chi tiết sản phẩm
@@ -118,6 +119,7 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      <GlobalToast />
       <PasswordExpiryBanner />
       <Routes>
       {/* UC7 - Tìm kiếm & duyệt sản phẩm */}
