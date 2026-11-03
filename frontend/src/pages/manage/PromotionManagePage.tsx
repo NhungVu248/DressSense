@@ -184,7 +184,9 @@ function VoucherFormModal({ initial, onClose }: { initial: Voucher | null; onClo
 
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data.categories)).catch(() => {});
-    api.get('/products/manage?limit=200').then((r) => setProducts(r.data.items.map((p: any) => ({ id: p.id, name: p.name })))).catch(() => {});
+    api.get('/products/manage', { params: { limit: 100 } })
+      .then((r) => setProducts((r.data.items ?? []).map((p: any) => ({ id: p.id, name: p.name }))))
+      .catch(() => {});
   }, []);
 
   function toggleScopeId(id: number) {
@@ -242,7 +244,9 @@ function VoucherFormModal({ initial, onClose }: { initial: Voucher | null; onClo
 
 // --------------------------- Modal: Flash Sale ---------------------------
 function FlashFormModal({ initial, onClose }: { initial: FlashSale | null; onClose: (ok: boolean) => void }) {
-  const [products, setProducts] = useState<{ id: number; name: string; price: number }[]>([]);
+  const [products, setProducts] = useState<{ id: number; name: string; price: number; image?: string | null; status?: string }[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [productQuery, setProductQuery] = useState('');
   const [f, setF] = useState({
     productId: initial?.productId ?? 0, salePrice: initial?.salePrice ?? 0, quantity: initial?.quantity ?? 1,
     perUserLimit: initial?.perUserLimit ?? null as number | null,
@@ -251,10 +255,49 @@ function FlashFormModal({ initial, onClose }: { initial: FlashSale | null; onClo
   });
   const [err, setErr] = useState(''); const [saving, setSaving] = useState(false);
   const running = initial?.status === 'RUNNING';
-  const chosen = products.find((p) => p.id === f.productId);
+  const chosen = products.find((p) => p.id === f.productId) ?? (initial ? { id: initial.productId, name: initial.product.name, price: initial.product.price } : undefined);
+  const filtered = products.filter((p) => !productQuery.trim() || p.name.toLowerCase().includes(productQuery.trim().toLowerCase()));
 
   useEffect(() => {
-    api.get('/products/manage?limit=200').then((r) => setProducts(r.data.items.map((p: any) => ({ id: p.id, name: p.name, price: p.price })))).catch(() => {});
+    setLoadingProducts(true);
+    setErr('');
+    api.get('/products/manage', { params: { limit: 200 } })
+      .then((r) => {
+        const items = r.data?.items ?? [];
+        if (items.length > 0) {
+          setProducts(items.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            price: p.price,
+            image: p.image || p.images?.[0]?.url || null,
+            status: p.status,
+          })));
+        } else {
+          return api.get('/products', { params: { limit: 200 } }).then((pub) => {
+            setProducts((pub.data?.items ?? []).map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              image: p.images?.[0]?.url || p.image || null,
+              status: 'ACTIVE',
+            })));
+          });
+        }
+      })
+      .catch(() => {
+        return api.get('/products', { params: { limit: 200 } })
+          .then((pub) => {
+            setProducts((pub.data?.items ?? []).map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              price: p.price,
+              image: p.images?.[0]?.url || p.image || null,
+              status: 'ACTIVE',
+            })));
+          })
+          .catch((e) => setErr(getErrorMessage(e) || 'Không tải được danh sách sản phẩm.'));
+      })
+      .finally(() => setLoadingProducts(false));
   }, []);
 
   async function submit() {
@@ -275,18 +318,91 @@ function FlashFormModal({ initial, onClose }: { initial: FlashSale | null; onClo
       <ErrorBox message={err} />
       {running && <p className="text-xs text-amber-600 mb-2">Flash Sale đang diễn ra: chỉ sửa được số suất và hạn.</p>}
       <div className="grid grid-cols-2 gap-3">
-        <L label="Sản phẩm" full>
-          <select value={f.productId} disabled={!!initial} onChange={(e) => setF({ ...f, productId: Number(e.target.value) })} className={inp}>
-            <option value={0}>— Chọn sản phẩm —</option>
-            {initial && <option value={initial.productId}>{initial.product.name}</option>}
-            {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({money(p.price)})</option>)}
-          </select>
-        </L>
+        <div className="col-span-2">
+          <span className="block text-xs font-medium text-gray-700 mb-1">
+            Chọn sản phẩm tham gia Flash Sale <span className="text-red-500">*</span>
+          </span>
+          {initial ? (
+            <p className="text-sm px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 font-medium text-ink">
+              {initial.product.name}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {/* Ô tìm kiếm nhanh */}
+              {products.length > 5 && (
+                <input
+                  type="text"
+                  value={productQuery}
+                  onChange={(e) => setProductQuery(e.target.value)}
+                  className={`${inp} text-xs py-1.5`}
+                  placeholder="🔍 Lọc nhanh theo tên sản phẩm..."
+                  aria-label="Tìm sản phẩm"
+                />
+              )}
+
+              {/* Menu dropdown chuẩn, dễ bấm và hiển thị rõ ràng */}
+              <select
+                value={f.productId}
+                disabled={loadingProducts || products.length === 0}
+                onChange={(e) => {
+                  const id = Number(e.target.value);
+                  const p = products.find((x) => x.id === id);
+                  setF({
+                    ...f,
+                    productId: id,
+                    salePrice: p ? Math.max(0, Math.floor(p.price * 0.8)) : f.salePrice,
+                  });
+                }}
+                className={`${inp} bg-white cursor-pointer font-medium text-sm border-brand/30`}
+                aria-label="Chọn sản phẩm"
+              >
+                <option value={0}>
+                  {loadingProducts
+                    ? '— Đang tải danh sách sản phẩm... —'
+                    : products.length === 0
+                    ? '— Chưa có sản phẩm khả dụng —'
+                    : `— Bấm để chọn sản phẩm (${filtered.length} sản phẩm) —`}
+                </option>
+                {filtered.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — Giá gốc: {money(p.price)}
+                  </option>
+                ))}
+              </select>
+
+              {/* Thẻ xem trước sản phẩm đã chọn */}
+              {chosen && (
+                <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3 text-xs">
+                  <div>
+                    <p className="font-semibold text-emerald-900 flex items-center gap-1.5">
+                      <span>✓ Đã chọn:</span>
+                      <span>{chosen.name}</span>
+                    </p>
+                    <p className="text-gray-500 mt-0.5">
+                      Giá gốc: <span className="font-medium text-ink">{money(chosen.price)}</span>
+                    </p>
+                  </div>
+                  <span className="text-emerald-700 font-semibold bg-white px-2 py-1 rounded border border-emerald-200 shrink-0">
+                    Gợi ý giảm 20%: {money(Math.floor(chosen.price * 0.8))}
+                  </span>
+                </div>
+              )}
+
+              {loadingProducts && <p className="text-xs text-gray-400">Đang nạp sản phẩm...</p>}
+              {!loadingProducts && products.length === 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                  <p className="font-medium">Chưa tìm thấy sản phẩm đang bán.</p>
+                  <p className="text-gray-500 mt-0.5">Vui lòng đăng sản phẩm ở trang Quản lý sản phẩm trước khi tạo Flash Sale.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         <L label="Giá Flash (₫)"><input type="number" value={f.salePrice} disabled={running} onChange={(e) => setF({ ...f, salePrice: Number(e.target.value) })} className={inp} />{chosen && <span className="text-xs text-gray-400">Giá gốc {money(chosen.price)}</span>}</L>
         <L label="Số suất"><input type="number" value={f.quantity} onChange={(e) => setF({ ...f, quantity: Number(e.target.value) })} className={inp} /></L>
         <L label="Giới hạn mỗi khách"><input type="number" value={f.perUserLimit ?? ''} disabled={running} onChange={(e) => setF({ ...f, perUserLimit: e.target.value === '' ? null : Number(e.target.value) })} className={inp} placeholder="Không giới hạn" /></L>
         <L label="Bắt đầu"><input type="datetime-local" value={f.startsAt} disabled={running} onChange={(e) => setF({ ...f, startsAt: e.target.value })} className={inp} /></L>
-        <L label="Kết thúc"><input type="datetime-local" value={f.endsAt} onChange={(e) => setF({ ...f, endsAt: e.target.value })} className={inp} /></L>
+        <L label="Kết thúc" full><input type="datetime-local" value={f.endsAt} onChange={(e) => setF({ ...f, endsAt: e.target.value })} className={inp} /></L>
       </div>
       <div className="flex gap-2 justify-end mt-4">
         <SecondaryButton type="button" onClick={() => onClose(false)}>Hủy</SecondaryButton>

@@ -15,6 +15,45 @@ import ProductCard from '../components/ProductCard';
 
 type Tab = 'desc' | 'detail' | 'reviews' | 'qa';
 
+// Hook đếm ngược thời gian Flash Sale và tự động trở về giá cũ khi hết giờ
+function useFlashSaleCountdown(endsAt?: string | null) {
+  const [timeLeft, setTimeLeft] = useState(() => (endsAt ? Math.max(0, new Date(endsAt).getTime() - Date.now()) : 0));
+
+  useEffect(() => {
+    if (!endsAt) {
+      setTimeLeft(0);
+      return;
+    }
+    const update = () => {
+      const diff = Math.max(0, new Date(endsAt).getTime() - Date.now());
+      setTimeLeft(diff);
+      return diff;
+    };
+    update();
+    const interval = setInterval(() => {
+      const diff = update();
+      if (diff <= 0) clearInterval(interval);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [endsAt]);
+
+  const isExpired = !endsAt || timeLeft <= 0;
+  const totalSeconds = Math.floor(timeLeft / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  return {
+    isExpired,
+    days,
+    hours: pad(hours),
+    minutes: pad(minutes),
+    seconds: pad(seconds),
+  };
+}
+
 export default function ProductDetailPage() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -29,6 +68,10 @@ export default function ProductDetailPage() {
 
   const { data: p, isLoading, error } = useQuery({ queryKey: ['product', id], queryFn: () => fetchProduct(id!), enabled: !!id });
   const { data: related } = useQuery({ queryKey: ['related', id], queryFn: () => fetchRelated(id!), enabled: !!id });
+
+  // Đếm ngược Flash Sale
+  const countdown = useFlashSaleCountdown(p?.flashSale?.endsAt);
+  const isFlashSaleActive = !!p?.flashSale && !countdown.isExpired && p.flashSale.remaining > 0;
 
   // UC5/GĐ6 - ghi nhận lượt xem
   useEffect(() => { if (id) recordBehavior(Number(id), 'VIEW'); }, [id]);
@@ -129,22 +172,62 @@ export default function ProductDetailPage() {
             {ratingCount > 0 ? <span>{ratingAvg.toFixed(1)} ({ratingCount} đánh giá)</span> : <span className="text-gray-400">Chưa có đánh giá</span>}
           </div>
 
-          {/* UC13.1 - giá Flash Sale (nếu đang có) */}
-          {p.flashSale ? (
-            <div className="mt-4">
-              <div className="flex items-baseline gap-3">
-                <span className="font-display text-3xl text-red-600">{formatVND(p.flashSale.salePrice)}</span>
-                <span className="text-lg text-gray-400 line-through">{formatVND(p.price)}</span>
-                <span className="bg-red-600 text-white text-xs font-semibold px-2 py-0.5 rounded">FLASH SALE</span>
+          {/* UC13.1 - giá Flash Sale có đếm ngược, hết giờ tự động về giá cũ */}
+          {isFlashSaleActive ? (
+            <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-red-50 via-orange-50/50 to-red-50 border border-red-200 shadow-xs">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="bg-red-600 text-white text-xs font-bold px-2.5 py-1 rounded-md tracking-wider flex items-center gap-1 shadow-xs animate-pulse">
+                    ⚡ FLASH SALE
+                  </span>
+                  <span className="text-xs text-red-600 font-semibold">
+                    Chỉ còn {p.flashSale!.remaining} suất
+                  </span>
+                </div>
+
+                {/* Đồng hồ đếm ngược */}
+                <div className="flex items-center gap-1.5 text-xs text-red-700">
+                  <span className="text-gray-500 font-medium">Kết thúc trong:</span>
+                  <div className="flex items-center gap-1 font-mono font-bold text-white text-xs">
+                    {countdown.days > 0 && (
+                      <>
+                        <span className="bg-red-600 px-1.5 py-0.5 rounded min-w-5 text-center">{countdown.days}d</span>
+                        <span className="text-red-500 font-normal">:</span>
+                      </>
+                    )}
+                    <span className="bg-red-600 px-1.5 py-0.5 rounded min-w-6 text-center">{countdown.hours}</span>
+                    <span className="text-red-500 font-normal">:</span>
+                    <span className="bg-red-600 px-1.5 py-0.5 rounded min-w-6 text-center">{countdown.minutes}</span>
+                    <span className="text-red-500 font-normal">:</span>
+                    <span className="bg-red-600 px-1.5 py-0.5 rounded min-w-6 text-center">{countdown.seconds}</span>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-red-600 mt-1">
-                ⚡ Chỉ còn {p.flashSale.remaining} suất
-                {p.flashSale.perUserLimit != null && ` · tối đa ${p.flashSale.perUserLimit}/khách`}
-                {` · kết thúc ${new Date(p.flashSale.endsAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`}
-              </p>
+
+              <div className="flex items-baseline gap-3 mt-3">
+                <span className="font-display text-3xl font-bold text-red-600">{formatVND(p.flashSale!.salePrice)}</span>
+                <span className="text-base text-gray-400 line-through">{formatVND(p.price)}</span>
+                <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                  -{Math.round((1 - p.flashSale!.salePrice / p.price) * 100)}%
+                </span>
+              </div>
+
+              {p.flashSale!.perUserLimit != null && (
+                <p className="text-[11px] text-gray-500 mt-1.5">
+                  • Giới hạn tối đa {p.flashSale!.perUserLimit} sản phẩm / khách hàng
+                </p>
+              )}
             </div>
           ) : (
-            <p className="font-display text-3xl text-ink mt-4">{formatVND(p.price)}</p>
+            <div className="mt-4">
+              <p className="font-display text-3xl text-ink">{formatVND(p.price)}</p>
+              {p.flashSale && (countdown.isExpired || p.flashSale.remaining <= 0) && (
+                <p className="text-xs text-gray-500 mt-1.5 italic flex items-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-gray-400" />
+                  Chương trình Flash Sale đã kết thúc. Sản phẩm đã trở về giá gốc.
+                </p>
+              )}
+            </div>
           )}
           {p.description && <p className="text-sm text-gray-600 leading-relaxed mt-3">{p.description}</p>}
 
