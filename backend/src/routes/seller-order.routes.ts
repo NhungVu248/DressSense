@@ -9,6 +9,9 @@ import { listSellerReviews, replyReview } from '../controllers/review.controller
 import { listSellerQuestions, answerQuestion } from '../controllers/question.controller';
 import { getMyShop, updateMyShop, submitMyShop } from '../controllers/shop.controller';
 import { getSellerReport } from '../controllers/seller-report.controller';
+import {
+  createBannerOrder, listMyBannerOrders, payBannerOrder, markPaidSandbox, cancelBannerOrder,
+} from '../controllers/banner-order.controller';
 import { authenticate, authorize } from '../middlewares/auth';
 
 const router = Router();
@@ -51,5 +54,12 @@ router.patch('/reviews/:id/reply', replyReview);
 // UC12.3 - trả lời hỏi đáp
 router.get('/questions', listSellerQuestions);
 router.patch('/questions/:id/answer', answerQuestion);
+
+// Backlog B.26 - đơn đăng ký chạy banner quảng cáo (gian hàng)
+router.get('/ad-orders', listMyBannerOrders);
+router.post('/ad-orders', createBannerOrder);
+router.post('/ad-orders/:id/pay', payBannerOrder);
+router.post('/ad-orders/:id/mark-paid', markPaidSandbox);
+router.delete('/ad-orders/:id', cancelBannerOrder);
 
 export default router;

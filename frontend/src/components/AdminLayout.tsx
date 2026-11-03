@@ -31,6 +31,7 @@ const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: b
     items: [
       { to: '/admin/promotions', label: 'Khuyến mãi' },
       { to: '/admin/banners', label: 'Banner quảng cáo' },
+      { to: '/admin/ad-orders', label: 'Duyệt banner (đơn QC)' }, // Backlog C.41
       { to: '/admin/campaigns', label: 'Thông báo khuyến mãi' },
     ],
   },

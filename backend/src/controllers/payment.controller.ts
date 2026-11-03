@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma';
 import { env, vnpayEnabled } from '../config/env';
 import { verifyReturn } from '../services/vnpay.service';
 import { finalizePayment, startOnlinePayment } from '../services/payment.service';
+import { ADV_PREFIX, finalizeBannerPayment } from '../services/banner-order.service';
 
 // ============================================================
 //  UC9.2 - Xử lý callback VNPAY + thanh toán lại.
@@ -15,13 +16,20 @@ import { finalizePayment, startOnlinePayment } from '../services/payment.service
 export async function vnpayReturn(req: Request, res: Response) {
   const q = req.query as Record<string, string>;
   const v = verifyReturn(q);
+  const status = v.success ? 'success' : 'fail';
+
+  // Backlog B.26 - phí quảng cáo (txnRef prefix ADV): xử lý riêng, về trang đơn QC của người bán
+  if (v.txnRef.startsWith(ADV_PREFIX)) {
+    try { await finalizeBannerPayment(v); } catch { /* vẫn điều hướng */ }
+    return res.redirect(`${env.clientOrigin}/seller/ad-orders?status=${status}&code=${encodeURIComponent(v.responseCode)}`);
+  }
+
   let orderId = '';
   try {
     const tx = await prisma.paymentTransaction.findUnique({ where: { code: v.txnRef }, select: { orderId: true } });
     orderId = tx ? String(tx.orderId) : '';
     await finalizePayment(v); // idempotent
   } catch { /* vẫn điều hướng về trang kết quả */ }
-  const status = v.success ? 'success' : 'fail';
   return res.redirect(`${env.clientOrigin}/checkout/result?orderId=${orderId}&status=${status}&code=${encodeURIComponent(v.responseCode)}`);
 }
 
@@ -29,6 +37,11 @@ export async function vnpayReturn(req: Request, res: Response) {
 export async function vnpayIpn(req: Request, res: Response) {
   const v = verifyReturn(req.query as Record<string, string>);
   if (!v.valid) return res.json({ RspCode: '97', Message: 'Invalid signature' });
+  // Backlog B.26 - phí quảng cáo (prefix ADV) xử lý riêng
+  if (v.txnRef.startsWith(ADV_PREFIX)) {
+    await finalizeBannerPayment(v);
+    return res.json({ RspCode: '00', Message: 'Confirmed' });
+  }
   const r = await finalizePayment(v);
   return res.json({ RspCode: r.code === '00' || r.code === '02' ? '00' : r.code, Message: r.message });
 }

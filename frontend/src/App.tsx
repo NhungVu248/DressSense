@@ -67,12 +67,14 @@ import AdminLayout from './components/AdminLayout';
 import SellerLayout from './components/SellerLayout';
 import SellerReportPage from './pages/seller/SellerReportPage';
 import ShopProfilePage from './pages/seller/ShopProfilePage';
+import SellerAdOrdersPage from './pages/seller/SellerAdOrdersPage';
 import AdminShopsPage from './pages/admin/AdminShopsPage';
 // UC16 - Quản trị hệ thống
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminContentPage from './pages/admin/AdminContentPage';
 import AdminPlatformRevenuePage from './pages/admin/AdminPlatformRevenuePage';
+import AdminAdOrdersPage from './pages/admin/AdminAdOrdersPage';
 import AdminForgotPasswordPage from './pages/admin/AdminForgotPasswordPage';
 import AdminPasswordResetsPage from './pages/admin/AdminPasswordResetsPage';
 // UC15 - Phân tích dữ liệu kinh doanh (BI) - trang dùng chung cho Seller & Admin
@@ -175,6 +177,8 @@ export default function App() {
       <Route path="/admin/shops" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminShopsPage /></AdminLayout></RequireAuth>} />{/* UC14.1/UC16.3 */}
       {/* Backlog C.42 - Doanh thu của sàn (phí hoa hồng + banner) */}
       <Route path="/admin/platform-revenue" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminPlatformRevenuePage /></AdminLayout></RequireAuth>} />
+      {/* Backlog C.41 - Duyệt đơn quảng cáo banner + timeline */}
+      <Route path="/admin/ad-orders" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminAdOrdersPage /></AdminLayout></RequireAuth>} />
       {/* UC15 - Phân tích (BI) trong Admin (toàn hệ thống) */}
       <Route path="/admin/analytics/revenue" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><RevenueAnalyticsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/analytics/customers" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><CustomerAnalyticsPage /></AdminLayout></RequireAuth>} />
@@ -196,6 +200,7 @@ export default function App() {
       <Route path="/seller/products/:id/edit" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><ProductFormPage basePath="/seller/products" /></SellerLayout></RequireAuth>} />
       <Route path="/seller/orders" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerOrdersPage /></SellerLayout></RequireAuth>} />{/* UC14.3 */}
       <Route path="/seller/promotions" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><PromotionManagePage /></SellerLayout></RequireAuth>} />
+      <Route path="/seller/ad-orders" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerAdOrdersPage /></SellerLayout></RequireAuth>} />{/* Backlog B.26 */}
       <Route path="/seller/reviews" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerReviewsPage /></SellerLayout></RequireAuth>} />
       <Route path="/seller/support" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerSupportPage /></SellerLayout></RequireAuth>} />
       <Route path="/seller/messages" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><MessagesPage /></SellerLayout></RequireAuth>} />{/* tin nhắn KH */}

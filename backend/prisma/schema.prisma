@@ -87,6 +87,7 @@ model User {
   flashSales      FlashSale[]      @relation("SellerFlashSales") // flash sale do gian hàng này tạo
   voucherUsages   VoucherUsage[] // lượt dùng voucher của Khách hàng
   flashSaleUsages FlashSaleUsage[] // số suất flash sale đã mua của Khách hàng
+  bannerOrders    BannerOrder[]    @relation("SellerBannerOrders") // Backlog B.26 - đơn đăng ký chạy banner
 
   // UC14.1 - hồ sơ gian hàng (1-1 với Người bán)
   shop Shop? @relation("UserShop")
@@ -1176,6 +1177,50 @@ model Banner {
   createdAt DateTime       @default(now())
 
   @@index([position])
+  @@index([status])
+}
+
+// Backlog B.26/C.41 - Đơn đăng ký chạy banner quảng cáo của gian hàng.
+// Người bán tạo đơn + trả phí (VNPAY/thẻ) -> Admin duyệt -> tạo Banner chạy theo lịch.
+// Vòng đời status: PENDING_PAYMENT -> PENDING_REVIEW (đã trả phí) -> APPROVED/RUNNING | REJECTED -> ENDED.
+model BannerOrder {
+  id       Int    @id @default(autoincrement())
+  code     String @unique // mã đơn QC (ADVxxxx) - dùng làm txnRef VNPAY
+  sellerId Int
+  seller   User   @relation("SellerBannerOrders", fields: [sellerId], references: [id])
+
+  // Nội dung banner (creative) - sao chép sang Banner khi được duyệt
+  name      String
+  imageUrl  String
+  title     String?
+  subtitle  String?
+  position  BannerPosition @default(HOME_HERO)
+  linkType  BannerLinkType @default(NONE)
+  linkValue String?
+
+  // Lịch chạy + phí
+  startsAt DateTime
+  endsAt   DateTime
+  weeks    Int // số tuần chạy (cơ sở tính phí)
+  amount   Int // phí phải trả (đ) = đơn giá tuần theo vị trí × số tuần
+
+  // Thanh toán (tách khỏi luồng thanh toán đơn hàng)
+  paymentMethod String    @default("VNPAY") // VNPAY | VISA
+  paymentStatus String    @default("UNPAID") // UNPAID | PAID
+  paymentRef    String? // mã giao dịch VNPAY (vnp_TransactionNo)
+  paidAt        DateTime?
+
+  // Duyệt (Admin)
+  status       String    @default("PENDING_PAYMENT") // xem vòng đời ở trên
+  reviewReason String?   @db.Text // lý do từ chối / ghi chú duyệt
+  reviewedById Int?
+  reviewedAt   DateTime?
+  bannerId     Int? // Banner được tạo khi duyệt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sellerId])
   @@index([status])
 }
 

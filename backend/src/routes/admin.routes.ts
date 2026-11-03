@@ -12,6 +12,9 @@ import { listAdminReviews, moderateReview } from '../controllers/review.controll
 import { listShopsAdmin, approveShop, rejectShop, setShopSuspension, requestInfoShop } from '../controllers/shop.controller';
 import { getAdminDashboard } from '../controllers/admin-dashboard.controller';
 import { getPlatformRevenue } from '../controllers/platform-revenue.controller';
+import {
+  listAdminBannerOrders, bannerTimeline, approveBannerOrder, rejectBannerOrder,
+} from '../controllers/banner-order.controller';
 import { listSettings, updateSettings, getSettingHistory } from '../controllers/settings.controller';
 import { listModerationProducts, moderateProduct } from '../controllers/content-moderation.controller';
 import { authenticate, authorize } from '../middlewares/auth';
@@ -50,6 +53,12 @@ router.get('/dashboard', getAdminDashboard);
 
 // Backlog C.42 - Doanh thu của sàn (phí hoa hồng + banner)
 router.get('/platform-revenue', getPlatformRevenue);
+
+// Backlog C.41 - Duyệt đơn quảng cáo banner + bảng timeline
+router.get('/ad-orders', listAdminBannerOrders);
+router.get('/ad-orders/timeline', bannerTimeline);
+router.post('/ad-orders/:id/approve', approveBannerOrder);
+router.post('/ad-orders/:id/reject', rejectBannerOrder);
 
 // UC16.4 - Kiểm duyệt nội dung (sản phẩm; đánh giá dùng /admin/reviews sẵn có)
 router.get('/moderation/products', listModerationProducts);

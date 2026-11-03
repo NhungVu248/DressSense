@@ -26,6 +26,10 @@ const DEFAULTS = [
   { key: 'shipRemoteProvinces', value: 'Hà Giang,Cao Bằng,Lai Châu,Điện Biên,Sơn La,Kon Tum,Lào Cai,Bắc Kạn', type: 'string', label: 'Tỉnh/khu vực xa', group: 'Vận chuyển', description: 'Danh sách tỉnh áp phụ phí khu vực xa, phân tách bằng dấu phẩy.' },
   // Backlog B.25/C.42 - Phí sàn & doanh thu
   { key: 'platformFeeRate', value: '5', type: 'number', label: 'Phí sàn / hoa hồng (%)', group: 'Phí sàn & Doanh thu', description: 'Phần trăm hoa hồng sàn trích trên giá trị hàng chưa thuế (sau giảm giá). Trừ thẳng khỏi doanh thu thực nhận của người bán.' },
+  // Backlog B.26/C.41 - Phí chạy banner quảng cáo (theo tuần, theo vị trí)
+  { key: 'adFeeHeroPerWeek', value: '500000', type: 'number', label: 'Phí banner trang chủ lớn / tuần (đ)', group: 'Quảng cáo', description: 'Đơn giá mỗi tuần cho vị trí banner lớn đầu trang chủ (HOME_HERO).' },
+  { key: 'adFeeStripPerWeek', value: '250000', type: 'number', label: 'Phí dải banner trang chủ / tuần (đ)', group: 'Quảng cáo', description: 'Đơn giá mỗi tuần cho dải banner phụ trang chủ (HOME_STRIP).' },
+  { key: 'adFeePromoPerWeek', value: '150000', type: 'number', label: 'Phí banner trang khuyến mãi / tuần (đ)', group: 'Quảng cáo', description: 'Đơn giá mỗi tuần cho banner trang chương trình khuyến mãi (PROMO_PAGE).' },
 ];
 
 async function main() {
