@@ -654,6 +654,15 @@ function GuestBodyPreview() {
   const [result, setResult] = useState<PreviewResult | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Ảnh tùy chọn (bổ trợ phân tích, không lưu lại)
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  function pickPhoto(file: File | null) {
+    setPhotoFile(file);
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
+    setPhotoPreview(file ? URL.createObjectURL(file) : null);
+  }
 
   async function preview() {
     setError('');
@@ -662,9 +671,10 @@ function GuestBodyPreview() {
     }
     setLoading(true);
     try {
-      const payload: Record<string, string> = {};
-      for (const f of MEASUREMENT_FIELDS) if (values[f.key].trim()) payload[f.key] = values[f.key].trim();
-      const res = await api.post('/body/preview', payload);
+      const form = new FormData();
+      for (const f of MEASUREMENT_FIELDS) if (values[f.key].trim()) form.append(f.key, values[f.key].trim());
+      if (photoFile) form.append('photo', photoFile);
+      const res = await api.post('/body/preview', form);
       setResult(res.data);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -691,6 +701,14 @@ function GuestBodyPreview() {
                 className="w-full border border-black/15 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand" />
             </label>
           ))}
+        </div>
+        {/* Ảnh tùy chọn để bổ trợ phân tích (không lưu lại) */}
+        <div className="mb-5">
+          <span className="block text-xs text-gray-500 mb-1">Ảnh toàn thân (tùy chọn)</span>
+          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => pickPhoto(e.target.files?.[0] ?? null)}
+            className="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-light file:px-3 file:py-1.5 file:text-brand" />
+          <p className="text-[11px] text-gray-400 mt-1">JPG/PNG/WEBP, tối đa 5MB. Ảnh chỉ dùng để phân tích tức thời, không được lưu.</p>
+          {photoPreview && <img src={photoPreview} alt="Xem trước" className="mt-3 h-40 rounded-lg object-cover border" />}
         </div>
         <button onClick={preview} disabled={loading} className="bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg px-5 py-2.5 text-sm font-medium">
           {loading ? 'Đang phân tích…' : 'Xem dáng của tôi'}

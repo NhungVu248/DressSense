@@ -14,7 +14,20 @@ import { uploadBodyPhoto } from '../middlewares/upload';
 const router = Router();
 
 // CÔNG KHAI - khách chưa đăng nhập dùng thử phân tích dáng (không lưu). Đặt TRƯỚC authenticate.
-router.post('/preview', previewBodyShape);
+// Ảnh là tùy chọn (multipart 'photo') giống /analyze; ảnh dùng xong bị xóa, không lưu.
+router.post('/preview', (req, res, next) => {
+  uploadBodyPhoto(req, res, (err: any) => {
+    if (err) {
+      const message = err.message === 'INVALID_IMAGE_TYPE'
+        ? 'Ảnh phải ở định dạng JPG, PNG hoặc WEBP'
+        : err.code === 'LIMIT_FILE_SIZE'
+          ? 'Ảnh vượt quá dung lượng tối đa 5MB'
+          : 'Không tải được ảnh, vui lòng thử lại';
+      return res.status(400).json({ message });
+    }
+    next();
+  });
+}, previewBodyShape);
 
 // UC3 - chỉ Khách hàng đã đăng nhập mới được phân tích/xem/xóa dữ liệu cơ thể của chính mình
 router.use(authenticate);

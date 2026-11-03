@@ -47,8 +47,12 @@ const previewSchema = z.object({
 export async function previewBodyShape(req: Request, res: Response, next: NextFunction) {
   try {
     const parsed = previewSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: 'Vui lòng nhập đầy đủ số đo bắt buộc (chiều cao, ngực, eo, hông).' });
+    if (!parsed.success) {
+      if (req.file) fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ message: 'Vui lòng nhập đầy đủ số đo bắt buộc (chiều cao, ngực, eo, hông).' });
+    }
     const d = parsed.data;
+    const hasPhoto = !!req.file;
 
     const rangeChecks: Array<[number, { min: number; max: number }, string]> = [
       [d.height, BODY_MEASUREMENT_RANGES.height, 'chiều cao'],
@@ -58,12 +62,21 @@ export async function previewBodyShape(req: Request, res: Response, next: NextFu
     ];
     if (d.weight !== undefined) rangeChecks.push([d.weight, BODY_MEASUREMENT_RANGES.weight, 'cân nặng']);
     for (const [value, range, label] of rangeChecks) {
-      if (!inRange(value, range)) return res.status(400).json({ message: `Số đo "${label}" phải nằm trong khoảng ${range.min}–${range.max}.` });
+      if (!inRange(value, range)) {
+        if (req.file) fs.unlink(req.file.path, () => {});
+        return res.status(400).json({ message: `Số đo "${label}" phải nằm trong khoảng ${range.min}–${range.max}.` });
+      }
     }
 
+    // Ảnh tùy chọn: chạy AI pose (nếu bật) để tham khảo, KHÔNG lưu ảnh cho khách dùng thử.
+    if (hasPhoto && aiEnabled()) {
+      try { await aiPose(req.file!.path, req.file!.filename); } catch { /* bỏ qua lỗi AI, vẫn phân tích theo số đo */ }
+    }
+    if (req.file) fs.unlink(req.file.path, () => {}); // dọn ảnh tạm (không lưu)
+
     const result = processBodyAnalysis({
-      source: 'MANUAL', height: d.height, weight: d.weight ?? null,
-      bust: d.bust, waist: d.waist, hip: d.hip, shoulderHipRatio: null, hasPhoto: false,
+      source: hasPhoto ? 'PHOTO' : 'MANUAL', height: d.height, weight: d.weight ?? null,
+      bust: d.bust, waist: d.waist, hip: d.hip, shoulderHipRatio: null, hasPhoto,
     });
     if (!result.ok || !result.bodyShape) return res.status(422).json({ message: `${result.note} Vui lòng kiểm tra lại số đo.` });
 
@@ -76,6 +89,7 @@ export async function previewBodyShape(req: Request, res: Response, next: NextFu
       recommendations: STYLE_RECOMMENDATIONS[result.bodyShape],
     });
   } catch (err) {
+    if (req.file) fs.unlink(req.file.path, () => {});
     next(err);
   }
 }

@@ -16,7 +16,7 @@ export default function AdminComplaintsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Phân xử khiếu nại</h1>
+      <h1 className="font-display text-3xl font-bold text-ink mb-4">Phân xử khiếu nại</h1>
       <div className="flex gap-2 mb-5 flex-wrap">
         {FILTERS.map((f) => (
           <button key={f.v} onClick={() => setStatus(f.v)} className={`text-sm px-4 py-1.5 rounded-full border ${status === f.v ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 text-gray-600'}`}>{f.label}</button>

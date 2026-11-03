@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
@@ -106,9 +107,17 @@ function RedirectManageEdit() {
   return <Navigate to={`/seller/products/${id}/edit`} replace />;
 }
 
+// Mỗi lần đổi route, cuộn trang về đầu (tránh giữ vị trí cuộn của trang trước).
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
+
 export default function App() {
   return (
     <>
+      <ScrollToTop />
       <PasswordExpiryBanner />
       <Routes>
       {/* UC7 - Tìm kiếm & duyệt sản phẩm */}
