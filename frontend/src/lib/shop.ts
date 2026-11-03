@@ -43,6 +43,8 @@ export interface Shop {
   returnDistrict: string | null;
   returnWard: string | null;
   returnDetail: string | null;
+  selfDelivery?: boolean; // B.30 - người bán tự giao
+  selfDeliveryFee?: number | null;
   status: ShopStatus;
   rejectReason: string | null;
   submittedAt: string | null;

@@ -146,6 +146,29 @@ export default function ShopProfilePage() {
           )}
         </section>
 
+        {/* Phương thức giao hàng (B.30) */}
+        <section className="rounded-2xl border border-brand/10 bg-white p-5 space-y-3">
+          <h2 className="font-display text-lg font-bold">Phương thức giao hàng</h2>
+          <label className="flex items-center gap-2 text-sm text-ink/70">
+            <input
+              type="checkbox" checked={f.selfDelivery ?? false}
+              onChange={(e) => setF((s) => ({ ...s, selfDelivery: e.target.checked }))}
+            />
+            Tự giao hàng (người bán tự giao, tự chịu rủi ro) — bỏ chọn để dùng phương thức hệ thống
+          </label>
+          {(f.selfDelivery ?? false) && (
+            <label className="block max-w-xs">
+              <span className="text-sm text-ink/70">Phí giao do gian hàng đặt (đ)</span>
+              <input
+                type="number" min={0} value={String(f.selfDeliveryFee ?? 0)}
+                onChange={(e) => setF((s) => ({ ...s, selfDeliveryFee: Number(e.target.value) || 0 }))}
+                className="mt-1 w-full border border-brand/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
+              />
+              <span className="block text-xs text-ink/40 mt-1">Để 0 nếu miễn phí giao. Phí này thay cho phí hệ thống khi khách đặt.</span>
+            </label>
+          )}
+        </section>
+
         {/* Hành động */}
         <div className="flex flex-wrap gap-3">
           <button

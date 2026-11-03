@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { SHIPPING_METHODS, shippingFeeFor } from '../constants/shipping';
+import { getShippingMethods, getShippingConfig, shippingFeeSync, type ShopDelivery } from '../services/shipping.service';
 import { computeVoucher, voucherEligibleAmount } from './voucher.controller';
 import { priceOrderRows, getRunningFlashSales, pickFlashSale, effectivePrice } from '../services/promotion.service';
 import { startOnlinePayment } from '../services/payment.service';
@@ -49,19 +49,26 @@ export async function getCheckoutInfo(req: Request, res: Response, next: NextFun
     ]);
     // UC13.1 - giá hiệu lực theo Flash Sale (nếu còn suất)
     const sales = await getRunningFlashSales(rows.map((r) => r.product.id));
+    // B.30 - thông tin tự giao theo từng gian hàng (để preview phí ship đúng)
+    const sellerIds = [...new Set(rows.map((r) => r.product.seller.id))];
+    const shops = await prisma.shop.findMany({ where: { ownerId: { in: sellerIds } }, select: { ownerId: true, selfDelivery: true, selfDeliveryFee: true } });
+    const shopByOwner = new Map(shops.map((s) => [s.ownerId, s] as const));
     const items = rows.map((it) => {
       const valid = it.product.status === 'ACTIVE' && !it.product.deletedAt && (!it.variant || availableOf(it.variant) >= it.quantity);
       const fs = pickFlashSale(sales, it.product.id, it.variantId ?? null);
       const price = effectivePrice(it.product.price, fs);
+      const shop = shopByOwner.get(it.product.seller.id);
       return {
         cartItemId: it.id, productId: it.product.id, name: it.product.name, price,
         originalPrice: it.product.price, flashSale: price < it.product.price,
         size: it.variant?.size ?? null, quantity: it.quantity, lineTotal: price * it.quantity,
         sellerId: it.product.seller.id, seller: it.product.seller.shopName || it.product.seller.fullName, valid,
+        selfDelivery: shop?.selfDelivery ?? false, selfDeliveryFee: shop?.selfDeliveryFee ?? null,
       };
     });
     const subtotal = items.filter((i) => i.valid).reduce((a, i) => a + i.lineTotal, 0);
-    res.json({ addresses, shippingMethods: SHIPPING_METHODS, items, subtotal, vnpayEnabled: vnpayEnabled() });
+    const [shippingMethods, shippingConfig] = await Promise.all([getShippingMethods(), getShippingConfig()]);
+    res.json({ addresses, shippingMethods, shippingConfig, items, subtotal, vnpayEnabled: vnpayEnabled() });
   } catch (err) {
     next(err);
   }
@@ -143,6 +150,10 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       voucherInfo ? voucherEligibleAmount(voucherInfo, items.map((it) => ({ productId: it.product.id, categoryId: it.product.categoryId, sellerId: it.product.seller.id, lineTotal: effPrice(it) * it.quantity }))) : 0,
     );
     const totalEligible = groupEligible.reduce((a, b) => a + b, 0);
+    // Phí vận chuyển (C.46 + B.30): nạp cấu hình + thông tin tự giao từng gian hàng
+    const [shipMethods, shipCfg] = await Promise.all([getShippingMethods(), getShippingConfig()]);
+    const shopRows = await prisma.shop.findMany({ where: { ownerId: { in: entries.map(([sid]) => sid) } }, select: { ownerId: true, selfDelivery: true, selfDeliveryFee: true } });
+    const shopByOwner = new Map<number, ShopDelivery>(shopRows.map((s) => [s.ownerId, s] as const));
     let allocated = 0;
     const prepared = entries.map(([sid, items], idx) => {
       const subtotal = items.reduce((a, it) => a + effPrice(it) * it.quantity, 0);
@@ -150,7 +161,8 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       const lastEligibleIdx = groupEligible.reduce((last, amt, i) => (amt > 0 ? i : last), -1);
       const d = totalEligible <= 0 ? 0 : idx === lastEligibleIdx ? discount - allocated : Math.floor((discount * groupEligible[idx]) / totalEligible);
       allocated += d;
-      const shippingFee = shippingFeeFor(shippingMethod, subtotal); // phí ship tính theo từng gian hàng
+      // phí ship theo gian hàng: tự giao / phương thức hệ thống + phụ phí khu vực xa theo tỉnh nhận
+      const shippingFee = shippingFeeSync({ methodCode: shippingMethod, subtotal, province: address.province, shop: shopByOwner.get(sid) }, shipMethods, shipCfg);
       return { sid, items, subtotal, discount: d, shippingFee, total: Math.max(0, subtotal - d + shippingFee) };
     });
     const checkoutCode = genCheckoutCode();

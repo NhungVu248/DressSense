@@ -28,6 +28,9 @@ const shopSchema = z.object({
   returnDistrict: z.string().trim().optional().nullable(),
   returnWard: z.string().trim().optional().nullable(),
   returnDetail: z.string().trim().optional().nullable(),
+  // B.30 - phương thức giao hàng
+  selfDelivery: z.boolean().optional(),
+  selfDeliveryFee: z.coerce.number().int().min(0).optional().nullable(),
 });
 
 // ---------- Người bán ----------

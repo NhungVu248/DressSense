@@ -8,8 +8,6 @@ import {
   PAYMENT_METHOD_LABEL, type PaymentMethod, type Address,
 } from '../lib/order';
 
-const FREE_SHIP = 699000;
-
 export default function CheckoutPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
@@ -27,24 +25,37 @@ export default function CheckoutPage() {
   const [error, setError] = useState('');
 
   const subtotal = data?.subtotal ?? 0;
-  const methodFee = data?.shippingMethods.find((m) => m.code === shipping)?.fee ?? 0;
-  // Multi-shop: nhóm theo gian hàng; phí vận chuyển tính riêng mỗi gian hàng (miễn phí nếu đạt ngưỡng)
-  const shops = useMemo(() => {
-    const valid = (data?.items ?? []).filter((i) => i.valid);
-    const map = new Map<number, { seller: string; items: typeof valid; subtotal: number }>();
-    for (const it of valid) {
-      if (!map.has(it.sellerId)) map.set(it.sellerId, { seller: it.seller, items: [], subtotal: 0 });
-      const g = map.get(it.sellerId)!; g.items.push(it); g.subtotal += it.lineTotal;
-    }
-    return [...map.values()].map((g) => ({ ...g, shipFee: g.subtotal >= FREE_SHIP ? 0 : methodFee }));
-  }, [data, methodFee]);
-  const shipFee = shops.reduce((a, s) => a + s.shipFee, 0);
-  const discount = applied?.discount ?? 0;
-  const total = Math.max(0, subtotal - discount + shipFee);
+  const method = data?.shippingMethods.find((m) => m.code === shipping);
+  const methodFee = method?.fee ?? 0;
+  const cfg = data?.shippingConfig;
 
   // chọn địa chỉ mặc định khi tải xong
   const defaultAddr = data?.addresses.find((a) => a.isDefault) ?? data?.addresses[0];
   const selectedAddr = addressId ?? defaultAddr?.id ?? null;
+  const destProvince = data?.addresses.find((a) => a.id === selectedAddr)?.province ?? '';
+  const isRemote = !!cfg && cfg.remoteProvinces.some((r) => destProvince.toLowerCase().includes(r.toLowerCase()));
+
+  // Multi-shop: nhóm theo gian hàng; phí vận chuyển tính riêng mỗi gian hàng (khớp logic backend)
+  const shops = useMemo(() => {
+    const valid = (data?.items ?? []).filter((i) => i.valid);
+    const map = new Map<number, { seller: string; items: typeof valid; subtotal: number; selfDelivery: boolean; selfDeliveryFee: number }>();
+    for (const it of valid) {
+      if (!map.has(it.sellerId)) map.set(it.sellerId, { seller: it.seller, items: [], subtotal: 0, selfDelivery: !!it.selfDelivery, selfDeliveryFee: it.selfDeliveryFee ?? 0 });
+      const g = map.get(it.sellerId)!; g.items.push(it); g.subtotal += it.lineTotal;
+    }
+    const threshold = cfg?.threshold ?? 699000;
+    const surcharge = isRemote ? (cfg?.surcharge ?? 0) : 0;
+    return [...map.values()].map((g) => {
+      let shipFee: number;
+      if (g.selfDelivery) shipFee = Math.max(0, g.selfDeliveryFee); // người bán tự giao
+      else if (method?.intl) shipFee = methodFee; // quốc tế: phí cố định
+      else shipFee = (g.subtotal >= threshold ? 0 : methodFee) + surcharge;
+      return { ...g, shipFee };
+    });
+  }, [data, methodFee, method?.intl, cfg, isRemote]);
+  const shipFee = shops.reduce((a, s) => a + s.shipFee, 0);
+  const discount = applied?.discount ?? 0;
+  const total = Math.max(0, subtotal - discount + shipFee);
 
   const paymentOptions: PaymentMethod[] = data?.vnpayEnabled ? ['COD', 'VNPAY', 'VISA'] : ['COD'];
 
@@ -127,7 +138,8 @@ export default function CheckoutPage() {
                 </label>
               ))}
             </div>
-            <p className="text-xs text-gray-400 mt-2">Miễn phí vận chuyển cho mỗi gian hàng có đơn từ {formatVND(FREE_SHIP)}.</p>
+            <p className="text-xs text-gray-400 mt-2">Miễn phí vận chuyển cho mỗi gian hàng có đơn từ {formatVND(cfg?.threshold ?? 699000)} (không áp dụng cho giao quốc tế).</p>
+            {isRemote && <p className="text-xs text-amber-600 mt-1">Địa chỉ thuộc khu vực xa — phụ phí {formatVND(cfg?.surcharge ?? 0)}/gian hàng.</p>}
           </section>
 
           {/* Thanh toán */}
@@ -165,7 +177,7 @@ export default function CheckoutPage() {
                     ))}
                   </ul>
                   <div className="flex justify-between text-xs text-gray-500 mt-1.5 pt-1.5 border-t border-black/5">
-                    <span>Vận chuyển</span><span>{shop.shipFee === 0 ? 'Miễn phí' : formatVND(shop.shipFee)}</span>
+                    <span>Vận chuyển{shop.selfDelivery && <span className="text-brand"> · Người bán tự giao</span>}</span><span>{shop.shipFee === 0 ? 'Miễn phí' : formatVND(shop.shipFee)}</span>
                   </div>
                 </div>
               ))}

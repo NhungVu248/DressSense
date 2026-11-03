@@ -27,7 +27,7 @@
 - [ ] **Đăng ký mua voucher giảm giá**: người bán **tự chịu phần tiền giảm giá** đó.
 - [x] **Quản lý tin nhắn với khách hàng**: lọc Tất cả/**Chưa đọc**/**Quan trọng (sao)**, badge chưa đọc, thông báo tin nhắn mới (`/seller/messages`). *(commit cc064a8)*
 - [ ] **Hồ sơ cá nhân người bán** thiết kế đầy đủ hơn; **mở rộng trường dữ liệu cho sản phẩm**.
-- [ ] **Phương thức giao hàng**: người bán **tự chọn** — (a) **tự giao** (tự chịu rủi ro) hoặc (b) chọn **phương thức được hệ thống cấu hình sẵn**.
+- [x] **Phương thức giao hàng**: người bán **tự chọn** — (a) **tự giao** (đặt phí riêng, tự chịu rủi ro) hoặc (b) **phương thức hệ thống**; cấu hình ở Thông tin gian hàng. *(commit kế tiếp)*
 - [x] **Thiết lập giá**: người bán nhập **giá chưa thuế**, form hiện **giá cuối = giá chưa thuế + VAT**; trang khách chỉ thấy **giá cuối**. *(commit kế tiếp)*
 
 ---
@@ -43,7 +43,7 @@
 - [ ] **Quản lý đánh giá**: thiết lập **danh sách từ bị cấm** — vi phạm thì **tự động chặn & ẩn** đánh giá.
 - [ ] **Hồ sơ cá nhân** đầy đủ hơn; **mở rộng trường dữ liệu cho sản phẩm** (đồng bộ với Người bán).
 - [ ] **Quản lý khuyến mãi — mở rộng**: quản lý các **đơn mua voucher** với **mức chiết khấu** (combo theo tháng hoặc mua lẻ) và **đơn chạy quảng cáo**.
-- [ ] **Cấu hình phí vận chuyển**: đơn **quốc tế**; **trong nước** phân theo **khu vực** (theo giá bưu điện / các đơn vị chuyển phát hiện hành) và **hỏa tốc nội thành**.
+- [x] **Cấu hình phí vận chuyển**: tiêu chuẩn / nhanh / **hỏa tốc nội thành** / **quốc tế** + **phụ phí khu vực xa** (theo tỉnh) + ngưỡng miễn phí — cấu hình ở nhóm "Vận chuyển". *(commit kế tiếp)*
 - [x] **Cấu hình thuế**: bật/tắt VAT + thuế suất (%) trong Cấu hình hệ thống (nhóm "Thuế & Hóa đơn"). *(commit kế tiếp)*
 - [x] **Cấu hình xuất hóa đơn**: tên đơn vị + MST + địa chỉ phát hành; khách xuất lại được (issueCount tăng — xử lý trường hợp lần 1 lỗi). *(commit kế tiếp)*
 

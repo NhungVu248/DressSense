@@ -5,13 +5,15 @@ export interface Address {
   id: number; recipientName: string; phone: string;
   province: string; district: string; ward: string; detail: string; isDefault: boolean;
 }
-export interface ShippingMethod { code: string; label: string; fee: number; eta: string }
+export interface ShippingMethod { code: string; label: string; fee: number; eta: string; intl?: boolean }
+export interface ShippingConfig { threshold: number; surcharge: number; remoteProvinces: string[] }
 export interface CheckoutItem {
   cartItemId: number; productId: number; name: string; price: number;
   size: string | null; quantity: number; lineTotal: number; sellerId: number; seller: string; valid: boolean;
+  selfDelivery?: boolean; selfDeliveryFee?: number | null; // B.30 - gian hàng tự giao
 }
 export interface CheckoutInfo {
-  addresses: Address[]; shippingMethods: ShippingMethod[];
+  addresses: Address[]; shippingMethods: ShippingMethod[]; shippingConfig: ShippingConfig;
   items: CheckoutItem[]; subtotal: number; vnpayEnabled: boolean;
 }
 

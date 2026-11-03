@@ -133,6 +133,10 @@ model Shop {
   returnWard         String?
   returnDetail       String?
 
+  // Backlog (B.30) - phương thức giao hàng: tự giao hay dùng hệ thống
+  selfDelivery    Boolean @default(false) // true = người bán tự giao (tự chịu rủi ro)
+  selfDeliveryFee Int? // phí giao người bán tự đặt (null/0 = miễn phí) khi tự giao
+
   // Kiểm duyệt (UC16.3)
   status       ShopStatus @default(DRAFT)
   rejectReason String?    @db.Text // lý do từ chối (hiển thị cho Người bán sửa lại)
