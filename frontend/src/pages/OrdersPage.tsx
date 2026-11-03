@@ -332,14 +332,23 @@ function InvoiceModal({ order, onClose, onDone }: { order: Order; onClose: () =>
   const [buyerTaxCode, setBuyerTaxCode] = useState('');
   const [buyerEmail, setBuyerEmail] = useState('');
   const [note, setNote] = useState('');
+  const [sendEmail, setSendEmail] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [issued, setIssued] = useState(false);
+  const [emailResult, setEmailResult] = useState<{ sent: boolean; message: string } | null>(null);
 
   async function submit() {
     if (!buyerName.trim() || !buyerAddress.trim()) { alert('Vui lòng nhập tên và địa chỉ xuất hóa đơn.'); return; }
+    if (sendEmail && !buyerEmail.trim()) { alert('Vui lòng nhập email để gửi hóa đơn.'); return; }
     setBusy(true);
     try {
-      await issueInvoice(order.id, { buyerName: buyerName.trim(), buyerAddress: buyerAddress.trim(), buyerTaxCode: buyerTaxCode.trim() || undefined, buyerEmail: buyerEmail.trim() || undefined, note: note.trim() || undefined });
-      onDone();
+      const r = await issueInvoice(order.id, {
+        buyerName: buyerName.trim(), buyerAddress: buyerAddress.trim(),
+        buyerTaxCode: buyerTaxCode.trim() || undefined, buyerEmail: buyerEmail.trim() || undefined,
+        note: note.trim() || undefined, sendEmail,
+      });
+      setEmailResult(r.email ?? null);
+      setIssued(true);
     } catch (e: any) { alert(e?.response?.data?.message ?? 'Không xuất được hóa đơn.'); }
     finally { setBusy(false); }
   }
@@ -352,30 +361,51 @@ function InvoiceModal({ order, onClose, onDone }: { order: Order; onClose: () =>
           <h3 className="font-display text-xl text-ink">Xuất hóa đơn VAT</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
         </div>
-        <p className="text-sm text-gray-500 mb-3">Nhập thông tin người/đơn vị mua. Có thể xuất lại nếu cần.</p>
-        <div className="space-y-3">
-          <label className="block">
-            <span className="block text-xs text-gray-500 mb-1">Tên người/đơn vị mua <span className="text-red-400">*</span></span>
-            <input value={buyerName} onChange={(e) => setBuyerName(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
-          </label>
-          <label className="block">
-            <span className="block text-xs text-gray-500 mb-1">Mã số thuế (nếu xuất cho công ty)</span>
-            <input value={buyerTaxCode} onChange={(e) => setBuyerTaxCode(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
-          </label>
-          <label className="block">
-            <span className="block text-xs text-gray-500 mb-1">Địa chỉ xuất hóa đơn <span className="text-red-400">*</span></span>
-            <textarea value={buyerAddress} onChange={(e) => setBuyerAddress(e.target.value)} rows={2} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
-          </label>
-          <label className="block">
-            <span className="block text-xs text-gray-500 mb-1">Email nhận hóa đơn</span>
-            <input value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
-          </label>
-          <label className="block">
-            <span className="block text-xs text-gray-500 mb-1">Ghi chú (tuỳ chọn)</span>
-            <input value={note} onChange={(e) => setNote(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
-          </label>
-        </div>
-        <button onClick={submit} disabled={busy} className="w-full mt-4 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-2.5 text-sm">{busy ? 'Đang xuất…' : 'Xuất hóa đơn'}</button>
+        {issued ? (
+          <div className="text-sm">
+            <p className="text-green-600 mb-2">✓ Đã xuất hóa đơn cho đơn {order.code}.</p>
+            {emailResult && (
+              <p className={`mb-3 ${emailResult.sent ? 'text-green-600' : 'text-amber-600'}`}>
+                {emailResult.sent ? '✓ ' : '⚠ '}{emailResult.message}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <button onClick={onDone} className="flex-1 bg-brand hover:bg-brand-dark text-white rounded-lg py-2.5">Xem / In hóa đơn</button>
+              <button onClick={onClose} className="border border-black/15 rounded-lg px-4 py-2.5">Đóng</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-gray-500 mb-3">Nhập thông tin người/đơn vị mua. Có thể xuất lại nếu cần.</p>
+            <div className="space-y-3">
+              <label className="block">
+                <span className="block text-xs text-gray-500 mb-1">Tên người/đơn vị mua <span className="text-red-400">*</span></span>
+                <input value={buyerName} onChange={(e) => setBuyerName(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
+              </label>
+              <label className="block">
+                <span className="block text-xs text-gray-500 mb-1">Mã số thuế (nếu xuất cho công ty)</span>
+                <input value={buyerTaxCode} onChange={(e) => setBuyerTaxCode(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
+              </label>
+              <label className="block">
+                <span className="block text-xs text-gray-500 mb-1">Địa chỉ xuất hóa đơn <span className="text-red-400">*</span></span>
+                <textarea value={buyerAddress} onChange={(e) => setBuyerAddress(e.target.value)} rows={2} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
+              </label>
+              <label className="block">
+                <span className="block text-xs text-gray-500 mb-1">Email nhận hóa đơn</span>
+                <input value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" placeholder="email@vidu.com" />
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer">
+                <input type="checkbox" checked={sendEmail} onChange={(e) => setSendEmail(e.target.checked)} className="accent-brand mt-0.5" />
+                <span className="text-gray-600">Gửi thẳng hóa đơn (file HTML) về email trên sau khi xuất</span>
+              </label>
+              <label className="block">
+                <span className="block text-xs text-gray-500 mb-1">Ghi chú (tuỳ chọn)</span>
+                <input value={note} onChange={(e) => setNote(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
+              </label>
+            </div>
+            <button onClick={submit} disabled={busy} className="w-full mt-4 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-2.5 text-sm">{busy ? 'Đang xuất…' : 'Xuất hóa đơn'}</button>
+          </>
+        )}
       </div>
     </div>
   );

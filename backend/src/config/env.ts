@@ -12,6 +12,17 @@ export const env = {
   // GĐ7 - AI service (Python/FastAPI). Trống -> tắt tích hợp, backend tự tính bằng luật Node.
   aiServiceUrl: process.env.AI_SERVICE_URL || '',
 
+  // Gửi email (SMTP). Trống host/user -> tính năng gửi hóa đơn qua email tạm tắt.
+  // VD Gmail: SMTP_HOST=smtp.gmail.com SMTP_PORT=587 SMTP_USER=<email> SMTP_PASS=<App Password>.
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: Number(process.env.SMTP_PORT) || 587,
+    secure: process.env.SMTP_SECURE === 'true', // true nếu dùng cổng 465
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM || process.env.SMTP_USER || 'no-reply@dresssense.vn',
+  },
+
   // UC9.2 - VNPAY sandbox. Trống TMN/secret -> thanh toán online tạm tắt (COD vẫn chạy).
   // Đăng ký sandbox miễn phí tại https://sandbox.vnpayment.vn để lấy TMN code + hash secret.
   vnp: {
@@ -24,6 +35,9 @@ export const env = {
 
 // UC9.2 - thanh toán online chỉ bật khi đã cấu hình VNPAY sandbox
 export const vnpayEnabled = () => !!(env.vnp.tmnCode && env.vnp.hashSecret);
+
+// Gửi email chỉ bật khi đã cấu hình SMTP (host + user + pass)
+export const mailEnabled = () => !!(env.smtp.host && env.smtp.user && env.smtp.pass);
 
 export const isDev = env.nodeEnv !== 'production';
 

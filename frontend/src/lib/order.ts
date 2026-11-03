@@ -102,12 +102,17 @@ export interface InvoiceData {
   invoice: InvoiceInfo; company: InvoiceCompany; breakdown: InvoiceBreakdown;
   order: { code: string; createdAt: string; recipientName: string; phone: string; voucherCode: string | null; items: { name: string | null; size: string | null; quantity: number; price: number }[] };
 }
-export interface IssueInvoiceBody { buyerName: string; buyerAddress: string; buyerTaxCode?: string; buyerEmail?: string; note?: string }
-export async function issueInvoice(orderId: number | string, body: IssueInvoiceBody) {
+export interface IssueInvoiceBody { buyerName: string; buyerAddress: string; buyerTaxCode?: string; buyerEmail?: string; note?: string; sendEmail?: boolean }
+export interface IssueInvoiceResult { invoice: InvoiceInfo; company: InvoiceCompany; breakdown: InvoiceBreakdown; email?: { sent: boolean; message: string } | null }
+export async function issueInvoice(orderId: number | string, body: IssueInvoiceBody): Promise<IssueInvoiceResult> {
   return (await api.post(`/orders/${orderId}/invoice`, body)).data;
 }
 export async function getInvoice(orderId: number | string): Promise<InvoiceData> {
   return (await api.get(`/orders/${orderId}/invoice`)).data;
+}
+// Gửi lại hóa đơn đã xuất về email người mua
+export async function emailInvoice(orderId: number | string): Promise<{ ok: boolean; message: string }> {
+  return (await api.post(`/orders/${orderId}/invoice/email`)).data;
 }
 export async function retryPayment(orderId: number): Promise<{ payUrl: string }> {
   return (await api.post(`/payments/orders/${orderId}/retry`)).data;

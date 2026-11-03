@@ -2,6 +2,8 @@ import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { getStringSetting } from '../services/settings.service';
+import { sendMail, MailNotConfiguredError } from '../services/mail.service';
+import { renderInvoiceHtml } from '../services/invoice-html';
 
 // ============================================================
 //  Backlog (Khách hàng) - Xuất hóa đơn VAT cho đơn đã nhận.
@@ -14,7 +16,34 @@ const issueSchema = z.object({
   buyerTaxCode: z.string().trim().optional(),
   buyerEmail: z.string().trim().email('Email không hợp lệ.').optional().or(z.literal('')),
   note: z.string().trim().optional(),
+  sendEmail: z.boolean().optional(), // true = gửi thẳng hóa đơn về email người mua
 });
+
+// Gửi hóa đơn (HTML đính kèm + nội dung thư) tới email người mua.
+// Trả { sent, message } thay vì ném lỗi, để không chặn việc xuất hóa đơn.
+async function trySendInvoiceEmail(order: any, invoice: any): Promise<{ sent: boolean; message: string }> {
+  const to = invoice.buyerEmail as string | null;
+  if (!to) return { sent: false, message: 'Hóa đơn chưa có email người mua để gửi.' };
+  try {
+    const company = await loadCompany();
+    const html = renderInvoiceHtml(company, invoice, breakdownOf(order), {
+      code: order.code, createdAt: order.createdAt, recipientName: order.recipientName, phone: order.phone,
+      items: order.items.map((it: any) => ({ name: it.name, size: it.size, quantity: it.quantity, price: it.price })),
+    });
+    await sendMail({
+      to,
+      subject: `Hóa đơn điện tử đơn hàng ${order.code} - ${company.name}`,
+      html,
+      attachments: [{ filename: `HoaDon-${order.code}.html`, content: html, contentType: 'text/html; charset=utf-8' }],
+    });
+    return { sent: true, message: `Đã gửi hóa đơn tới ${to}.` };
+  } catch (err) {
+    if (err instanceof MailNotConfiguredError) {
+      return { sent: false, message: 'Máy chủ chưa cấu hình gửi email (SMTP). Vui lòng cấu hình SMTP_* trong .env.' };
+    }
+    return { sent: false, message: 'Gửi email thất bại. Vui lòng thử lại sau.' };
+  }
+}
 
 async function loadCompany() {
   return {
@@ -69,7 +98,22 @@ export async function issueInvoice(req: Request, res: Response, next: NextFuncti
       ? await prisma.invoice.update({ where: { orderId: r.order.id }, data: { ...data, issueCount: { increment: 1 } } })
       : await prisma.invoice.create({ data: { orderId: r.order.id, ...data } });
 
-    res.status(201).json({ invoice, company: await loadCompany(), breakdown: breakdownOf(r.order) });
+    // Gửi thẳng hóa đơn về email nếu khách chọn (không chặn việc xuất)
+    const email = parsed.data.sendEmail ? await trySendInvoiceEmail(r.order, invoice) : null;
+
+    res.status(201).json({ invoice, company: await loadCompany(), breakdown: breakdownOf(r.order), email });
+  } catch (err) { next(err); }
+}
+
+// POST /api/orders/:id/invoice/email - gửi lại hóa đơn đã xuất về email người mua
+export async function emailInvoice(req: Request, res: Response, next: NextFunction) {
+  try {
+    const r = await loadOwnedOrder(Number(req.params.id), req.user!.userId);
+    if (!r.ok) return res.status(r.code).json({ message: r.message });
+    if (!r.order.invoice) return res.status(404).json({ message: 'Chưa xuất hóa đơn cho đơn này.', code: 'NO_INVOICE' });
+    const result = await trySendInvoiceEmail(r.order, r.order.invoice);
+    if (!result.sent) return res.status(400).json({ message: result.message });
+    res.json({ ok: true, message: result.message });
   } catch (err) { next(err); }
 }
 

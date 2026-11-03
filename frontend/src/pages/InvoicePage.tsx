@@ -1,12 +1,21 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { formatVND } from '../lib/products';
-import { getInvoice } from '../lib/order';
+import { getInvoice, emailInvoice } from '../lib/order';
 
 // Backlog - Hóa đơn VAT (trang để xem & in). Giá là giá cuối đã gồm thuế; tách phần chưa thuế + VAT.
 export default function InvoicePage() {
   const { id } = useParams();
   const { data, isLoading, error } = useQuery({ queryKey: ['invoice', id], queryFn: () => getInvoice(id!), enabled: !!id, retry: false });
+  const [sending, setSending] = useState(false);
+
+  async function sendEmail() {
+    setSending(true);
+    try { const r = await emailInvoice(id!); alert(r.message); }
+    catch (e: any) { alert(e?.response?.data?.message ?? 'Gửi email thất bại.'); }
+    finally { setSending(false); }
+  }
 
   if (isLoading) return <p className="text-center py-24 text-gray-400">Đang tải hóa đơn…</p>;
   if (error || !data) {
@@ -25,7 +34,12 @@ export default function InvoicePage() {
       {/* Thanh thao tác (ẩn khi in) */}
       <div className="flex items-center justify-between mb-5 print:hidden">
         <Link to={`/orders/${id}`} className="text-sm text-gray-400 hover:text-gray-600">← Về đơn hàng</Link>
-        <button onClick={() => window.print()} className="bg-brand text-white rounded-full px-5 py-2 text-sm">In hóa đơn</button>
+        <div className="flex gap-2">
+          {invoice.buyerEmail && (
+            <button onClick={sendEmail} disabled={sending} className="border border-brand/30 text-brand rounded-full px-4 py-2 text-sm disabled:opacity-50">{sending ? 'Đang gửi…' : 'Gửi qua email'}</button>
+          )}
+          <button onClick={() => window.print()} className="bg-brand text-white rounded-full px-5 py-2 text-sm">In hóa đơn</button>
+        </div>
       </div>
 
       <div className="bg-white border border-black/10 rounded-2xl p-6 md:p-8">
