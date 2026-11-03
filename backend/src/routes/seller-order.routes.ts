@@ -17,7 +17,7 @@ import {
 } from '../controllers/voucher-order.controller';
 import { listInventory, adjustStock, listStockMovements } from '../controllers/inventory.controller';
 import {
-  listShippingMethods, createShippingMethod, updateShippingMethod, deleteShippingMethod,
+  listShippingMethods, createShippingMethod, updateShippingMethod, deleteShippingMethod, toggleSystemMethod,
 } from '../controllers/shipping-method.controller';
 import { authenticate, authorize } from '../middlewares/auth';
 
@@ -84,6 +84,7 @@ router.patch('/inventory/:variantId', adjustStock);
 
 // ERD 3.3 (Seller #6) - Quản lý phương thức vận chuyển của gian hàng
 router.get('/shipping-methods', listShippingMethods);
+router.post('/shipping-methods/system', toggleSystemMethod); // bật/tắt phương thức hệ thống
 router.post('/shipping-methods', createShippingMethod);
 router.put('/shipping-methods/:id', updateShippingMethod);
 router.delete('/shipping-methods/:id', deleteShippingMethod);

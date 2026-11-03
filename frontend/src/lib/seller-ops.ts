@@ -52,17 +52,31 @@ export async function getStockMovements(variantId?: number): Promise<StockMoveme
 export type ShippingMethod = {
   id: number;
   shopId: number;
+  systemCode: string | null; // != null nếu là phương thức hệ thống đã bật
   carrierName: string;
   serviceName: string | null;
   shippingFee: number;
-  estimatedDays: number | null;
+  estimatedDays: string | null; // text tự do (vd "2-3 ngày")
   description: string | null;
   status: 'ACTIVE' | 'INACTIVE';
 };
 
-export async function getShippingMethods(): Promise<ShippingMethod[]> {
+export type SystemShippingMethod = {
+  code: string;
+  label: string;
+  fee: number;
+  eta: string;
+  intl?: boolean;
+  enabled: boolean;
+};
+
+export async function getShippingMethods(): Promise<{ methods: ShippingMethod[]; system: SystemShippingMethod[] }> {
   const { data } = await api.get('/seller/shipping-methods');
-  return data.methods;
+  return { methods: data.methods, system: data.system ?? [] };
+}
+
+export async function toggleSystemShippingMethod(code: string, enabled: boolean) {
+  await api.post('/seller/shipping-methods/system', { code, enabled });
 }
 
 export async function createShippingMethod(body: Partial<ShippingMethod>) {

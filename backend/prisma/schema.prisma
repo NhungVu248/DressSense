@@ -1408,10 +1408,11 @@ enum ShippingMethodStatus {
 model ShopShippingMethod {
   id            Int                  @id @default(autoincrement())
   shopId        Int // = Shop.id (FK logic tới shops.shop_id)
-  carrierName   String // đơn vị vận chuyển do Người bán khai báo
+  systemCode    String? // nếu là phương thức hệ thống cấu hình sẵn (STANDARD/EXPRESS...) được shop bật; null = shop tự khai
+  carrierName   String // đơn vị vận chuyển do Người bán khai báo (hoặc nhãn phương thức hệ thống)
   serviceName   String? // tên dịch vụ
   shippingFee   Int                  @default(0) // phí vận chuyển
-  estimatedDays Int? // số ngày dự kiến
+  estimatedDays String? // thời gian dự kiến (text tự do, vd "2-3 ngày")
   description   String?              @db.Text
   status        ShippingMethodStatus @default(ACTIVE)
   createdAt     DateTime             @default(now())

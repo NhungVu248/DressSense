@@ -1,28 +1,35 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  getShippingMethods, createShippingMethod, updateShippingMethod, deleteShippingMethod,
+  getShippingMethods, createShippingMethod, updateShippingMethod, deleteShippingMethod, toggleSystemShippingMethod,
   type ShippingMethod,
 } from '../../lib/seller-ops';
 import { formatVND } from '../../lib/products';
 import { getErrorMessage } from '../../lib/api';
 
-const EMPTY = { carrierName: '', serviceName: '', shippingFee: 0, estimatedDays: null as number | null, description: '', status: 'ACTIVE' as const };
+const EMPTY = { carrierName: '', serviceName: '', shippingFee: 0, estimatedDays: '', description: '', status: 'ACTIVE' as const };
 
-// Seller #6 - Quản lý phương thức vận chuyển (ERD 3.3). Người bán tự khai đơn vị/dịch vụ & phí.
+// Seller #6 - Quản lý phương thức vận chuyển (ERD 3.3).
+// Người bán có thể tích chọn phương thức hệ thống cấu hình sẵn (không bắt buộc,
+// tuỳ khu vực) và/hoặc tự khai thêm phương thức riêng.
 export default function SellerShippingPage() {
   const qc = useQueryClient();
-  const { data: methods, isLoading } = useQuery({ queryKey: ['shipping-methods'], queryFn: getShippingMethods });
+  const { data, isLoading } = useQuery({ queryKey: ['shipping-methods'], queryFn: getShippingMethods });
   const [form, setForm] = useState<Partial<ShippingMethod>>(EMPTY);
   const [editId, setEditId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const refresh = () => qc.invalidateQueries({ queryKey: ['shipping-methods'] });
 
+  async function toggleSystem(code: string, enabled: boolean) {
+    try { await toggleSystemShippingMethod(code, enabled); refresh(); }
+    catch (e) { alert(getErrorMessage(e)); }
+  }
+
   async function save() {
     if (!form.carrierName?.trim()) { alert('Nhập tên đơn vị vận chuyển.'); return; }
     setBusy(true);
     try {
-      const body = { ...form, shippingFee: Number(form.shippingFee) || 0, estimatedDays: form.estimatedDays ? Number(form.estimatedDays) : null };
+      const body = { ...form, shippingFee: Number(form.shippingFee) || 0, estimatedDays: form.estimatedDays || null };
       if (editId) await updateShippingMethod(editId, body); else await createShippingMethod(body);
       setForm(EMPTY); setEditId(null); refresh();
     } catch (e) { alert(getErrorMessage(e)); }
@@ -37,40 +44,73 @@ export default function SellerShippingPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="font-display text-2xl font-bold text-ink mb-1">Phương thức vận chuyển</h1>
-      <p className="text-sm text-ink/50 mb-5">Khai báo đơn vị, dịch vụ và phí giao hàng cho gian hàng. Trạng thái giao hàng vẫn cập nhật thủ công ở Đơn hàng.</p>
+      <p className="text-sm text-ink/50 mb-5">Chọn các phương thức hệ thống cấu hình sẵn mà gian hàng hỗ trợ (không bắt buộc, tuỳ khu vực) và/hoặc tự khai thêm. Trạng thái giao hàng vẫn cập nhật thủ công ở Đơn hàng.</p>
 
-      <div className="bg-white rounded-xl border border-brand/10 p-4 mb-6 grid sm:grid-cols-2 gap-3">
-        <input value={form.carrierName || ''} onChange={(e) => setForm({ ...form, carrierName: e.target.value })} placeholder="Đơn vị vận chuyển *" className="border border-brand/20 rounded-lg px-3 py-2 text-sm" />
-        <input value={form.serviceName || ''} onChange={(e) => setForm({ ...form, serviceName: e.target.value })} placeholder="Tên dịch vụ (vd Giao nhanh)" className="border border-brand/20 rounded-lg px-3 py-2 text-sm" />
-        <input value={form.shippingFee ?? 0} onChange={(e) => setForm({ ...form, shippingFee: Number(e.target.value.replace(/\D/g, '')) })} placeholder="Phí vận chuyển (đ)" className="border border-brand/20 rounded-lg px-3 py-2 text-sm" />
-        <input value={form.estimatedDays ?? ''} onChange={(e) => setForm({ ...form, estimatedDays: e.target.value ? Number(e.target.value.replace(/\D/g, '')) : null })} placeholder="Số ngày dự kiến" className="border border-brand/20 rounded-lg px-3 py-2 text-sm" />
-        <input value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả (tuỳ chọn)" className="border border-brand/20 rounded-lg px-3 py-2 text-sm sm:col-span-2" />
-        <div className="sm:col-span-2 flex gap-2">
-          <button onClick={save} disabled={busy} className="bg-brand text-white rounded-lg px-5 py-2 text-sm disabled:opacity-50">{editId ? 'Cập nhật' : 'Thêm phương thức'}</button>
-          {editId && <button onClick={() => { setForm(EMPTY); setEditId(null); }} className="border border-brand/20 rounded-lg px-4 py-2 text-sm">Huỷ</button>}
-        </div>
-      </div>
-
-      {isLoading ? <p className="text-ink/40">Đang tải…</p>
-        : !methods || methods.length === 0 ? <p className="text-ink/40 text-center py-12 border border-dashed border-brand/20 rounded-xl">Chưa có phương thức vận chuyển.</p>
+      {/* Phương thức hệ thống - tích chọn */}
+      <section className="mb-7">
+        <h2 className="text-sm font-semibold text-ink/70 mb-2">Phương thức hệ thống cấu hình sẵn</h2>
+        {isLoading ? <p className="text-ink/40">Đang tải…</p>
           : (
             <div className="space-y-2">
-              {methods.map((m) => (
-                <div key={m.id} className="bg-white rounded-xl border border-brand/10 p-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-ink">{m.carrierName}{m.serviceName ? ` · ${m.serviceName}` : ''}
-                      <span className={`ml-2 text-[11px] px-2 py-0.5 rounded-full ${m.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{m.status === 'ACTIVE' ? 'Đang dùng' : 'Tạm tắt'}</span>
-                    </p>
-                    <p className="text-sm text-ink/50">{formatVND(m.shippingFee)}{m.estimatedDays ? ` · ~${m.estimatedDays} ngày` : ''}{m.description ? ` · ${m.description}` : ''}</p>
+              {(data?.system || []).map((s) => (
+                <label key={s.code} className={`flex items-center gap-3 bg-white rounded-xl border p-3 cursor-pointer ${s.enabled ? 'border-brand/40' : 'border-brand/10'}`}>
+                  <input type="checkbox" checked={s.enabled} onChange={(e) => toggleSystem(s.code, e.target.checked)} className="w-4 h-4 accent-[color:var(--brand,#6b7c4a)]" />
+                  <div className="flex-1">
+                    <p className="font-medium text-ink text-sm">{s.label}{s.intl && <span className="ml-2 text-[11px] px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">Quốc tế</span>}</p>
+                    <p className="text-xs text-ink/50">{formatVND(s.fee)} · {s.eta}</p>
                   </div>
-                  <div className="flex gap-3 text-sm shrink-0">
-                    <button onClick={() => { setEditId(m.id); setForm(m); }} className="text-brand hover:underline">Sửa</button>
-                    <button onClick={() => remove(m.id)} className="text-red-500 hover:underline">Xoá</button>
-                  </div>
-                </div>
+                </label>
               ))}
             </div>
           )}
+      </section>
+
+      {/* Tự khai phương thức riêng */}
+      <section>
+        <h2 className="text-sm font-semibold text-ink/70 mb-2">Phương thức gian hàng tự khai</h2>
+        <div className="bg-white rounded-xl border border-brand/10 p-4 mb-4 grid sm:grid-cols-2 gap-3">
+          <input value={form.carrierName || ''} onChange={(e) => setForm({ ...form, carrierName: e.target.value })} placeholder="Đơn vị vận chuyển *" className="border border-brand/20 rounded-lg px-3 py-2 text-sm" />
+          <input value={form.serviceName || ''} onChange={(e) => setForm({ ...form, serviceName: e.target.value })} placeholder="Tên dịch vụ (vd Giao nhanh)" className="border border-brand/20 rounded-lg px-3 py-2 text-sm" />
+          <input value={form.shippingFee ?? 0} onChange={(e) => setForm({ ...form, shippingFee: Number(e.target.value.replace(/\D/g, '')) })} placeholder="Phí vận chuyển (đ)" className="border border-brand/20 rounded-lg px-3 py-2 text-sm" />
+          <input value={form.estimatedDays ?? ''} onChange={(e) => setForm({ ...form, estimatedDays: e.target.value })} placeholder="Thời gian dự kiến (vd 2-3 ngày)" className="border border-brand/20 rounded-lg px-3 py-2 text-sm" />
+          <input value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Mô tả (tuỳ chọn)" className="border border-brand/20 rounded-lg px-3 py-2 text-sm sm:col-span-2" />
+          <div className="sm:col-span-2 flex gap-2">
+            <button onClick={save} disabled={busy} className="bg-brand text-white rounded-lg px-5 py-2 text-sm disabled:opacity-50">{editId ? 'Cập nhật' : 'Thêm phương thức'}</button>
+            {editId && <button onClick={() => { setForm(EMPTY); setEditId(null); }} className="border border-brand/20 rounded-lg px-4 py-2 text-sm">Huỷ</button>}
+          </div>
+        </div>
+      </section>
+
+      {/* Danh sách phương thức gian hàng đã khai báo (gồm cả hệ thống đã bật) */}
+      <section>
+        <h2 className="text-sm font-semibold text-ink/70 mb-2">Phương thức gian hàng đã khai báo</h2>
+        {isLoading ? <p className="text-ink/40">Đang tải…</p>
+          : !data || data.methods.length === 0 ? <p className="text-ink/40 text-center py-10 border border-dashed border-brand/20 rounded-xl">Chưa có phương thức nào. Hãy tích chọn phương thức hệ thống hoặc tự khai ở trên.</p>
+            : (
+              <div className="space-y-2">
+                {data.methods.map((m) => (
+                  <div key={m.id} className="bg-white rounded-xl border border-brand/10 p-4 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-ink">{m.carrierName}{m.serviceName ? ` · ${m.serviceName}` : ''}
+                        {m.systemCode
+                          ? <span className="ml-2 text-[11px] px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">Hệ thống</span>
+                          : <span className={`ml-2 text-[11px] px-2 py-0.5 rounded-full ${m.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{m.status === 'ACTIVE' ? 'Đang dùng' : 'Tạm tắt'}</span>}
+                      </p>
+                      <p className="text-sm text-ink/50">{formatVND(m.shippingFee)}{m.estimatedDays ? ` · ${m.estimatedDays}` : ''}{m.description ? ` · ${m.description}` : ''}</p>
+                    </div>
+                    <div className="flex gap-3 text-sm shrink-0">
+                      {m.systemCode
+                        ? <button onClick={() => toggleSystem(m.systemCode!, false)} className="text-red-500 hover:underline">Bỏ chọn</button>
+                        : (<>
+                            <button onClick={() => { setEditId(m.id); setForm(m); }} className="text-brand hover:underline">Sửa</button>
+                            <button onClick={() => remove(m.id)} className="text-red-500 hover:underline">Xoá</button>
+                          </>)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+      </section>
     </div>
   );
 }
