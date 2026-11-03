@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
   listSellerOrders, updateOrderStatus, updateShippingInfo, approveCancel, rejectCancel,
 } from '../controllers/order-seller.controller';
-import { listSellerReturns, approveReturn, rejectReturn } from '../controllers/return.controller';
+import { listSellerReturns, approveReturn, rejectReturn, replyReturn } from '../controllers/return.controller';
 import { listSellerComplaints, sellerRespondComplaint } from '../controllers/complaint.controller';
 import { createIncident, resolveIncident, listSellerIncidents } from '../controllers/incident.controller';
 import { listSellerReviews, replyReview } from '../controllers/review.controller';
@@ -40,6 +40,7 @@ router.patch('/orders/:id/cancel/reject', rejectCancel);        // UC10.5 - từ
 router.get('/returns', listSellerReturns);
 router.patch('/returns/:id/approve', approveReturn);
 router.patch('/returns/:id/reject', rejectReturn);
+router.patch('/returns/:id/reply', replyReturn); // Backlog B.24 - phản hồi trực tiếp với khách
 
 // UC11.2 - khiếu nại (người bán phản hồi)
 router.get('/complaints', listSellerComplaints);

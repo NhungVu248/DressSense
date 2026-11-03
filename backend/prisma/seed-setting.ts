@@ -5,6 +5,11 @@ const prisma = new PrismaClient();
 
 const DEFAULTS = [
   { key: 'returnWindowDays', value: '7', type: 'number', label: 'Thời hạn đổi/trả (ngày)', group: 'Chính sách', description: 'Số ngày Khách hàng được yêu cầu đổi/trả sau khi nhận hàng.' },
+  // Backlog C.37 - chính sách đổi/trả & hoàn tiền + phương thức thanh toán
+  { key: 'returnReasons', value: 'Sản phẩm lỗi/hỏng,Giao sai sản phẩm,Không đúng mô tả,Đổi size/màu,Lý do khác', type: 'string', label: 'Danh sách lý do đổi/trả', group: 'Chính sách', description: 'Lý do đổi/trả setup sẵn cho khách chọn, phân tách bằng dấu phẩy. Trả hàng được duyệt sẽ hoàn 100% tiền hàng của sản phẩm.' },
+  { key: 'payEnabledCOD', value: 'true', type: 'boolean', label: 'Cho phép thanh toán COD', group: 'Thanh toán', description: 'Bật/tắt phương thức thanh toán khi nhận hàng (COD).' },
+  { key: 'payEnabledVNPAY', value: 'true', type: 'boolean', label: 'Cho phép thanh toán VNPAY', group: 'Thanh toán', description: 'Bật/tắt thanh toán qua VNPAY (cần cấu hình VNP_* mới hoạt động).' },
+  { key: 'payEnabledVISA', value: 'true', type: 'boolean', label: 'Cho phép thanh toán thẻ quốc tế (Visa)', group: 'Thanh toán', description: 'Bật/tắt thanh toán thẻ quốc tế qua VNPAY.' },
   { key: 'complaintGraceDays', value: '3', type: 'number', label: 'Thời gian kích hoạt khiếu nại (ngày)', group: 'Chính sách', description: 'Quá thời gian giao dự kiến + N ngày mới cho phép khiếu nại.' },
   { key: 'lowStockThreshold', value: '5', type: 'number', label: 'Ngưỡng cảnh báo tồn kho thấp (mặc định)', group: 'Kho vận', description: 'Dùng khi biến thể chưa đặt ngưỡng riêng.' },
   { key: 'freeShipThreshold', value: '500000', type: 'number', label: 'Ngưỡng miễn phí vận chuyển (đ)', group: 'Kho vận', description: 'Đơn đạt ngưỡng này được xét miễn phí vận chuyển.' },

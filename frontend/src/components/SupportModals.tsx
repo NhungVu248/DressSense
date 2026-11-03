@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import api from '../lib/api';
 import { formatVND } from '../lib/products';
 import { createReturn, createComplaint, uploadEvidence, type ReturnType } from '../lib/support';
 import { createReview, uploadReviewImages, uploadReviewVideo } from '../lib/interact';
@@ -19,13 +20,23 @@ function Modal({ title, children, onClose }: { title: string; children: React.Re
   );
 }
 
-const RETURN_REASONS = ['Sản phẩm lỗi/hỏng', 'Giao sai sản phẩm', 'Không đúng mô tả', 'Đổi size/màu', 'Lý do khác'];
+// Backlog C.37 - danh sách lý do đổi/trả do Admin setup sẵn (lấy từ cấu hình, có fallback)
+const DEFAULT_RETURN_REASONS = ['Sản phẩm lỗi/hỏng', 'Giao sai sản phẩm', 'Không đúng mô tả', 'Đổi size/màu', 'Lý do khác'];
 
 // UC11.1 - yêu cầu đổi/trả
 export function ReturnModal({ order, onClose, onDone }: { order: Order; onClose: () => void; onDone: () => void }) {
   const [type, setType] = useState<ReturnType>('RETURN');
   const [picked, setPicked] = useState<Record<number, number>>(() => Object.fromEntries(order.items.map((i) => [i.id, 0])));
-  const [reason, setReason] = useState(RETURN_REASONS[0]);
+  const [reasons, setReasons] = useState<string[]>(DEFAULT_RETURN_REASONS);
+  const [reason, setReason] = useState(DEFAULT_RETURN_REASONS[0]);
+
+  useEffect(() => {
+    api.get('/settings/public').then((r) => {
+      const raw = r.data?.settings?.returnReasons;
+      const list = typeof raw === 'string' ? raw.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+      if (list.length) { setReasons(list); setReason(list[0]); }
+    }).catch(() => { /* dùng mặc định */ });
+  }, []);
   const [description, setDescription] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [exchangeSize, setExchangeSize] = useState('');
@@ -74,7 +85,7 @@ export function ReturnModal({ order, onClose, onDone }: { order: Order; onClose:
         <input value={exchangeSize} onChange={(e) => setExchangeSize(e.target.value)} placeholder="Size/màu muốn đổi (vd: L)" className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-3" />
       )}
       <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-3 bg-white">
-        {RETURN_REASONS.map((r) => <option key={r}>{r}</option>)}
+        {reasons.map((r) => <option key={r}>{r}</option>)}
       </select>
       <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả chi tiết (tuỳ chọn)" rows={2} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-2" />
       <p className={`text-xs mb-1 ${imageCount < 3 ? 'text-red-500' : 'text-green-600'}`}>Bắt buộc tối thiểu 3 ảnh sản phẩm (đang có {imageCount}). Có thể kèm video.</p>

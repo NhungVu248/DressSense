@@ -8,7 +8,7 @@ import { startOnlinePayment } from '../services/payment.service';
 import { vnpayEnabled } from '../config/env';
 import { releaseReserved, finalizeStock } from '../services/order.service';
 import { notify } from '../services/notification.service';
-import { getVatConfig, taxPortionOfInclusive } from '../services/settings.service';
+import { getVatConfig, taxPortionOfInclusive, getBoolSetting } from '../services/settings.service';
 import { CANCELLABLE_DIRECT, CANCELLABLE_REQUEST, type OrderStatusValue } from '../constants/order-status';
 
 // ============================================================
@@ -68,7 +68,11 @@ export async function getCheckoutInfo(req: Request, res: Response, next: NextFun
     });
     const subtotal = items.filter((i) => i.valid).reduce((a, i) => a + i.lineTotal, 0);
     const [shippingMethods, shippingConfig] = await Promise.all([getShippingMethods(), getShippingConfig()]);
-    res.json({ addresses, shippingMethods, shippingConfig, items, subtotal, vnpayEnabled: vnpayEnabled() });
+    // Backlog C.37 - phương thức thanh toán Admin cho phép
+    const [payCOD, payVNPAY, payVISA] = await Promise.all([
+      getBoolSetting('payEnabledCOD', true), getBoolSetting('payEnabledVNPAY', true), getBoolSetting('payEnabledVISA', true),
+    ]);
+    res.json({ addresses, shippingMethods, shippingConfig, items, subtotal, vnpayEnabled: vnpayEnabled(), paymentMethods: { COD: payCOD, VNPAY: payVNPAY, VISA: payVISA } });
   } catch (err) {
     next(err);
   }
@@ -98,6 +102,11 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
     const online = paymentMethod !== 'COD';
     if (online && !vnpayEnabled()) {
       return res.status(503).json({ message: 'Thanh toán online (VNPAY) chưa được cấu hình. Vui lòng chọn COD hoặc cấu hình VNPAY sandbox.', code: 'VNPAY_DISABLED' });
+    }
+    // Backlog C.37 - tôn trọng cấu hình phương thức thanh toán của Admin
+    const payKey = paymentMethod === 'COD' ? 'payEnabledCOD' : paymentMethod === 'VISA' ? 'payEnabledVISA' : 'payEnabledVNPAY';
+    if (!(await getBoolSetting(payKey, true))) {
+      return res.status(400).json({ message: 'Phương thức thanh toán này hiện không khả dụng. Vui lòng chọn phương thức khác.', code: 'PAYMENT_DISABLED' });
     }
 
     // 4E - địa chỉ phải thuộc khách và hợp lệ

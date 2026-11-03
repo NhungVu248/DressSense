@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { formatVND } from '../lib/products';
@@ -57,7 +57,18 @@ export default function CheckoutPage() {
   const discount = applied?.discount ?? 0;
   const total = Math.max(0, subtotal - discount + shipFee);
 
-  const paymentOptions: PaymentMethod[] = data?.vnpayEnabled ? ['COD', 'VNPAY', 'VISA'] : ['COD'];
+  // Backlog C.37 - lọc theo phương thức Admin cho phép (online còn cần VNPAY đã cấu hình)
+  const pm = data?.paymentMethods;
+  const paymentOptions: PaymentMethod[] = ([
+    ['COD', pm ? pm.COD : true],
+    ['VNPAY', (pm ? pm.VNPAY : true) && !!data?.vnpayEnabled],
+    ['VISA', (pm ? pm.VISA : true) && !!data?.vnpayEnabled],
+  ] as [PaymentMethod, boolean][]).filter(([, ok]) => ok).map(([m]) => m);
+
+  // nếu phương thức đang chọn bị tắt, chuyển về phương thức khả dụng đầu tiên
+  useEffect(() => {
+    if (paymentOptions.length && !paymentOptions.includes(payment)) setPayment(paymentOptions[0]);
+  }, [paymentOptions.join(','), payment]);
 
   async function doApplyVoucher() {
     setVoucherMsg('');

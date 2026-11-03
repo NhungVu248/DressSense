@@ -978,6 +978,7 @@ model ReturnRequest {
   exchangeSize String? // size muốn đổi (khi EXCHANGE)
   status       RequestStatus @default(PENDING)
   sellerNote   String? // lý do khi từ chối / ghi chú xử lý
+  sellerReply  String?       @db.Text // Backlog B.24 - phản hồi trực tiếp với khách (hiển thị cho khách)
   refundAmount Int? // số tiền hoàn dự kiến (khi RETURN)
   createdAt    DateTime      @default(now())
   resolvedAt   DateTime?

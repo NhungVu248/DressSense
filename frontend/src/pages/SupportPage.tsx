@@ -51,6 +51,7 @@ export default function SupportPage() {
               <p className="text-sm text-gray-500 mt-2">Lý do: {r.reason}</p>
               {r.refundAmount != null && <p className="text-sm text-ink mt-0.5">Hoàn dự kiến: {formatVND(r.refundAmount)}</p>}
               {r.sellerNote && <p className="text-xs text-gray-400 mt-1">Người bán: {r.sellerNote}</p>}
+              {r.sellerReply && <p className="text-sm mt-1 bg-brand-light/50 rounded-lg p-2 text-ink"><span className="text-gray-500">Phản hồi từ người bán:</span> {r.sellerReply}</p>}
             </div>
           ))}</div>
       ) : (

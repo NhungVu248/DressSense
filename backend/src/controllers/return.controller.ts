@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { createRefund } from '../services/refund.service';
+import { notify } from '../services/notification.service';
 import type { JwtPayload } from '../utils/jwt';
 
 // ============================================================
@@ -166,6 +167,23 @@ export async function rejectReturn(req: Request, res: Response, next: NextFuncti
   } catch (err) {
     next(err);
   }
+}
+
+// Backlog B.24 - Người bán phản hồi trực tiếp với khách trên yêu cầu đổi/trả.
+const replySchema = z.object({ reply: z.string().trim().min(1, 'Vui lòng nhập nội dung phản hồi.').max(1000) });
+
+// PATCH /api/seller/returns/:id/reply - gửi phản hồi cho khách (không đổi trạng thái)
+export async function replyReturn(req: Request, res: Response, next: NextFunction) {
+  try {
+    const body = replySchema.safeParse(req.body);
+    if (!body.success) return res.status(400).json({ message: body.error.issues[0]?.message ?? 'Dữ liệu không hợp lệ.' });
+    const r = await assertSellerReturn(Number(req.params.id), req.user!);
+    if (!r.ok) return res.status(r.code).json({ message: r.message });
+    const updated = await prisma.returnRequest.update({ where: { id: r.rr.id }, data: { sellerReply: body.data.reply } });
+    // thông báo cho khách (giao dịch - không tắt được)
+    await notify(r.rr.userId, 'RETURN', 'Phản hồi yêu cầu đổi/trả', `Người bán đã phản hồi yêu cầu ${r.rr.code}.`, '/orders');
+    res.json({ ok: true, request: updated });
+  } catch (err) { next(err); }
 }
 
 // POST /api/returns/upload hoặc /api/complaints/upload - tải ảnh/video bằng chứng (UC11)

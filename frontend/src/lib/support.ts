@@ -10,6 +10,7 @@ export interface ReturnItemRow { id: number; orderItemId: number; quantity: numb
 export interface ReturnRequest {
   id: number; code: string; orderId: number; type: ReturnType; reason: string; description: string | null;
   evidence: string | null; exchangeSize: string | null; status: RequestStatus; sellerNote: string | null;
+  sellerReply: string | null; // Backlog B.24 - phản hồi trực tiếp với khách
   refundAmount: number | null; createdAt: string; resolvedAt: string | null;
   items: ReturnItemRow[]; order?: { code: string }; user?: { fullName: string };
 }
@@ -57,6 +58,7 @@ export async function respondComplaint(id: number, accept: boolean) { return (aw
 export async function getSellerReturns(): Promise<ReturnRequest[]> { return (await api.get('/seller/returns')).data.requests; }
 export async function approveReturn(id: number, note?: string) { return (await api.patch(`/seller/returns/${id}/approve`, { note })).data; }
 export async function rejectReturn(id: number, note: string) { return (await api.patch(`/seller/returns/${id}/reject`, { note })).data; }
+export async function replyReturn(id: number, reply: string) { return (await api.patch(`/seller/returns/${id}/reply`, { reply })).data; } // Backlog B.24
 export async function getSellerComplaints(): Promise<Complaint[]> { return (await api.get('/seller/complaints')).data.complaints; }
 export async function sellerRespondComplaint(id: number, proposal: string) { return (await api.patch(`/seller/complaints/${id}/respond`, { proposal })).data; }
 export async function getSellerIncidents(): Promise<Incident[]> { return (await api.get('/seller/incidents')).data.incidents; }

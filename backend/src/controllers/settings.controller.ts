@@ -4,7 +4,8 @@ import type { JwtPayload } from '../utils/jwt';
 import { invalidateSettingsCache } from '../services/settings.service';
 
 // Các khóa cấu hình công khai (an toàn để lộ cho frontend khách/người bán).
-const PUBLIC_KEYS = ['siteName', 'supportEmail', 'vatEnabled', 'vatRate', 'freeShipThreshold'];
+const PUBLIC_KEYS = ['siteName', 'supportEmail', 'vatEnabled', 'vatRate', 'freeShipThreshold',
+  'returnReasons', 'payEnabledCOD', 'payEnabledVNPAY', 'payEnabledVISA']; // Backlog C.37
 
 // GET /api/settings/public - cấu hình công khai (không cần quyền admin)
 export async function getPublicSettings(_req: Request, res: Response, next: NextFunction) {

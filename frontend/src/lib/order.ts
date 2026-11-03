@@ -15,6 +15,7 @@ export interface CheckoutItem {
 export interface CheckoutInfo {
   addresses: Address[]; shippingMethods: ShippingMethod[]; shippingConfig: ShippingConfig;
   items: CheckoutItem[]; subtotal: number; vnpayEnabled: boolean;
+  paymentMethods?: { COD: boolean; VNPAY: boolean; VISA: boolean }; // Backlog C.37 - Admin bật/tắt
 }
 
 export type OrderStatus = 'AWAITING_PAYMENT' | 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'SHIPPING' | 'DELIVERED' | 'COMPLETED' | 'CANCELLED' | 'PAID';

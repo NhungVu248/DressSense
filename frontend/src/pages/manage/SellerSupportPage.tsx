@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatVND } from '../../lib/products';
 import {
-  getSellerReturns, approveReturn, rejectReturn,
+  getSellerReturns, approveReturn, rejectReturn, replyReturn,
   getSellerComplaints, sellerRespondComplaint,
   getSellerIncidents, resolveIncident,
   RETURN_TYPE_LABEL, REQUEST_STATUS_LABEL, COMPLAINT_STATUS_LABEL, INCIDENT_TYPE_LABEL,
@@ -38,6 +38,7 @@ export default function SellerSupportPage() {
 
   async function approve(id: number) { try { const r = await approveReturn(id); inv('seller-returns'); alert(r.refund?.skipped ? 'Đã duyệt (COD - không hoàn tiền).' : 'Đã duyệt yêu cầu.'); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } }
   async function reject(id: number) { const note = prompt('Lý do từ chối:'); if (!note) return; try { await rejectReturn(id, note); inv('seller-returns'); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } }
+  async function reply(id: number) { const msg = prompt('Phản hồi gửi tới khách:'); if (!msg || !msg.trim()) return; try { await replyReturn(id, msg.trim()); inv('seller-returns'); alert('Đã gửi phản hồi tới khách.'); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } }
   async function respond(id: number) { const proposal = prompt('Phương án giải quyết:'); if (!proposal) return; try { await sellerRespondComplaint(id, proposal); inv('seller-complaints'); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } }
   async function resolve(id: number, resolution: string) {
     let newEta: string | undefined;
@@ -68,12 +69,17 @@ export default function SellerSupportPage() {
               <p className="text-sm text-gray-500 mt-1">Đơn {r.order?.code} · Lý do: {r.reason}{r.refundAmount != null && ` · Hoàn ${formatVND(r.refundAmount)}`}</p>
               {r.description && <p className="text-xs text-gray-400 mt-1">{r.description}</p>}
               <Evidence value={r.evidence} />
-              {r.status === 'PENDING' && (
-                <div className="flex gap-2 mt-3">
-                  <button onClick={() => approve(r.id)} className="bg-brand text-white rounded-lg px-4 py-1.5 text-sm">Chấp thuận</button>
-                  <button onClick={() => reject(r.id)} className="border border-red-200 text-red-600 rounded-lg px-4 py-1.5 text-sm">Từ chối</button>
-                </div>
-              )}
+              {r.sellerReply && <p className="text-sm mt-2 bg-brand-light/50 rounded-lg p-2"><span className="text-gray-500">Phản hồi của bạn:</span> <span className="text-ink">{r.sellerReply}</span></p>}
+              <div className="flex gap-2 mt-3 flex-wrap">
+                {r.status === 'PENDING' && (
+                  <>
+                    <button onClick={() => approve(r.id)} className="bg-brand text-white rounded-lg px-4 py-1.5 text-sm">Chấp thuận</button>
+                    <button onClick={() => reject(r.id)} className="border border-red-200 text-red-600 rounded-lg px-4 py-1.5 text-sm">Từ chối</button>
+                  </>
+                )}
+                {/* Backlog B.24 - phản hồi trực tiếp với khách (mọi trạng thái) */}
+                <button onClick={() => reply(r.id)} className="border border-brand/30 text-brand rounded-lg px-4 py-1.5 text-sm">Phản hồi khách</button>
+              </div>
             </div>
           ))}</div>
       )}
