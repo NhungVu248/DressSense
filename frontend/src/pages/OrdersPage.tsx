@@ -8,6 +8,7 @@ import {
   type Order, type OrderStatus,
 } from '../lib/order';
 import { ReturnModal, ComplaintModal, ReviewModal } from '../components/SupportModals';
+import { openConversation } from '../lib/messages';
 
 const STATUS_CLS: Record<OrderStatus, string> = {
   AWAITING_PAYMENT: 'bg-orange-100 text-orange-700', PENDING: 'bg-amber-100 text-amber-700',
@@ -231,6 +232,22 @@ export function OrderDetailPage() {
           {(canCancelDirect || canCancelRequest) && <button onClick={() => setShowCancel(true)} className="border border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-5 py-2.5 text-sm">{canCancelDirect ? 'Hủy đơn hàng' : 'Yêu cầu hủy'}</button>}
         </div>
       )}
+
+      {/* Backlog D - nút liên hệ ở trang chi tiết đơn hàng (nhắn shop / CSKH) */}
+      <div className="flex flex-wrap gap-2 mt-3">
+        {o.sellerId != null && (
+          <button
+            onClick={async () => { try { const cid = await openConversation({ type: 'SELLER', sellerId: o.sellerId!, orderId: o.id }); nav(`/messages?c=${cid}`); } catch (e: any) { alert(e?.response?.data?.message ?? 'Không mở được hội thoại.'); } }}
+            className="inline-flex items-center gap-1 border border-brand/30 text-brand hover:bg-brand-light rounded-lg px-5 py-2.5 text-sm">
+            💬 Nhắn tin với shop
+          </button>
+        )}
+        <button
+          onClick={async () => { try { const cid = await openConversation({ type: 'ADMIN', orderId: o.id }); nav(`/messages?c=${cid}`); } catch (e: any) { alert(e?.response?.data?.message ?? 'Không mở được hội thoại.'); } }}
+          className="inline-flex items-center gap-1 border border-black/15 text-ink hover:border-brand rounded-lg px-5 py-2.5 text-sm">
+          🎧 Liên hệ CSKH
+        </button>
+      </div>
 
       {showReturn && <ReturnModal order={o} onClose={() => setShowReturn(false)} onDone={() => { setShowReturn(false); refresh(); }} />}
       {showComplaint && <ComplaintModal orderId={o.id} onClose={() => setShowComplaint(false)} onDone={() => setShowComplaint(false)} />}

@@ -29,7 +29,7 @@ export interface Transaction {
   createdAt: string; paidAt?: string | null;
 }
 export interface Order {
-  id: number; code: string; status: OrderStatus;
+  id: number; code: string; status: OrderStatus; sellerId?: number | null;
   paymentMethod: PaymentMethod; paymentStatus: PaymentStatus;
   recipientName: string; phone: string; province: string; district: string; ward: string; addressDetail: string;
   subtotal: number; discount: number; voucherCode: string | null;
