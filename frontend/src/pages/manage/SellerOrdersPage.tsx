@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatVND } from '../../lib/products';
+import { promptDialog } from '../../components/Dialog';
 import {
   getSellerOrders, sellerUpdateStatus, sellerApproveCancel, sellerRejectCancel,
   ORDER_STATUS_LABEL, type Order, type OrderStatus,
@@ -76,9 +77,10 @@ function SellerOrderCard({ o, onChanged }: { o: Order; onChanged: () => void }) 
     finally { setBusy(false); }
   }
   async function reportIncident() {
-    const t = prompt('Loại sự cố: LATE (giao chậm) / FAILED (giao thất bại) / LOST (thất lạc)')?.toUpperCase();
+    const t = (await promptDialog('Loại sự cố: LATE (giao chậm) / FAILED (giao thất bại) / LOST (thất lạc)'))?.toUpperCase();
     if (!t || !['LATE', 'FAILED', 'LOST'].includes(t)) return;
-    try { await createIncident(o.id, t as IncidentType, prompt('Ghi chú (tuỳ chọn):') || undefined); alert('Đã ghi nhận sự cố. Xử lý trong mục Hỗ trợ sau bán.'); }
+    const note = await promptDialog('Ghi chú (tuỳ chọn):');
+    try { await createIncident(o.id, t as IncidentType, note || undefined); alert('Đã ghi nhận sự cố. Xử lý trong mục Hỗ trợ sau bán.'); }
     catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); }
   }
   async function approve() { setBusy(true); try { await sellerApproveCancel(o.id); onChanged(); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } finally { setBusy(false); } }

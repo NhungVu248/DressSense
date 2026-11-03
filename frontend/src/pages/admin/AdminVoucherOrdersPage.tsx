@@ -4,6 +4,7 @@ import { formatVND } from '../../lib/products';
 import {
   listAdminVoucherOrders, approveVoucherOrder, rejectVoucherOrder, PACKAGE_LABEL, VO_STATUS_LABEL,
 } from '../../lib/voucherOrders';
+import { promptDialog } from '../../components/Dialog';
 
 // Backlog C.45 - Admin duyệt đơn mua gói voucher (mức chiết khấu, combo/lẻ).
 const STATUS_TABS = [
@@ -58,7 +59,7 @@ export default function AdminVoucherOrdersPage() {
               {o.status === 'PENDING_REVIEW' && (
                 <div className="flex flex-col gap-2 shrink-0">
                   <button onClick={() => approveM.mutate(o.id)} disabled={approveM.isPending} className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm">Duyệt</button>
-                  <button onClick={() => { const r = window.prompt('Lý do từ chối:'); if (r && r.trim()) rejectM.mutate({ id: o.id, reason: r.trim() }); }} className="px-3 py-1.5 rounded-lg border border-red-300 text-red-500 text-sm">Từ chối</button>
+                  <button onClick={async () => { const r = await promptDialog('Lý do từ chối:'); if (r && r.trim()) rejectM.mutate({ id: o.id, reason: r.trim() }); }} className="px-3 py-1.5 rounded-lg border border-red-300 text-red-500 text-sm">Từ chối</button>
                 </div>
               )}
             </div>

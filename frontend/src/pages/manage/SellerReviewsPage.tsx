@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSellerReviews, replyReview, getSellerQuestions, answerQuestion } from '../../lib/interact';
+import { promptDialog } from '../../components/Dialog';
 
 // UC12.2 + UC12.3 - Người bán phản hồi đánh giá & trả lời hỏi đáp
 export default function SellerReviewsPage() {
@@ -10,12 +11,12 @@ export default function SellerReviewsPage() {
   const { data: questions } = useQuery({ queryKey: ['seller-questions'], queryFn: getSellerQuestions });
 
   async function reply(id: number) {
-    const text = prompt('Nội dung phản hồi:'); if (!text) return;
+    const text = await promptDialog('Nội dung phản hồi:'); if (!text) return;
     try { await replyReview(id, text); qc.invalidateQueries({ queryKey: ['seller-reviews'] }); }
     catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); }
   }
   async function answer(id: number) {
-    const text = prompt('Câu trả lời:'); if (!text) return;
+    const text = await promptDialog('Câu trả lời:'); if (!text) return;
     try { await answerQuestion(id, text); qc.invalidateQueries({ queryKey: ['seller-questions'] }); }
     catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); }
   }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { confirmDialog } from '../../components/Dialog';
 import { Link } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
 import { Field, PrimaryButton, SecondaryButton, ErrorBox, SuccessBox } from '../../components/ui';
@@ -56,7 +57,7 @@ export default function AddressBookPage() {
 
   // Luồng 4b: xóa (có xác nhận)
   async function remove(a: Address) {
-    if (!confirm(`Xóa địa chỉ của ${a.recipientName}?`)) return;
+    if (!(await confirmDialog(`Xóa địa chỉ của ${a.recipientName}?`, { danger: true }))) return;
     setError('');
     try {
       const res = await api.delete(`/addresses/${a.id}`);

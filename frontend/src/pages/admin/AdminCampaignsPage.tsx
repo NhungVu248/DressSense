@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { confirmDialog } from '../../components/Dialog';
 import api, { getErrorMessage } from '../../lib/api';
 import { ErrorBox, SuccessBox, PrimaryButton, SecondaryButton } from '../../components/ui';
 import { fmtDate, toLocalInput, StatusBadge, inp, L, Modal, PageHeader, EmptyCard } from '../../components/promo-ui';
@@ -25,7 +26,7 @@ export default function AdminCampaignsPage() {
   useEffect(load, []);
 
   async function send(c: Campaign) {
-    if (!confirm(`Gửi chiến dịch "${c.name}" tới Khách hàng phù hợp ngay bây giờ?`)) return;
+    if (!(await confirmDialog(`Gửi chiến dịch "${c.name}" tới Khách hàng phù hợp ngay bây giờ?`, { okLabel: 'Gửi' }))) return;
     setError(''); setSuccess('');
     try { const r = await api.post(`/admin/campaigns/${c.id}/send`); setSuccess(`Đã gửi tới ${r.data.recipientCount} khách hàng.`); load(); } catch (e) { setError(getErrorMessage(e)); }
   }
@@ -34,7 +35,7 @@ export default function AdminCampaignsPage() {
     try { await api.post(`/admin/campaigns/${c.id}/cancel`); setSuccess('Đã hủy chiến dịch.'); load(); } catch (e) { setError(getErrorMessage(e)); }
   }
   async function del(c: Campaign) {
-    if (!confirm(`Xóa chiến dịch "${c.name}"?`)) return;
+    if (!(await confirmDialog(`Xóa chiến dịch "${c.name}"?`, { danger: true }))) return;
     setError(''); setSuccess('');
     try { await api.delete(`/admin/campaigns/${c.id}`); setSuccess('Đã xóa chiến dịch.'); load(); } catch (e) { setError(getErrorMessage(e)); }
   }

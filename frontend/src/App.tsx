@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-do
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import GlobalToast from './components/Toast';
+import GlobalDialog from './components/Dialog';
 import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
 // UC7.4 - Xem chi tiết sản phẩm
@@ -120,6 +121,7 @@ export default function App() {
     <>
       <ScrollToTop />
       <GlobalToast />
+      <GlobalDialog />
       <PasswordExpiryBanner />
       <Routes>
       {/* UC7 - Tìm kiếm & duyệt sản phẩm */}

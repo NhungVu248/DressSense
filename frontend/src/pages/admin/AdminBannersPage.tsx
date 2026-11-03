@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { confirmDialog } from '../../components/Dialog';
 import api, { getErrorMessage } from '../../lib/api';
 import { ErrorBox, SuccessBox, PrimaryButton, SecondaryButton } from '../../components/ui';
 import { fmtDate, toLocalInput, StatusBadge, inp, L, Modal, PageHeader, EmptyCard } from '../../components/promo-ui';
@@ -31,7 +32,7 @@ export default function AdminBannersPage() {
     try { await api.post(url); setSuccess(okMsg); load(); } catch (e) { setError(getErrorMessage(e)); }
   }
   async function del(b: Banner) {
-    if (!confirm(`Xóa banner "${b.name}"?`)) return;
+    if (!(await confirmDialog(`Xóa banner "${b.name}"?`, { danger: true }))) return;
     setError(''); setSuccess('');
     try { await api.delete(`/admin/banners/${b.id}`); setSuccess('Đã xóa banner.'); load(); } catch (e) { setError(getErrorMessage(e)); }
   }

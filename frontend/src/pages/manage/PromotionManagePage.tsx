@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { confirmDialog } from '../../components/Dialog';
 import api, { getErrorMessage } from '../../lib/api';
 import { ErrorBox, SuccessBox, PrimaryButton, SecondaryButton } from '../../components/ui';
 import { money, fmtDate, toLocalInput, StatusBadge, inp, L, Modal } from '../../components/promo-ui';
@@ -45,7 +46,7 @@ export default function PromotionManagePage() {
     try { await api.post(url); setSuccess(okMsg); load(); } catch (e) { setError(getErrorMessage(e)); }
   }
   async function del(kind: 'vouchers' | 'flash-sales', id: number, name: string) {
-    if (!confirm(`Xóa "${name}"? Chỉ xóa được bản Nháp.`)) return;
+    if (!(await confirmDialog(`Xóa "${name}"? Chỉ xóa được bản Nháp.`, { danger: true }))) return;
     setError(''); setSuccess('');
     try { await api.delete(`/promotions/${kind}/${id}`); setSuccess('Đã xóa.'); load(); } catch (e) { setError(getErrorMessage(e)); }
   }

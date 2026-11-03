@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { confirmDialog } from '../components/Dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { formatVND } from '../lib/products';
@@ -143,7 +144,7 @@ export function OrderDetailPage() {
     catch (e: any) { alert(e?.response?.data?.message ?? 'Không thể thanh toán lại.'); }
   }
   async function doConfirm() {
-    if (!confirm('Xác nhận bạn đã nhận được hàng?')) return;
+    if (!(await confirmDialog('Xác nhận bạn đã nhận được hàng?', { okLabel: 'Đã nhận' }))) return;
     setBusy(true);
     try { await confirmReceipt(Number(id)); refresh(); }
     catch (e: any) { alert(e?.response?.data?.message ?? 'Không xác nhận được.'); }

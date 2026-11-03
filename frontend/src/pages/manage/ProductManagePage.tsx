@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { confirmDialog } from '../../components/Dialog';
 import { Link } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
 import { getToken } from '../../lib/token';
@@ -55,7 +56,7 @@ export default function ProductManagePage({ basePath = '/manage/products' }: { b
   }
 
   async function remove(p: ManagedProduct) {
-    if (!confirm(`Xóa sản phẩm "${p.name}"? Nếu đã có đơn hàng, sản phẩm sẽ được lưu trữ (xóa mềm).`)) return;
+    if (!(await confirmDialog(`Xóa sản phẩm "${p.name}"? Nếu đã có đơn hàng, sản phẩm sẽ được lưu trữ (xóa mềm).`, { danger: true }))) return;
     setError(''); setSuccess('');
     try {
       const res = await api.delete(`/products/${p.id}`);

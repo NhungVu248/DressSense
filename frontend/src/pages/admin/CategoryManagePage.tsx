@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { confirmDialog } from '../../components/Dialog';
 import { Link } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
 import { ErrorBox, SuccessBox, PrimaryButton, SecondaryButton } from '../../components/ui';
@@ -37,7 +38,7 @@ export default function CategoryManagePage() {
   }
 
   async function remove(c: Cat) {
-    if (!confirm(`Xóa danh mục "${c.name}"?`)) return;
+    if (!(await confirmDialog(`Xóa danh mục "${c.name}"?`, { danger: true }))) return;
     setError(''); setSuccess('');
     try { await api.delete(`/admin/categories/${c.id}`); setSuccess('Đã xóa danh mục.'); load(); }
     catch (e) { setError(getErrorMessage(e)); } // 6F - đang tham chiếu

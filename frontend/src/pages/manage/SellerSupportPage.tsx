@@ -7,6 +7,7 @@ import {
   getSellerIncidents, resolveIncident,
   RETURN_TYPE_LABEL, REQUEST_STATUS_LABEL, COMPLAINT_STATUS_LABEL, INCIDENT_TYPE_LABEL,
 } from '../../lib/support';
+import { promptDialog, confirmDialog } from '../../components/Dialog';
 
 type Tab = 'returns' | 'complaints' | 'incidents';
 
@@ -37,13 +38,13 @@ export default function SellerSupportPage() {
   const inv = (k: string) => qc.invalidateQueries({ queryKey: [k] });
 
   async function approve(id: number) { try { const r = await approveReturn(id); inv('seller-returns'); alert(r.refund?.skipped ? 'Đã duyệt (COD - không hoàn tiền).' : 'Đã duyệt yêu cầu.'); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } }
-  async function reject(id: number) { const note = prompt('Lý do từ chối:'); if (!note) return; try { await rejectReturn(id, note); inv('seller-returns'); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } }
-  async function reply(id: number) { const msg = prompt('Phản hồi gửi tới khách:'); if (!msg || !msg.trim()) return; try { await replyReturn(id, msg.trim()); inv('seller-returns'); alert('Đã gửi phản hồi tới khách.'); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } }
-  async function respond(id: number) { const proposal = prompt('Phương án giải quyết:'); if (!proposal) return; try { await sellerRespondComplaint(id, proposal); inv('seller-complaints'); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } }
+  async function reject(id: number) { const note = await promptDialog('Lý do từ chối:'); if (!note) return; try { await rejectReturn(id, note); inv('seller-returns'); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } }
+  async function reply(id: number) { const msg = await promptDialog('Phản hồi gửi tới khách:'); if (!msg || !msg.trim()) return; try { await replyReturn(id, msg.trim()); inv('seller-returns'); alert('Đã gửi phản hồi tới khách.'); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } }
+  async function respond(id: number) { const proposal = await promptDialog('Phương án giải quyết:'); if (!proposal) return; try { await sellerRespondComplaint(id, proposal); inv('seller-complaints'); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); } }
   async function resolve(id: number, resolution: string) {
     let newEta: string | undefined;
-    if (resolution === 'UPDATE_ETA') { newEta = prompt('Thời gian giao mới (YYYY-MM-DD):') || undefined; if (!newEta) return; }
-    if (resolution === 'LOST_REFUND' && !confirm('Xác nhận thất lạc: hủy đơn và hoàn tiền (nếu đã thanh toán)?')) return;
+    if (resolution === 'UPDATE_ETA') { newEta = await promptDialog('Thời gian giao mới (YYYY-MM-DD):') || undefined; if (!newEta) return; }
+    if (resolution === 'LOST_REFUND' && !(await confirmDialog('Xác nhận thất lạc: hủy đơn và hoàn tiền (nếu đã thanh toán)?', { danger: true }))) return;
     try { const r = await resolveIncident(id, resolution, newEta); inv('seller-incidents'); alert(r.refund?.transactionId ? 'Đã xử lý + hoàn tiền.' : 'Đã xử lý sự cố.'); } catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); }
   }
 

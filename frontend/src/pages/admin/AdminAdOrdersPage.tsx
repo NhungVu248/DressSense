@@ -5,6 +5,7 @@ import {
   listAdminAdOrders, getAdTimeline, approveAdOrder, rejectAdOrder,
   AD_POSITION_LABEL, AD_STATUS_LABEL, type AdPosition,
 } from '../../lib/ads';
+import { promptDialog } from '../../components/Dialog';
 
 // Backlog C.41 - Admin duyệt đơn chạy banner + bảng timeline theo tuần/tháng.
 const STATUS_TABS = [
@@ -46,7 +47,7 @@ function OrdersTab() {
               {o.status === 'PENDING_REVIEW' && (
                 <div className="flex flex-col gap-2 shrink-0">
                   <button onClick={() => approveM.mutate(o.id)} disabled={approveM.isPending} className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm">Duyệt</button>
-                  <button onClick={() => { const r = window.prompt('Lý do từ chối:'); if (r && r.trim()) rejectM.mutate({ id: o.id, reason: r.trim() }); }} className="px-3 py-1.5 rounded-lg border border-red-300 text-red-500 text-sm">Từ chối</button>
+                  <button onClick={async () => { const r = await promptDialog('Lý do từ chối:'); if (r && r.trim()) rejectM.mutate({ id: o.id, reason: r.trim() }); }} className="px-3 py-1.5 rounded-lg border border-red-300 text-red-500 text-sm">Từ chối</button>
                 </div>
               )}
             </div>

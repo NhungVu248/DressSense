@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { confirmDialog } from '../../components/Dialog';
 import { Link } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
 import { ErrorBox, SuccessBox, PrimaryButton, SecondaryButton, Chip } from '../../components/ui';
@@ -134,7 +135,7 @@ export default function SizeInfoPage() {
 
   async function remove(categoryId: number) {
     const cat = catalog?.categories.find((c) => c.id === categoryId);
-    if (!confirm(`Xóa thông tin size của "${cat?.name}"?`)) return;
+    if (!(await confirmDialog(`Xóa thông tin size của "${cat?.name}"?`, { danger: true }))) return;
     setError('');
     try {
       await api.delete(`/personalization/sizes/${categoryId}`);

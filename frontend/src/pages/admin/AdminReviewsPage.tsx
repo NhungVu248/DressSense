@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getAdminReviews, moderateReview } from '../../lib/interact';
+import { promptDialog } from '../../components/Dialog';
 
 const FILTERS = [{ v: '', label: 'Tất cả' }, { v: 'VISIBLE', label: 'Đang hiển thị' }, { v: 'HIDDEN', label: 'Đã ẩn' }];
 
@@ -11,7 +12,7 @@ export default function AdminReviewsPage() {
   const { data: reviews, isLoading } = useQuery({ queryKey: ['admin-reviews', status], queryFn: () => getAdminReviews(status || undefined) });
 
   async function hide(id: number) {
-    const note = prompt('Lý do ẩn (gửi tới khách, tuỳ chọn):') ?? undefined;
+    const note = (await promptDialog('Lý do ẩn (gửi tới khách, tuỳ chọn):')) ?? undefined;
     try { await moderateReview(id, true, note); qc.invalidateQueries({ queryKey: ['admin-reviews'] }); }
     catch (e: any) { alert(e?.response?.data?.message ?? 'Lỗi'); }
   }
