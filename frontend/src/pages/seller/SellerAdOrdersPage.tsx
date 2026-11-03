@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { uploadFile } from '../../lib/upload';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { formatVND } from '../../lib/products';
@@ -32,6 +33,7 @@ export default function SellerAdOrdersPage() {
   const [f, setF] = useState<CreateBannerOrderInput>(EMPTY);
   const [showForm, setShowForm] = useState(false);
   const [err, setErr] = useState('');
+  const [uploadingImg, setUploadingImg] = useState(false);
 
   const { data: orders, isLoading } = useQuery({ queryKey: ['my-ad-orders'], queryFn: listMyAdOrders });
 
@@ -67,8 +69,52 @@ export default function SellerAdOrdersPage() {
       {showForm && (
         <div className="rounded-2xl border border-brand/10 bg-white p-4 mb-6 grid grid-cols-2 gap-3">
           <label className="col-span-2 text-sm">Tên chiến dịch<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} className={inp} /></label>
-          <label className="col-span-2 text-sm">Ảnh banner (URL)<input value={f.imageUrl} onChange={(e) => setF({ ...f, imageUrl: e.target.value })} className={inp} placeholder="https://..." /></label>
-          {f.imageUrl && <div className="col-span-2 h-24 rounded-lg overflow-hidden bg-brand/5"><img src={f.imageUrl} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.opacity = '0'; }} /></div>}
+          <div className="col-span-2 space-y-1.5">
+            <span className="block text-sm font-medium text-ink/80">Ảnh banner quảng cáo <span className="text-red-500">*</span></span>
+            {f.imageUrl ? (
+              <div className="relative group rounded-xl overflow-hidden border border-brand/20 bg-brand/5 h-36">
+                <img src={f.imageUrl} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.opacity = '0.3'; }} />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <label className="cursor-pointer bg-white text-ink text-xs font-medium px-3 py-1.5 rounded-lg shadow-sm hover:bg-gray-100">
+                    {uploadingImg ? 'Đang tải…' : 'Đổi ảnh banner khác'}
+                    <input type="file" accept="image/*" disabled={uploadingImg} onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setUploadingImg(true);
+                      try {
+                        const url = await uploadFile(file);
+                        setF((prev) => ({ ...prev, imageUrl: url }));
+                      } catch (err: any) {
+                        setErr(err?.response?.data?.message || 'Không thể tải ảnh lên.');
+                      } finally { setUploadingImg(false); }
+                    }} className="hidden" />
+                  </label>
+                  <button type="button" onClick={() => setF((prev) => ({ ...prev, imageUrl: '' }))} className="bg-red-600 text-white text-xs px-2.5 py-1.5 rounded-lg hover:bg-red-700">Xóa</button>
+                </div>
+              </div>
+            ) : (
+              <label className="border-2 border-dashed border-brand/20 hover:border-brand/40 rounded-xl p-5 flex flex-col items-center justify-center cursor-pointer transition-colors bg-brand-light/20 hover:bg-brand-light/40">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-brand mb-1">
+                  <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" />
+                </svg>
+                <span className="text-xs font-medium text-brand">
+                  {uploadingImg ? 'Đang tải ảnh lên…' : 'Bấm để tải tệp ảnh banner lên'}
+                </span>
+                <span className="text-[11px] text-gray-400 mt-0.5">JPG, PNG, WEBP (tối đa 10MB)</span>
+                <input type="file" accept="image/*" disabled={uploadingImg} onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setUploadingImg(true);
+                  try {
+                    const url = await uploadFile(file);
+                    setF((prev) => ({ ...prev, imageUrl: url }));
+                  } catch (err: any) {
+                    setErr(err?.response?.data?.message || 'Không thể tải ảnh lên.');
+                  } finally { setUploadingImg(false); }
+                }} className="hidden" />
+              </label>
+            )}
+          </div>
           <label className="text-sm">Tiêu đề<input value={f.title ?? ''} onChange={(e) => setF({ ...f, title: e.target.value })} className={inp} /></label>
           <label className="text-sm">Mô tả ngắn<input value={f.subtitle ?? ''} onChange={(e) => setF({ ...f, subtitle: e.target.value })} className={inp} /></label>
           <label className="text-sm">Vị trí hiển thị

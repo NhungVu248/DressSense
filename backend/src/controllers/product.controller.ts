@@ -264,12 +264,13 @@ const createSchema = z.object({
   // UC6.3 - trạng thái + biến thể (size + tồn kho ban đầu, không âm)
   status: z.enum(['DRAFT', 'PENDING', 'ACTIVE', 'HIDDEN']).optional(),
   variants: z.array(z.object({ size: z.string().min(1), stock: z.coerce.number().int().min(0) })).optional(),
+  images: z.array(z.object({ url: z.string().min(1), isPrimary: z.boolean().optional() })).optional(),
 });
 
 // POST /api/products  (chỉ SELLER/ADMIN) - UC6.3 thêm sản phẩm (nguyên tử + tự phân tích UC4.1)
 export async function createProduct(req: Request, res: Response, next: NextFunction) {
   try {
-    const { variants, status, ...fields } = createSchema.parse(req.body);
+    const { variants, images, status, ...fields } = createSchema.parse(req.body);
     // 7F - danh mục phải hợp lệ và đang hoạt động
     const cat = await prisma.category.findUnique({ where: { id: fields.categoryId } });
     if (!cat || !cat.active) return res.status(400).json({ message: 'Danh mục không hợp lệ hoặc đã bị ẩn. Vui lòng chọn lại.' });
@@ -279,12 +280,16 @@ export async function createProduct(req: Request, res: Response, next: NextFunct
       fields.price = finalPriceFromBeforeTax(fields.priceBeforeTax, vat.rate);
     }
     const st = status ?? 'ACTIVE';
-    // 8E - nguyên tử: tạo trọn vẹn SP + biến thể (+tồn kho) hoặc không gì
+    // 8E - nguyên tử: tạo trọn vẹn SP + biến thể (+tồn kho) + ảnh hoặc không gì
     const product = await prisma.product.create({
       data: {
         ...fields, sellerId: req.user!.userId, status: st,
         variants: variants && variants.length ? { create: variants.map((v) => ({ size: v.size, stock: v.stock })) } : undefined,
+        images: images && images.length ? {
+          create: images.map((im, idx) => ({ url: im.url, isPrimary: im.isPrimary ?? (idx === 0) })),
+        } : undefined,
       },
+      include: { images: true },
     });
     // UC4.1 - tự phân tích (trừ khi lưu nháp 6a). Lỗi không làm hỏng việc tạo SP.
     let analysis = null;
@@ -303,7 +308,7 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
     const id = Number(req.params.id);
     const guard = await assertCanEdit(req, id);
     if (!guard.ok) return res.status(guard.code).json({ message: guard.message });
-    const { variants, ...d } = updateSchema.parse(req.body);
+    const { variants, images, ...d } = updateSchema.parse(req.body);
     const before = await prisma.product.findUnique({ where: { id } });
     if (!before) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
     // Backlog thuế: đổi giá chưa thuế -> tính lại giá cuối
@@ -316,6 +321,19 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
       if (!cat || !cat.active) return res.status(400).json({ message: 'Danh mục không hợp lệ hoặc đã bị ẩn.' }); // 7F
     }
     const updated = await prisma.product.update({ where: { id }, data: d as any });
+    // Cập nhật danh sách ảnh sản phẩm nếu có truyền lên
+    if (images !== undefined) {
+      await prisma.productImage.deleteMany({ where: { productId: id } });
+      if (images.length > 0) {
+        await prisma.productImage.createMany({
+          data: images.map((im, idx) => ({
+            productId: id,
+            url: im.url,
+            isPrimary: im.isPrimary ?? (idx === 0),
+          })),
+        });
+      }
+    }
     // 3b - thêm/sửa biến thể (upsert theo size)
     if (variants) for (const v of variants) {
       await prisma.productVariant.upsert({

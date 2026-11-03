@@ -122,3 +122,25 @@ export const uploadSearchImage = multer({
     cb(null, true);
   },
 }).single('image');
+
+
+// ---------- Ảnh bìa / Logo gian hàng & Ảnh Banner (UC13.2 / Backlog B.26) ----------
+const MEDIA_DIR = path.join(process.cwd(), 'uploads', 'media');
+fs.mkdirSync(MEDIA_DIR, { recursive: true });
+
+const mediaStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, MEDIA_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `m-${Date.now()}-${Math.round(Math.random() * 1e4)}${ext}`);
+  },
+});
+
+export const uploadMedia = multer({
+  storage: mediaStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_MIME.includes(file.mimetype)) return cb(new Error('INVALID_IMAGE_TYPE'));
+    cb(null, true);
+  },
+}).single('file');

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
+import { uploadFile } from '../../lib/upload';
 import { formatVND } from '../../lib/products';
 import { ErrorBox, SuccessBox, PrimaryButton, SecondaryButton } from '../../components/ui';
 
@@ -8,6 +9,7 @@ import { ErrorBox, SuccessBox, PrimaryButton, SecondaryButton } from '../../comp
 
 interface Category { id: number; name: string }
 interface Variant { size: string; stock: number }
+interface ProductImageItem { id?: number; url: string; isPrimary: boolean }
 
 const FIELDS: Array<{ key: string; label: string }> = [
   { key: 'brand', label: 'Thương hiệu' }, { key: 'color', label: 'Màu sắc' },
@@ -31,6 +33,8 @@ export default function ProductFormPage({ basePath = '/manage/products' }: { bas
   // f.price giữ GIÁ CHƯA THUẾ (người bán nhập); giá cuối = chưa thuế + VAT
   const [f, setF] = useState<Record<string, string>>({ name: '', description: '', price: '', categoryId: '', status: 'ACTIVE' });
   const [variants, setVariants] = useState<Variant[]>([{ size: 'S', stock: 0 }]);
+  const [images, setImages] = useState<ProductImageItem[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [vat, setVat] = useState<{ enabled: boolean; rate: number }>({ enabled: false, rate: 0 });
   const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }));
 
@@ -57,12 +61,59 @@ export default function ProductFormPage({ basePath = '/manage/products' }: { bas
           sku: p.sku ?? '', origin: p.origin ?? '', warranty: p.warranty ?? '', careInstructions: p.careInstructions ?? '',
         });
         if (p.variants?.length) setVariants(p.variants.map((v: any) => ({ size: v.size, stock: v.stock })));
+        if (p.images?.length) setImages(p.images.map((im: any, idx: number) => ({ id: im.id, url: im.url, isPrimary: im.isPrimary !== undefined ? !!im.isPrimary : idx === 0 })));
       }
     })().catch((e) => setError(getErrorMessage(e))).finally(() => setLoading(false));
   }, [id, editing]);
 
   const preTaxNum = Number(f.price) || 0;
   const finalPrice = vat.rate > 0 ? Math.round((preTaxNum * (100 + vat.rate)) / 100) : preTaxNum;
+
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingImages(true);
+    setError('');
+    try {
+      const list: ProductImageItem[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const url = await uploadFile(files[i]);
+        list.push({ url, isPrimary: false });
+      }
+      setImages((prev) => {
+        const combined = [...prev, ...list];
+        if (combined.length > 0 && !combined.some((x) => x.isPrimary)) {
+          combined[0].isPrimary = true;
+        }
+        return combined;
+      });
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setUploadingImages(false);
+      e.target.value = '';
+    }
+  }
+
+  function setPrimaryImage(index: number) {
+    setImages((prev) =>
+      prev.map((img, i) => ({
+        ...img,
+        isPrimary: i === index,
+      }))
+    );
+  }
+
+  function removeImage(index: number) {
+    setImages((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      if (next.length > 0 && !next.some((x) => x.isPrimary)) {
+        next[0].isPrimary = true;
+      }
+      return next;
+    });
+  }
 
   async function submit() {
     setError(''); setSuccess('');
@@ -72,6 +123,7 @@ export default function ProductFormPage({ basePath = '/manage/products' }: { bas
       price: finalPrice, priceBeforeTax: preTaxNum, // gửi cả giá cuối & giá chưa thuế (backend tính lại)
       categoryId: Number(f.categoryId), status: f.status,
       variants: variants.filter((v) => v.size.trim()).map((v) => ({ size: v.size.trim(), stock: Number(v.stock) || 0 })),
+      images: images.map((im, idx) => ({ url: im.url, isPrimary: im.isPrimary || (idx === 0 && !images.some((x) => x.isPrimary)) })),
     };
     for (const { key } of FIELDS) if (f[key]?.trim()) payload[key] = f[key].trim();
     if (f.careInstructions?.trim()) payload.careInstructions = f.careInstructions.trim(); // Backlog B.29/C.44
@@ -138,6 +190,81 @@ export default function ProductFormPage({ basePath = '/manage/products' }: { bas
             <option value="DRAFT">Nháp (chưa phân tích)</option><option value="PENDING">Chờ duyệt</option>
           </select>
         </label>
+
+
+        {/* Upload ảnh sản phẩm */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-semibold text-gray-700">
+              Hình ảnh sản phẩm <span className="text-gray-400 font-normal">({images.length} ảnh đã chọn, ảnh có huy hiệu ★ là ảnh bìa chính)</span>
+            </label>
+          </div>
+
+          {images.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 mb-3">
+              {images.map((im, idx) => (
+                <div
+                  key={idx}
+                  className={`relative group rounded-xl overflow-hidden border-2 aspect-square bg-gray-50 flex items-center justify-center ${
+                    im.isPrimary ? 'border-brand ring-2 ring-brand/20' : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <img src={im.url} alt={`Ảnh ${idx + 1}`} className="w-full h-full object-cover" />
+                  
+                  {/* Badge ảnh chính */}
+                  {im.isPrimary ? (
+                    <span className="absolute top-1.5 left-1.5 bg-brand text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1">
+                      ★ Ảnh chính
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPrimaryImage(idx)}
+                      className="absolute top-1.5 left-1.5 bg-black/60 hover:bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      Đặt làm chính
+                    </button>
+                  )}
+
+                  {/* Nút xóa ảnh */}
+                  <button
+                    type="button"
+                    onClick={() => removeImage(idx)}
+                    className="absolute top-1.5 right-1.5 bg-red-600 hover:bg-red-700 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                    title="Xóa ảnh"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <label className="border-2 border-dashed border-gray-300 hover:border-brand hover:bg-brand/5 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition text-center">
+            <input
+              type="file"
+              multiple
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleImageUpload}
+              disabled={uploadingImages}
+              className="hidden"
+            />
+            {uploadingImages ? (
+              <div className="flex items-center gap-2 text-sm text-brand font-medium">
+                <span className="animate-spin inline-block w-4 h-4 border-2 border-brand border-t-transparent rounded-full" />
+                Đang tải ảnh lên...
+              </div>
+            ) : (
+              <>
+                <div className="w-10 h-10 rounded-full bg-brand/10 text-brand flex items-center justify-center mb-1 text-lg">
+                  📷
+                </div>
+                <span className="text-sm font-medium text-gray-700">Tải ảnh sản phẩm từ thiết bị</span>
+                <span className="text-xs text-gray-400 mt-0.5">PNG, JPG hoặc WEBP (tối đa 10MB/ảnh) - Có thể chọn nhiều ảnh</span>
+              </>
+            )}
+          </label>
+        </div>
 
         <div>
           <div className="flex items-center justify-between mb-2">

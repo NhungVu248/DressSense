@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { uploadFile } from '../../lib/upload';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getMyShop, updateMyShop, submitMyShop, SHOP_STATUS_LABEL, SHOP_STATUS_CLS, type Shop,
@@ -18,6 +19,77 @@ function Field({ label, value, onChange, placeholder, type = 'text', required }:
         className="mt-1 w-full border border-brand/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand"
       />
     </label>
+  );
+}
+
+
+function ImageUploadField({
+  label, value, onChange, aspect = 'banner', hint,
+}: {
+  label: string; value: string; onChange: (v: string) => void; aspect?: 'banner' | 'square'; hint?: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError('');
+    setUploading(true);
+    try {
+      const url = await uploadFile(file);
+      onChange(url);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Không thể tải ảnh lên.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-ink/80">{label}</span>
+        {hint && <span className="text-xs text-gray-400">{hint}</span>}
+      </div>
+
+      {value ? (
+        <div className="relative group rounded-xl overflow-hidden border border-brand/20 bg-gray-50">
+          <img
+            src={value}
+            alt={label}
+            className={`w-full object-cover ${aspect === 'banner' ? 'h-36' : 'h-24 w-24 rounded-full mx-auto my-2'}`}
+            onError={(e) => { e.currentTarget.style.opacity = '0.3'; }}
+          />
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            <label className="cursor-pointer bg-white text-ink text-xs font-medium px-3 py-1.5 rounded-lg shadow-sm hover:bg-gray-100">
+              {uploading ? 'Đang tải…' : 'Đổi ảnh'}
+              <input type="file" accept="image/*" disabled={uploading} onChange={handleFile} className="hidden" />
+            </label>
+            <button
+              type="button"
+              onClick={() => onChange('')}
+              className="bg-red-600 text-white text-xs px-2.5 py-1.5 rounded-lg shadow-sm hover:bg-red-700"
+            >
+              Xóa
+            </button>
+          </div>
+        </div>
+      ) : (
+        <label className="border-2 border-dashed border-brand/20 hover:border-brand/40 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-colors bg-brand-light/20 hover:bg-brand-light/40">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-brand mb-1">
+            <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" />
+          </svg>
+          <span className="text-xs font-medium text-brand">
+            {uploading ? 'Đang tải tệp lên…' : 'Bấm để tải tệp ảnh lên'}
+          </span>
+          <span className="text-[11px] text-gray-400 mt-0.5">JPG, PNG, WEBP (tối đa 10MB)</span>
+          <input type="file" accept="image/*" disabled={uploading} onChange={handleFile} className="hidden" />
+        </label>
+      )}
+
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
   );
 }
 
@@ -91,9 +163,9 @@ export default function ShopProfilePage() {
         <section className="rounded-2xl border border-brand/10 bg-white p-5 space-y-4">
           <h2 className="font-display text-lg font-bold">Thông tin cơ bản</h2>
           <Field label="Tên gian hàng" value={f.name ?? ''} onChange={set('name')} required placeholder="VD: DressSense Store" />
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="Logo (URL)" value={f.logoUrl ?? ''} onChange={set('logoUrl')} placeholder="https://…" />
-            <Field label="Ảnh bìa (URL)" value={f.coverUrl ?? ''} onChange={set('coverUrl')} placeholder="https://…" />
+          <div className="grid sm:grid-cols-2 gap-5">
+            <ImageUploadField label="Logo gian hàng" value={f.logoUrl ?? ''} onChange={set('logoUrl')} aspect="square" hint="Vuông (khuyên dùng 200x200)" />
+            <ImageUploadField label="Ảnh bìa gian hàng" value={f.coverUrl ?? ''} onChange={set('coverUrl')} aspect="banner" hint="Khuyên dùng 1200x400" />
           </div>
           <label className="block">
             <span className="text-sm text-ink/70">Mô tả gian hàng <span className="text-red-500">*</span></span>
