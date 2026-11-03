@@ -407,7 +407,8 @@ model Product {
   category    Category @relation(fields: [categoryId], references: [id])
   name        String
   description String?  @db.Text
-  price       Int
+  price       Int // giá CUỐI hiển thị cho khách (đã gồm thuế nếu có)
+  priceBeforeTax Int? // Backlog: người bán nhập GIÁ CHƯA THUẾ; price = priceBeforeTax * (1 + VAT%)
 
   // UC6.3/6.4 - vòng đời sản phẩm; chỉ ACTIVE mới hiển thị cho khách (UC7) & vào gợi ý (UC5)
   status    ProductStatus @default(ACTIVE)
@@ -596,6 +597,10 @@ model Order {
   shippingFee    Int     @default(0)
   total          Int
 
+  // Backlog thuế - snapshot thuế suất + tiền thuế (đã gồm trong subtotal giá cuối) tại lúc đặt
+  taxRate   Float @default(0) // % VAT áp dụng khi đặt (0 nếu tắt thuế)
+  taxAmount Int   @default(0) // phần thuế VAT nằm trong subtotal (hóa đơn tách ra)
+
   // Thanh toán (UC9.2 - trạng thái thanh toán tách khỏi trạng thái đơn)
   paymentMethod PaymentMethod
   paymentStatus PaymentStatus @default(UNPAID)
@@ -629,10 +634,27 @@ model Order {
   complaints     Complaint[] // UC11.2
   incidents      DeliveryIncident[] // UC11.3
   reviews        Review[] // UC12.1
+  invoice        Invoice? // Backlog - hóa đơn VAT (xuất theo yêu cầu khách)
 
   @@index([userId])
   @@index([sellerId])
   @@index([checkoutCode])
+}
+
+// Backlog (Khách hàng) - Hóa đơn VAT xuất theo yêu cầu cho đơn đã nhận.
+// Admin cấu hình thông tin đơn vị xuất (SystemSetting nhóm "Thuế & Hóa đơn").
+model Invoice {
+  id           Int      @id @default(autoincrement())
+  orderId      Int      @unique
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  buyerName    String // tên người/đơn vị mua
+  buyerTaxCode String? // mã số thuế (nếu xuất cho công ty)
+  buyerAddress String
+  buyerEmail   String?
+  note         String?
+  issueCount   Int      @default(1) // số lần xuất (xử lý "xuất lần 2" khi lần 1 lỗi)
+  issuedAt     DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model OrderItem {

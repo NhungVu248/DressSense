@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
+import { formatVND } from '../../lib/products';
 import { ErrorBox, SuccessBox, PrimaryButton, SecondaryButton } from '../../components/ui';
 
 // UC6.3 Thêm sản phẩm / UC6.4 Sửa sản phẩm (Người bán / Quản trị viên)
@@ -24,31 +25,47 @@ export default function ProductFormPage({ basePath = '/manage/products' }: { bas
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(editing);
 
+  // f.price giữ GIÁ CHƯA THUẾ (người bán nhập); giá cuối = chưa thuế + VAT
   const [f, setF] = useState<Record<string, string>>({ name: '', description: '', price: '', categoryId: '', status: 'ACTIVE' });
   const [variants, setVariants] = useState<Variant[]>([{ size: 'S', stock: 0 }]);
+  const [vat, setVat] = useState<{ enabled: boolean; rate: number }>({ enabled: false, rate: 0 });
   const set = (k: string, v: string) => setF((p) => ({ ...p, [k]: v }));
 
   useEffect(() => {
-    api.get('/categories').then((r) => setCats(r.data.categories ?? [])).catch(() => {});
-    if (editing) {
-      api.get(`/products/${id}/manage`).then((r) => {
+    (async () => {
+      const [catRes, setRes] = await Promise.all([
+        api.get('/categories').catch(() => ({ data: {} })),
+        api.get('/settings/public').catch(() => ({ data: { settings: {} } })),
+      ]);
+      setCats(catRes.data.categories ?? []);
+      const s = setRes.data.settings ?? {};
+      const rate = s.vatEnabled && Number(s.vatRate) > 0 ? Number(s.vatRate) : 0;
+      setVat({ enabled: !!s.vatEnabled, rate });
+      if (editing) {
+        const r = await api.get(`/products/${id}/manage`);
         const p = r.data.product;
+        // prefill giá chưa thuế: dùng priceBeforeTax nếu có, nếu không suy ngược từ giá cuối
+        const preTax = p.priceBeforeTax != null ? p.priceBeforeTax : (rate > 0 ? Math.round((p.price * 100) / (100 + rate)) : p.price);
         setF({
-          name: p.name ?? '', description: p.description ?? '', price: String(p.price ?? ''),
+          name: p.name ?? '', description: p.description ?? '', price: String(preTax ?? ''),
           categoryId: String(p.categoryId ?? ''), status: p.status ?? 'ACTIVE',
           brand: p.brand ?? '', color: p.color ?? '', material: p.material ?? '',
           style: p.style ?? '', garmentType: p.garmentType ?? '', occasion: p.occasion ?? '',
         });
         if (p.variants?.length) setVariants(p.variants.map((v: any) => ({ size: v.size, stock: v.stock })));
-      }).catch((e) => setError(getErrorMessage(e))).finally(() => setLoading(false));
-    }
+      }
+    })().catch((e) => setError(getErrorMessage(e))).finally(() => setLoading(false));
   }, [id, editing]);
+
+  const preTaxNum = Number(f.price) || 0;
+  const finalPrice = vat.rate > 0 ? Math.round((preTaxNum * (100 + vat.rate)) / 100) : preTaxNum;
 
   async function submit() {
     setError(''); setSuccess('');
     if (!f.name.trim() || !f.price || !f.categoryId) { setError('Vui lòng nhập tên, giá và danh mục.'); return; }
     const payload: any = {
-      name: f.name.trim(), description: f.description || undefined, price: Number(f.price),
+      name: f.name.trim(), description: f.description || undefined,
+      price: finalPrice, priceBeforeTax: preTaxNum, // gửi cả giá cuối & giá chưa thuế (backend tính lại)
       categoryId: Number(f.categoryId), status: f.status,
       variants: variants.filter((v) => v.size.trim()).map((v) => ({ size: v.size.trim(), stock: Number(v.stock) || 0 })),
     };
@@ -81,8 +98,13 @@ export default function ProductFormPage({ basePath = '/manage/products' }: { bas
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="block text-xs text-gray-500 mb-1">Giá (₫) <span className="text-red-400">*</span></span>
+            <span className="block text-xs text-gray-500 mb-1">Giá chưa thuế (₫) <span className="text-red-400">*</span></span>
             <input type="number" min={0} value={f.price} onChange={(e) => set('price', e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            {vat.rate > 0 ? (
+              <span className="block text-xs text-brand mt-1">Thuế VAT {vat.rate}% → Giá cuối hiển thị cho khách: <b>{formatVND(finalPrice)}</b></span>
+            ) : (
+              <span className="block text-xs text-gray-400 mt-1">Chưa áp dụng thuế — giá cuối = giá nhập.</span>
+            )}
           </label>
           <label className="block">
             <span className="block text-xs text-gray-500 mb-1">Danh mục <span className="text-red-400">*</span></span>

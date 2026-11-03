@@ -28,7 +28,7 @@
 - [x] **Quản lý tin nhắn với khách hàng**: lọc Tất cả/**Chưa đọc**/**Quan trọng (sao)**, badge chưa đọc, thông báo tin nhắn mới (`/seller/messages`). *(commit cc064a8)*
 - [ ] **Hồ sơ cá nhân người bán** thiết kế đầy đủ hơn; **mở rộng trường dữ liệu cho sản phẩm**.
 - [ ] **Phương thức giao hàng**: người bán **tự chọn** — (a) **tự giao** (tự chịu rủi ro) hoặc (b) chọn **phương thức được hệ thống cấu hình sẵn**.
-- [ ] **Thiết lập giá**: **giá cuối = giá chưa thuế + tiền thuế (nếu có)**. **Thuế KHÔNG hiển thị ở trang khách** — khách chỉ thấy **giá cuối**.
+- [x] **Thiết lập giá**: người bán nhập **giá chưa thuế**, form hiện **giá cuối = giá chưa thuế + VAT**; trang khách chỉ thấy **giá cuối**. *(commit kế tiếp)*
 
 ---
 
@@ -44,8 +44,8 @@
 - [ ] **Hồ sơ cá nhân** đầy đủ hơn; **mở rộng trường dữ liệu cho sản phẩm** (đồng bộ với Người bán).
 - [ ] **Quản lý khuyến mãi — mở rộng**: quản lý các **đơn mua voucher** với **mức chiết khấu** (combo theo tháng hoặc mua lẻ) và **đơn chạy quảng cáo**.
 - [ ] **Cấu hình phí vận chuyển**: đơn **quốc tế**; **trong nước** phân theo **khu vực** (theo giá bưu điện / các đơn vị chuyển phát hiện hành) và **hỏa tốc nội thành**.
-- [ ] **Cấu hình thuế**.
-- [ ] **Cấu hình xuất hóa đơn**: khách muốn xuất & đã để lại thông tin → **xuất (lần 2) do hệ thống tự động** (xử lý trường hợp lỗi ở lần 1).
+- [x] **Cấu hình thuế**: bật/tắt VAT + thuế suất (%) trong Cấu hình hệ thống (nhóm "Thuế & Hóa đơn"). *(commit kế tiếp)*
+- [x] **Cấu hình xuất hóa đơn**: tên đơn vị + MST + địa chỉ phát hành; khách xuất lại được (issueCount tăng — xử lý trường hợp lần 1 lỗi). *(commit kế tiếp)*
 
 ---
 
@@ -54,7 +54,7 @@
 - [x] **Đánh giá sản phẩm**: chấm **sao** + **ảnh** (tối đa 5, tối thiểu 0) + **video** (MP4/WEBM/MOV ≤30MB); video hiển thị trong đánh giá ở trang sản phẩm. *(commit 7b03777)*
 - [x] **Hoàn trả hàng**: chọn **lý do do sàn setup sẵn** + **ảnh** (bắt buộc tối thiểu 3) + **video** (≤20MB) + **mô tả**. *(commit 7b03777)*
 - [x] **Hai kênh hỗ trợ**: (1) **liên hệ Người bán** (nút "Nhắn tin với shop" ở trang sản phẩm), (2) **liên hệ Admin** qua mục **Chăm sóc khách hàng** (nút "Nhắn tin CSKH"). Trang Tin nhắn chung `/messages`. *(commit cc064a8)* — *còn: thêm nút liên hệ ở trang chi tiết đơn hàng (nhỏ).*
-- [ ] **Xuất hóa đơn VAT**.
+- [x] **Xuất hóa đơn VAT**: nút "Xuất hóa đơn VAT" ở đơn đã nhận → nhập thông tin người mua → trang hóa đơn in được (tách tiền hàng chưa thuế + VAT). *(commit kế tiếp)*
 
 ---
 

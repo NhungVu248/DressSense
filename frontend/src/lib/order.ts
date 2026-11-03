@@ -90,6 +90,22 @@ export async function sellerRejectCancel(orderId: number) {
 export async function getOrder(id: number | string): Promise<Order> {
   return (await api.get(`/orders/${id}`)).data.order;
 }
+
+// ---- Backlog - Hóa đơn VAT ----
+export interface InvoiceBreakdown { goodsBeforeTax: number; taxRate: number; taxAmount: number; subtotal: number; discount: number; shippingFee: number; total: number }
+export interface InvoiceCompany { name: string; taxCode: string; address: string }
+export interface InvoiceInfo { id: number; orderId: number; buyerName: string; buyerTaxCode: string | null; buyerAddress: string; buyerEmail: string | null; note: string | null; issueCount: number; issuedAt: string }
+export interface InvoiceData {
+  invoice: InvoiceInfo; company: InvoiceCompany; breakdown: InvoiceBreakdown;
+  order: { code: string; createdAt: string; recipientName: string; phone: string; voucherCode: string | null; items: { name: string | null; size: string | null; quantity: number; price: number }[] };
+}
+export interface IssueInvoiceBody { buyerName: string; buyerAddress: string; buyerTaxCode?: string; buyerEmail?: string; note?: string }
+export async function issueInvoice(orderId: number | string, body: IssueInvoiceBody) {
+  return (await api.post(`/orders/${orderId}/invoice`, body)).data;
+}
+export async function getInvoice(orderId: number | string): Promise<InvoiceData> {
+  return (await api.get(`/orders/${orderId}/invoice`)).data;
+}
 export async function retryPayment(orderId: number): Promise<{ payUrl: string }> {
   return (await api.post(`/payments/orders/${orderId}/retry`)).data;
 }

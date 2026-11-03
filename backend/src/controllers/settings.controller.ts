@@ -1,6 +1,22 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import type { JwtPayload } from '../utils/jwt';
+import { invalidateSettingsCache } from '../services/settings.service';
+
+// Các khóa cấu hình công khai (an toàn để lộ cho frontend khách/người bán).
+const PUBLIC_KEYS = ['siteName', 'supportEmail', 'vatEnabled', 'vatRate', 'freeShipThreshold'];
+
+// GET /api/settings/public - cấu hình công khai (không cần quyền admin)
+export async function getPublicSettings(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const rows = await prisma.systemSetting.findMany({ where: { key: { in: PUBLIC_KEYS } } });
+    const out: Record<string, string | number | boolean> = {};
+    for (const r of rows) {
+      out[r.key] = r.type === 'number' ? Number(r.value) : r.type === 'boolean' ? r.value === 'true' : r.value;
+    }
+    res.json({ settings: out });
+  } catch (err) { next(err); }
+}
 
 // ============================================================
 //  UC16.5 - Cấu hình hệ thống (chỉ Quản trị viên).
@@ -41,6 +57,7 @@ export async function updateSettings(req: Request, res: Response, next: NextFunc
       ]);
       changed.push(cur.key);
     }
+    if (changed.length) invalidateSettingsCache(); // đảm bảo thuế/giá đọc giá trị mới
     res.json({ updated: changed });
   } catch (err) { next(err); }
 }

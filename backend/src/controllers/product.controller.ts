@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { analyzeProduct, analyzeMany } from '../services/product-analysis.service';
 import { flashPriceMapByProduct, getRunningFlashSales } from '../services/promotion.service';
+import { getVatConfig, finalPriceFromBeforeTax } from '../services/settings.service';
 
 // UC4.1 - chỉ Người bán (SP của mình) hoặc Quản trị viên mới được phân tích/xác nhận nhãn
 async function assertCanEdit(req: Request, productId: number): Promise<{ ok: true } | { ok: false; code: number; message: string }> {
@@ -238,6 +239,7 @@ const createSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   price: z.number().int().positive(),
+  priceBeforeTax: z.number().int().positive().optional(), // Backlog: giá chưa thuế (người bán nhập)
   categoryId: z.number().int(),
   color: z.string().optional(),
   pattern: z.string().optional(),
@@ -266,6 +268,11 @@ export async function createProduct(req: Request, res: Response, next: NextFunct
     // 7F - danh mục phải hợp lệ và đang hoạt động
     const cat = await prisma.category.findUnique({ where: { id: fields.categoryId } });
     if (!cat || !cat.active) return res.status(400).json({ message: 'Danh mục không hợp lệ hoặc đã bị ẩn. Vui lòng chọn lại.' });
+    // Backlog thuế: nếu người bán nhập giá chưa thuế -> giá cuối = chưa thuế + VAT (backend tính lại cho chuẩn)
+    if (fields.priceBeforeTax != null) {
+      const vat = await getVatConfig();
+      fields.price = finalPriceFromBeforeTax(fields.priceBeforeTax, vat.rate);
+    }
     const st = status ?? 'ACTIVE';
     // 8E - nguyên tử: tạo trọn vẹn SP + biến thể (+tồn kho) hoặc không gì
     const product = await prisma.product.create({
@@ -294,6 +301,11 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
     const { variants, ...d } = updateSchema.parse(req.body);
     const before = await prisma.product.findUnique({ where: { id } });
     if (!before) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
+    // Backlog thuế: đổi giá chưa thuế -> tính lại giá cuối
+    if (d.priceBeforeTax != null) {
+      const vat = await getVatConfig();
+      d.price = finalPriceFromBeforeTax(d.priceBeforeTax, vat.rate);
+    }
     if (d.categoryId != null) {
       const cat = await prisma.category.findUnique({ where: { id: d.categoryId } });
       if (!cat || !cat.active) return res.status(400).json({ message: 'Danh mục không hợp lệ hoặc đã bị ẩn.' }); // 7F

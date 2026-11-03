@@ -8,6 +8,7 @@ import { startOnlinePayment } from '../services/payment.service';
 import { vnpayEnabled } from '../config/env';
 import { releaseReserved, finalizeStock } from '../services/order.service';
 import { notify } from '../services/notification.service';
+import { getVatConfig, taxPortionOfInclusive } from '../services/settings.service';
 import { CANCELLABLE_DIRECT, CANCELLABLE_REQUEST, type OrderStatusValue } from '../constants/order-status';
 
 // ============================================================
@@ -153,6 +154,8 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
       return { sid, items, subtotal, discount: d, shippingFee, total: Math.max(0, subtotal - d + shippingFee) };
     });
     const checkoutCode = genCheckoutCode();
+    // Backlog thuế: snapshot thuế suất + tiền thuế (giá cuối đã gồm thuế) để xuất hóa đơn sau này
+    const vat = await getVatConfig();
 
     // Nguyên tử: tạo N đơn + giữ chỗ tồn kho + xóa mục khỏi giỏ + trừ suất Flash + ghi lượt voucher
     const orders = await prisma.$transaction(async (db) => {
@@ -167,6 +170,7 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
             recipientName: address.recipientName, phone: address.phone,
             province: address.province, district: address.district, ward: address.ward, addressDetail: address.detail,
             subtotal: g.subtotal, discount: g.discount, voucherCode: voucherCode ?? null, shippingMethod, shippingFee: g.shippingFee, total: g.total, note: note ?? null,
+            taxRate: vat.rate, taxAmount: taxPortionOfInclusive(g.subtotal, vat.rate), // thuế trong giá cuối (hóa đơn VAT)
             items: {
               create: g.items.map((it) => ({
                 productId: it.product.id, variantId: it.variantId,

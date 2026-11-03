@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { formatVND } from '../lib/products';
 import {
-  getOrders, getOrder, retryPayment, confirmReceipt, cancelOrder, TRACKING_STEPS,
+  getOrders, getOrder, retryPayment, confirmReceipt, cancelOrder, issueInvoice, TRACKING_STEPS,
   ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, PAYMENT_METHOD_LABEL,
   type Order, type OrderStatus,
 } from '../lib/order';
@@ -130,6 +130,7 @@ export function OrderDetailPage() {
   const [showCancel, setShowCancel] = useState(false);
   const [showReturn, setShowReturn] = useState(false);
   const [showComplaint, setShowComplaint] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(false);
   const [reviewItem, setReviewItem] = useState<Order['items'][number] | null>(null);
   const [reason, setReason] = useState(CANCEL_REASONS[0]);
   const [busy, setBusy] = useState(false);
@@ -165,6 +166,7 @@ export function OrderDetailPage() {
   const canCancelRequest = (o.status === 'CONFIRMED' || o.status === 'PREPARING') && !o.cancelRequested;
   const canReturn = o.status === 'DELIVERED' || o.status === 'COMPLETED'; // UC11.1
   const canReview = o.status === 'DELIVERED' || o.status === 'COMPLETED'; // UC12.1
+  const canInvoice = o.status === 'DELIVERED' || o.status === 'COMPLETED'; // Backlog - hóa đơn VAT
   const canComplain = ['CONFIRMED', 'PREPARING', 'SHIPPING', 'DELIVERED', 'COMPLETED'].includes(o.status); // UC11.2
 
   return (
@@ -220,10 +222,11 @@ export function OrderDetailPage() {
       </section>
 
       {/* Thao tác theo trạng thái */}
-      {(canConfirm || canCancelDirect || canCancelRequest || canReturn || canComplain) && (
+      {(canConfirm || canCancelDirect || canCancelRequest || canReturn || canComplain || canInvoice) && (
         <div className="flex flex-wrap gap-2 mt-5">
           {canConfirm && <button onClick={doConfirm} disabled={busy} className="bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg px-5 py-2.5 text-sm">Đã nhận được hàng</button>}
           {canReturn && <button onClick={() => setShowReturn(true)} className="border border-black/15 text-ink hover:border-brand rounded-lg px-5 py-2.5 text-sm">Đổi/trả hàng</button>}
+          {canInvoice && <button onClick={() => setShowInvoice(true)} className="border border-black/15 text-ink hover:border-brand rounded-lg px-5 py-2.5 text-sm">Xuất hóa đơn VAT</button>}
           {canComplain && <button onClick={() => setShowComplaint(true)} className="border border-black/15 text-ink hover:border-brand rounded-lg px-5 py-2.5 text-sm">Gửi khiếu nại</button>}
           {(canCancelDirect || canCancelRequest) && <button onClick={() => setShowCancel(true)} className="border border-red-200 text-red-600 hover:bg-red-50 rounded-lg px-5 py-2.5 text-sm">{canCancelDirect ? 'Hủy đơn hàng' : 'Yêu cầu hủy'}</button>}
         </div>
@@ -232,12 +235,14 @@ export function OrderDetailPage() {
       {showReturn && <ReturnModal order={o} onClose={() => setShowReturn(false)} onDone={() => { setShowReturn(false); refresh(); }} />}
       {showComplaint && <ComplaintModal orderId={o.id} onClose={() => setShowComplaint(false)} onDone={() => setShowComplaint(false)} />}
       {reviewItem && <ReviewModal orderId={o.id} item={reviewItem} onClose={() => setReviewItem(null)} onDone={() => setReviewItem(null)} />}
+      {showInvoice && <InvoiceModal order={o} onClose={() => setShowInvoice(false)} onDone={() => { setShowInvoice(false); window.open(`/orders/${o.id}/invoice`, '_blank'); }} />}
 
       {showCancel && (
         <div className="fixed inset-0 z-50 grid place-items-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowCancel(false)} />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
             <h3 className="font-display text-xl text-ink mb-3">{canCancelDirect ? 'Hủy đơn hàng' : 'Yêu cầu hủy đơn'}</h3>
+            {/* nội dung hủy ở dưới */}
             <p className="text-sm text-gray-500 mb-3">Vui lòng chọn lý do:</p>
             <div className="space-y-1.5 mb-4">
               {CANCEL_REASONS.map((r) => (
@@ -253,6 +258,62 @@ export function OrderDetailPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Backlog - nhập thông tin người mua để xuất hóa đơn VAT
+function InvoiceModal({ order, onClose, onDone }: { order: Order; onClose: () => void; onDone: () => void }) {
+  const [buyerName, setBuyerName] = useState(order.recipientName ?? '');
+  const [buyerAddress, setBuyerAddress] = useState([order.addressDetail, order.ward, order.district, order.province].filter(Boolean).join(', '));
+  const [buyerTaxCode, setBuyerTaxCode] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    if (!buyerName.trim() || !buyerAddress.trim()) { alert('Vui lòng nhập tên và địa chỉ xuất hóa đơn.'); return; }
+    setBusy(true);
+    try {
+      await issueInvoice(order.id, { buyerName: buyerName.trim(), buyerAddress: buyerAddress.trim(), buyerTaxCode: buyerTaxCode.trim() || undefined, buyerEmail: buyerEmail.trim() || undefined, note: note.trim() || undefined });
+      onDone();
+    } catch (e: any) { alert(e?.response?.data?.message ?? 'Không xuất được hóa đơn.'); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-display text-xl text-ink">Xuất hóa đơn VAT</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+        </div>
+        <p className="text-sm text-gray-500 mb-3">Nhập thông tin người/đơn vị mua. Có thể xuất lại nếu cần.</p>
+        <div className="space-y-3">
+          <label className="block">
+            <span className="block text-xs text-gray-500 mb-1">Tên người/đơn vị mua <span className="text-red-400">*</span></span>
+            <input value={buyerName} onChange={(e) => setBuyerName(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
+          </label>
+          <label className="block">
+            <span className="block text-xs text-gray-500 mb-1">Mã số thuế (nếu xuất cho công ty)</span>
+            <input value={buyerTaxCode} onChange={(e) => setBuyerTaxCode(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
+          </label>
+          <label className="block">
+            <span className="block text-xs text-gray-500 mb-1">Địa chỉ xuất hóa đơn <span className="text-red-400">*</span></span>
+            <textarea value={buyerAddress} onChange={(e) => setBuyerAddress(e.target.value)} rows={2} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
+          </label>
+          <label className="block">
+            <span className="block text-xs text-gray-500 mb-1">Email nhận hóa đơn</span>
+            <input value={buyerEmail} onChange={(e) => setBuyerEmail(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
+          </label>
+          <label className="block">
+            <span className="block text-xs text-gray-500 mb-1">Ghi chú (tuỳ chọn)</span>
+            <input value={note} onChange={(e) => setNote(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm" />
+          </label>
+        </div>
+        <button onClick={submit} disabled={busy} className="w-full mt-4 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-2.5 text-sm">{busy ? 'Đang xuất…' : 'Xuất hóa đơn'}</button>
+      </div>
     </div>
   );
 }
