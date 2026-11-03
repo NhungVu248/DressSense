@@ -20,6 +20,12 @@ import {
 } from '../controllers/voucher-order.controller';
 import { listSettings, updateSettings, getSettingHistory } from '../controllers/settings.controller';
 import { listModerationProducts, moderateProduct } from '../controllers/content-moderation.controller';
+import { listReports, resolveReport } from '../controllers/report.controller';
+import { listModerationLogs, listActionLogs } from '../controllers/admin-log.controller';
+import {
+  listAnnouncements, createAnnouncement, updateAnnouncement, publishAnnouncement, deleteAnnouncement,
+} from '../controllers/announcement.controller';
+import { listAllOrders, getOrderDetailAdmin } from '../controllers/admin-order.controller';
 import { authenticate, authorize } from '../middlewares/auth';
 
 const router = Router();
@@ -76,5 +82,26 @@ router.patch('/moderation/products/:id', moderateProduct);
 router.get('/settings', listSettings);
 router.put('/settings', updateSettings);
 router.get('/settings/history', getSettingHistory);
+
+// Admin #6 - Quản lý đơn hàng (theo dõi toàn sàn, chỉ đọc)
+router.get('/orders', listAllOrders);
+router.get('/orders/:id', getOrderDetailAdmin);
+
+// ERD 3.19 (Admin #8) - Báo cáo vi phạm
+router.get('/reports', listReports);
+router.patch('/reports/:id', resolveReport);
+
+// ERD 3.18 (Admin #9) - Lịch sử kiểm duyệt
+router.get('/moderation-logs', listModerationLogs);
+
+// ERD 3.22 (Admin #11) - Thông báo toàn sàn (Buyer/Seller)
+router.get('/announcements', listAnnouncements);
+router.post('/announcements', createAnnouncement);
+router.put('/announcements/:id', updateAnnouncement);
+router.post('/announcements/:id/publish', publishAnnouncement);
+router.delete('/announcements/:id', deleteAnnouncement);
+
+// ERD 3.17 (Admin #12) - Nhật ký hoạt động Admin
+router.get('/action-logs', listActionLogs);
 
 export default router;

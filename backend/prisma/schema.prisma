@@ -1392,3 +1392,162 @@ model Message {
 
   @@index([conversationId])
 }
+
+// ============================================================
+//  Bổ sung theo bản thiết kế ERD Seller/Admin (chỉ thêm phần còn thiếu;
+//  dùng FK dạng Int + index theo kiểu quan hệ đa hình như ERD mô tả,
+//  không sửa các model hiện có để tránh ảnh hưởng dữ liệu/nghiệp vụ cũ).
+// ============================================================
+
+// ERD 3.3 - shop_shipping_methods: Người bán tự khai đơn vị/dịch vụ & phí ship.
+enum ShippingMethodStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model ShopShippingMethod {
+  id            Int                  @id @default(autoincrement())
+  shopId        Int // = Shop.id (FK logic tới shops.shop_id)
+  carrierName   String // đơn vị vận chuyển do Người bán khai báo
+  serviceName   String? // tên dịch vụ
+  shippingFee   Int                  @default(0) // phí vận chuyển
+  estimatedDays Int? // số ngày dự kiến
+  description   String?              @db.Text
+  status        ShippingMethodStatus @default(ACTIVE)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([shopId])
+}
+
+// ERD 3.9 - stock_movements: lịch sử nhập/xuất/điều chỉnh/hoàn kho theo biến thể.
+enum StockMovementType {
+  IMPORT // nhập hàng
+  EXPORT // xuất bán
+  ADJUSTMENT // điều chỉnh thủ công
+  RETURN // hàng hoàn
+}
+
+model StockMovement {
+  id            Int               @id @default(autoincrement())
+  variantId     Int // = ProductVariant.id
+  type          StockMovementType
+  quantity      Int // số lượng biến động (dương/âm theo loại; quy ước ở service)
+  referenceType String? // loại nghiệp vụ tham chiếu (ORDER, MANUAL...)
+  referenceId   Int? // id nghiệp vụ tham chiếu
+  note          String?           @db.Text
+  actorId       Int? // người thực hiện (Người bán/Quản trị viên)
+  createdAt     DateTime          @default(now())
+
+  @@index([variantId])
+}
+
+// ERD 3.19 - user_reports: Buyer/Seller gửi báo cáo vi phạm; Admin xử lý.
+enum ReportTargetType {
+  SHOP
+  PRODUCT
+  USER
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSING
+  RESOLVED
+  REJECTED
+}
+
+model UserReport {
+  id             Int              @id @default(autoincrement())
+  reporterId     Int // = User.id người gửi
+  targetType     ReportTargetType
+  targetId       Int // id đối tượng bị báo cáo (đa hình, kiểm tra ở backend)
+  reason         String // lý do ngắn
+  description    String?          @db.Text
+  evidenceUrl    String? // ảnh minh chứng
+  status         ReportStatus     @default(PENDING)
+  adminId        Int? // Admin tiếp nhận/xử lý
+  resolutionNote String?          @db.Text
+  createdAt      DateTime         @default(now())
+  resolvedAt     DateTime?
+
+  @@index([status])
+  @@index([targetType, targetId])
+}
+
+// ERD 3.17 - admin_action_logs: nhật ký thao tác quản trị để truy vết.
+enum AdminLogTarget {
+  USER
+  SHOP
+  PRODUCT
+  ORDER
+  SETTING
+  REPORT
+}
+
+model AdminActionLog {
+  id          Int            @id @default(autoincrement())
+  adminId     Int // = User.id (Quản trị viên)
+  action      String // tên hành động, vd "LOCK_USER", "APPROVE_SHOP"
+  targetType  AdminLogTarget
+  targetId    Int? // id đối tượng (đa hình)
+  description String?        @db.Text
+  ipAddress   String? // IPv4/IPv6
+  createdAt   DateTime       @default(now())
+
+  @@index([adminId])
+  @@index([targetType, targetId])
+}
+
+// ERD 3.18 - moderation_logs: lịch sử duyệt/từ chối/ẩn/khôi phục shop & sản phẩm.
+enum ModerationTarget {
+  SHOP
+  PRODUCT
+}
+
+enum ModerationAction {
+  APPROVE
+  REJECT
+  HIDE
+  RESTORE
+}
+
+model ModerationLog {
+  id         Int              @id @default(autoincrement())
+  adminId    Int // = User.id (Quản trị viên)
+  targetType ModerationTarget
+  targetId   Int // id shop/sản phẩm (đa hình)
+  action     ModerationAction
+  reason     String?          @db.Text
+  createdAt  DateTime         @default(now())
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+// ERD 3.22 - platform_announcements: Admin tạo thông báo toàn sàn cho nhóm người dùng.
+enum AnnouncementAudience {
+  ALL
+  BUYER
+  SELLER
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  EXPIRED
+}
+
+model PlatformAnnouncement {
+  id             Int                  @id @default(autoincrement())
+  adminId        Int // = User.id người tạo
+  title          String
+  content        String               @db.Text
+  targetAudience AnnouncementAudience @default(ALL)
+  startAt        DateTime?
+  endAt          DateTime?
+  status         AnnouncementStatus   @default(DRAFT)
+  recipientCount Int                  @default(0) // số người đã nhận khi phát hành
+  createdAt      DateTime             @default(now())
+
+  @@index([status])
+}

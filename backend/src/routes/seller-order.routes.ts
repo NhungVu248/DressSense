@@ -15,6 +15,10 @@ import {
 import {
   createVoucherOrder, listMyVoucherOrders, payVoucherOrder, markVoucherPaidSandbox, cancelVoucherOrder,
 } from '../controllers/voucher-order.controller';
+import { listInventory, adjustStock, listStockMovements } from '../controllers/inventory.controller';
+import {
+  listShippingMethods, createShippingMethod, updateShippingMethod, deleteShippingMethod,
+} from '../controllers/shipping-method.controller';
 import { authenticate, authorize } from '../middlewares/auth';
 
 const router = Router();
@@ -72,5 +76,16 @@ router.post('/voucher-orders', createVoucherOrder);
 router.post('/voucher-orders/:id/pay', payVoucherOrder);
 router.post('/voucher-orders/:id/mark-paid', markVoucherPaidSandbox);
 router.delete('/voucher-orders/:id', cancelVoucherOrder);
+
+// ERD 3.8/3.9 (Seller #4) - Quản lý tồn kho + lịch sử biến động
+router.get('/inventory', listInventory);
+router.get('/inventory/movements', listStockMovements);
+router.patch('/inventory/:variantId', adjustStock);
+
+// ERD 3.3 (Seller #6) - Quản lý phương thức vận chuyển của gian hàng
+router.get('/shipping-methods', listShippingMethods);
+router.post('/shipping-methods', createShippingMethod);
+router.put('/shipping-methods/:id', updateShippingMethod);
+router.delete('/shipping-methods/:id', deleteShippingMethod);
 
 export default router;

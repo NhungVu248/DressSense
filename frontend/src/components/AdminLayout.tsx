@@ -1,49 +1,65 @@
 import { useState, type ReactNode } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-// Bố cục khu QUẢN TRỊ - đồng bộ phong cách Figma (nền kem, xanh ô-liu, serif).
-// Sidebar nhóm chức năng; tách biệt hoàn toàn giao diện Khách hàng/Người bán.
-const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: boolean }[] }[] = [
+// Bố cục khu QUẢN TRỊ - cấu trúc theo bản thiết kế phân hệ (ảnh 4): nhóm
+// "QUẢN LÝ NỀN TẢNG" + "HỆ THỐNG". Mỗi phân hệ 1 mục chính; các chức năng liên
+// quan gom vào mục con (indent) để rạch ròi, tránh gối chức năng.
+type NavItem = { to: string; label: string; end?: boolean; sub?: { to: string; label: string }[] };
+const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
   {
-    heading: 'Quản trị',
+    heading: 'Quản lý nền tảng',
     items: [
-      { to: '/admin', label: 'Tổng quan', end: true }, // UC16.1
-      { to: '/admin/users', label: 'Người dùng' }, // UC16.2
-      { to: '/admin/categories', label: 'Danh mục' },
-      { to: '/admin/settings', label: 'Cấu hình hệ thống' }, // UC16.5
-      { to: '/admin/password-resets', label: 'Cấp lại mật khẩu' }, // admin quên MK
+      { to: '/admin', label: 'Tổng quan', end: true }, // #1 Dashboard
+      { to: '/admin/users', label: 'Người dùng' }, // #2
+      { to: '/admin/shops', label: 'Cửa hàng' }, // #3
+      {
+        to: '/admin/products', label: 'Sản phẩm', // #4 + #5 (danh mục) + #9 (kiểm duyệt nội dung)
+        sub: [
+          { to: '/admin/content', label: 'Kiểm duyệt nội dung' },
+          { to: '/admin/categories', label: 'Danh mục' },
+        ],
+      },
+      { to: '/admin/orders', label: 'Đơn hàng' }, // #6
+      {
+        to: '/admin/platform-revenue', label: 'Tài chính', // #7 + Thống kê BI (UC15)
+        sub: [
+          { to: '/admin/analytics/revenue', label: 'Doanh thu' },
+          { to: '/admin/analytics/customers', label: 'Khách hàng' },
+          { to: '/admin/analytics/behavior', label: 'Hành vi' },
+          { to: '/admin/analytics/body-shapes', label: 'Dáng người' },
+          { to: '/admin/analytics/inventory', label: 'Tồn kho' },
+        ],
+      },
+      {
+        to: '/admin/reports', label: 'Báo cáo vi phạm', // #8 + Khiếu nại
+        sub: [{ to: '/admin/complaints', label: 'Khiếu nại đơn hàng' }],
+      },
+      {
+        to: '/admin/moderation', label: 'Kiểm duyệt', // #9 lịch sử + Đánh giá
+        sub: [{ to: '/admin/reviews', label: 'Duyệt đánh giá' }],
+      },
     ],
   },
   {
-    heading: 'Kiểm duyệt',
+    heading: 'Hệ thống',
     items: [
-      { to: '/admin/shops', label: 'Gian hàng' },
-      { to: '/admin/content', label: 'Nội dung (SP)' }, // UC16.4
-      { to: '/admin/complaints', label: 'Khiếu nại' },
-      { to: '/admin/reviews', label: 'Đánh giá' },
+      {
+        to: '/admin/announcements', label: 'Thông báo', // #11 + tiếp thị
+        sub: [
+          { to: '/admin/campaigns', label: 'Chiến dịch' },
+          { to: '/admin/banners', label: 'Banner quảng cáo' },
+          { to: '/admin/ad-orders', label: 'Duyệt đơn QC banner' }, // Backlog C.41
+          { to: '/admin/voucher-orders', label: 'Duyệt mua voucher' }, // Backlog C.45
+          { to: '/admin/promotions', label: 'Khuyến mãi' },
+        ],
+      },
       { to: '/admin/messages', label: 'Tin nhắn CSKH' },
-    ],
-  },
-  {
-    heading: 'Khuyến mãi & tiếp thị',
-    items: [
-      { to: '/admin/promotions', label: 'Khuyến mãi' },
-      { to: '/admin/banners', label: 'Banner quảng cáo' },
-      { to: '/admin/ad-orders', label: 'Duyệt banner (đơn QC)' }, // Backlog C.41
-      { to: '/admin/voucher-orders', label: 'Duyệt mua voucher' }, // Backlog C.45
-      { to: '/admin/campaigns', label: 'Thông báo khuyến mãi' },
-    ],
-  },
-  {
-    heading: 'Phân tích (BI)', // UC15 - toàn hệ thống
-    items: [
-      { to: '/admin/platform-revenue', label: 'Doanh thu sàn' }, // Backlog C.42
-      { to: '/admin/analytics/revenue', label: 'Doanh thu' },
-      { to: '/admin/analytics/customers', label: 'Khách hàng' },
-      { to: '/admin/analytics/behavior', label: 'Hành vi' },
-      { to: '/admin/analytics/body-shapes', label: 'Dáng người' },
-      { to: '/admin/analytics/inventory', label: 'Tồn kho' },
+      { to: '/admin/action-logs', label: 'Nhật ký hoạt động' }, // #12
+      {
+        to: '/admin/settings', label: 'Cài đặt', // #10 Cấu hình hệ thống
+        sub: [{ to: '/admin/password-resets', label: 'Cấp lại mật khẩu' }],
+      },
     ],
   },
 ];
@@ -51,6 +67,7 @@ const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: b
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const nav = useNavigate();
+  const loc = useLocation();
   const [open, setOpen] = useState(false);
 
   const linkCls = ({ isActive }: { isActive: boolean }) =>
@@ -64,11 +81,24 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <div key={g.heading}>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink/40 px-3 mb-1.5">{g.heading}</p>
           <div className="space-y-0.5">
-            {g.items.map((n) => (
-              <NavLink key={n.to} to={n.to} end={n.end} onClick={() => setOpen(false)} className={linkCls}>
-                {n.label}
-              </NavLink>
-            ))}
+            {g.items.map((n) => {
+              const showSub = n.sub && (loc.pathname === n.to || n.sub.some((s) => loc.pathname === s.to));
+              return (
+                <div key={n.to}>
+                  <NavLink to={n.to} end={n.end} onClick={() => setOpen(false)} className={linkCls}>{n.label}</NavLink>
+                  {showSub && (
+                    <div className="ml-3 mt-0.5 space-y-0.5 border-l border-brand/15 pl-2">
+                      {n.sub!.map((s) => (
+                        <NavLink key={s.to} to={s.to} onClick={() => setOpen(false)}
+                          className={({ isActive }) => `block px-2 py-1 rounded text-[13px] ${isActive ? 'text-brand font-medium' : 'text-ink/50 hover:text-brand'}`}>
+                          {s.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}

@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { notify } from '../services/notification.service';
+import { logModeration, logAdminAction } from '../services/admin-log.service';
 import type { JwtPayload } from '../utils/jwt';
 
 // ============================================================
@@ -146,6 +147,7 @@ export async function approveShop(req: Request, res: Response, next: NextFunctio
     });
     await notify(shop.ownerId, 'SHOP', 'Gian hàng được duyệt',
       `Gian hàng "${shop.name}" đã được phê duyệt và đang hoạt động.`, '/seller/shop');
+    await logModeration(user.userId, 'SHOP', id, 'APPROVE');
     res.json({ shop: updated });
   } catch (err) {
     next(err);
@@ -166,6 +168,7 @@ export async function rejectShop(req: Request, res: Response, next: NextFunction
       data: { status: 'REJECTED', reviewedAt: new Date(), reviewedById: user.userId, rejectReason: reason },
     });
     await notify(shop.ownerId, 'SHOP', 'Hồ sơ gian hàng bị từ chối', `Lý do: ${reason}`, '/seller/shop');
+    await logModeration(user.userId, 'SHOP', id, 'REJECT', reason);
     res.json({ shop: updated });
   } catch (err) {
     next(err);
@@ -207,6 +210,8 @@ export async function setShopSuspension(req: Request, res: Response, next: NextF
     });
     await notify(shop.ownerId, 'SHOP', suspend ? 'Gian hàng bị tạm ngưng' : 'Gian hàng được mở lại',
       suspend ? 'Gian hàng của bạn đã bị tạm ngưng.' : 'Gian hàng của bạn đã hoạt động trở lại.', '/seller/shop');
+    await logModeration(user.userId, 'SHOP', id, suspend ? 'HIDE' : 'RESTORE');
+    await logAdminAction(user.userId, suspend ? 'SUSPEND_SHOP' : 'UNSUSPEND_SHOP', 'SHOP', id, shop.name, req.ip);
     res.json({ shop: updated });
   } catch (err) {
     next(err);

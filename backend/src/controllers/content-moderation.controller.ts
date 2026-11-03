@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import { notify } from '../services/notification.service';
+import { logModeration } from '../services/admin-log.service';
+import type { JwtPayload } from '../utils/jwt';
 
 // ============================================================
 //  UC16.4 - Kiểm duyệt nội dung: SẢN PHẨM.
@@ -48,6 +50,8 @@ export async function moderateProduct(req: Request, res: Response, next: NextFun
 
     const updated = await prisma.product.update({ where: { id }, data: { status } });
     await notify(product.sellerId, 'SHOP', 'Kết quả kiểm duyệt sản phẩm', msg, '/seller/products');
+    const user = req.user as JwtPayload;
+    await logModeration(user.userId, 'PRODUCT', id, action === 'approve' ? 'APPROVE' : (action === 'hide' ? 'HIDE' : 'REJECT'), reason || undefined);
     res.json({ product: updated });
   } catch (err) { next(err); }
 }

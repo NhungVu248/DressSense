@@ -29,6 +29,7 @@ import campaignRoutes from './campaign.routes';
 import analyticsRoutes from './analytics.routes';
 import messageRoutes from './message.routes';
 import publicSettingsRoutes from './public-settings.routes';
+import reportRoutes from './report.routes';
 
 const router = Router();
 router.use('/auth', authRoutes);
@@ -61,5 +62,6 @@ router.use('/admin/campaigns', campaignRoutes); // UC13.3 - Chiến dịch thôn
 router.use('/analytics', analyticsRoutes); // UC15 - Phân tích dữ liệu kinh doanh (BI)
 router.use('/messages', messageRoutes); // Tin nhắn / Chăm sóc khách hàng
 router.use('/settings', publicSettingsRoutes); // Cấu hình công khai (thuế VAT…)
+router.use('/reports', reportRoutes); // ERD 3.19 - Người dùng gửi báo cáo vi phạm
 
 export default router;

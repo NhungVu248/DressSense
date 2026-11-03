@@ -3,6 +3,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 import { notify } from '../services/notification.service';
+import { logAdminAction } from '../services/admin-log.service';
 import { isDev } from '../config/env';
 
 // Sinh mật khẩu ngẫu nhiên đạt chính sách (hoa/thường/số/ký tự đặc biệt)
@@ -157,6 +158,12 @@ export async function updateUserRole(req: Request, res: Response, next: NextFunc
     if (newStatus !== target.status && (newStatus === 'LOCKED' || newStatus === 'DISABLED')) {
       await notify(targetId, 'SHOP', 'Tài khoản bị hạn chế',
         `Tài khoản của bạn đã bị ${newStatus === 'LOCKED' ? 'tạm khóa' : 'vô hiệu hóa'}.${data.note ? ' Lý do: ' + data.note : ''}`);
+    }
+
+    // Ghi nhật ký hoạt động Admin (ERD 3.17) khi đổi quyền/trạng thái
+    if (newRole !== target.role || newStatus !== target.status) {
+      const act = newStatus !== target.status ? `SET_USER_STATUS_${newStatus}` : `SET_USER_ROLE_${newRole}`;
+      await logAdminAction(actorId, act, 'USER', targetId, data.note || `${target.role}/${target.status} → ${newRole}/${newStatus}`, req.ip);
     }
 
     const updated = await prisma.user.findUnique({ where: { id: targetId } });

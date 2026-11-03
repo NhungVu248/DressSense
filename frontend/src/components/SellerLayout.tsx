@@ -1,43 +1,47 @@
 import { useState, type ReactNode } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-// UC14 - Bố cục Seller Portal (Người bán). Đồng bộ phong cách Figma: nền kem,
-// xanh ô-liu, serif; sidebar nhóm chức năng - tách biệt với giao diện Khách & Admin.
-const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: boolean }[] }[] = [
+// Bố cục Seller Portal (Người bán) - cấu trúc theo bản thiết kế phân hệ (ảnh 3):
+// nhóm "QUẢN LÝ CỬA HÀNG" + "HỆ THỐNG". Mỗi phân hệ 1 mục; Thống kê (BI) gộp
+// vào Tổng quan dưới dạng mục con để tránh gối chức năng.
+type NavItem = { to: string; label: string; end?: boolean; sub?: { to: string; label: string }[] };
+const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
   {
-    heading: 'Gian hàng',
+    heading: 'Quản lý cửa hàng',
     items: [
-      { to: '/seller', label: 'Tổng quan', end: true }, // UC14.4 - báo cáo doanh thu
-      { to: '/seller/shop', label: 'Thông tin gian hàng' }, // UC14.1
+      {
+        to: '/seller', label: 'Tổng quan', end: true, // #10 Thống kê kinh doanh
+        sub: [
+          { to: '/seller/analytics/revenue', label: 'Doanh thu' },
+          { to: '/seller/analytics/customers', label: 'Khách hàng' },
+          { to: '/seller/analytics/behavior', label: 'Hành vi' },
+          { to: '/seller/analytics/body-shapes', label: 'Dáng người' },
+          { to: '/seller/analytics/inventory', label: 'Phân tích tồn kho' },
+        ],
+      },
+      { to: '/seller/shop', label: 'Cửa hàng của tôi' }, // #1 Quản lý cửa hàng
+      { to: '/seller/shipping', label: 'Vận chuyển' }, // #6 Quản lý vận chuyển
+      { to: '/seller/products', label: 'Sản phẩm' }, // #2 + #3 (chọn danh mục)
+      { to: '/seller/orders', label: 'Đơn hàng' }, // #5 + #7 (thanh toán)
+      { to: '/seller/inventory', label: 'Tồn kho' }, // #4 Quản lý tồn kho
+      {
+        to: '/seller/promotions', label: 'Khuyến mãi', // #8 Quản lý khuyến mãi + mua dịch vụ tiếp thị
+        sub: [
+          { to: '/seller/ad-orders', label: 'Quảng cáo banner' }, // Backlog B.26
+          { to: '/seller/voucher-orders', label: 'Mua voucher' }, // Backlog B.27
+        ],
+      },
+      { to: '/seller/reviews', label: 'Đánh giá' }, // #9 Quản lý đánh giá + Hỏi đáp
     ],
   },
   {
-    heading: 'Bán hàng',
+    heading: 'Hệ thống',
     items: [
-      { to: '/seller/products', label: 'Sản phẩm' }, // UC14.2 (tái dùng UC6)
-      { to: '/seller/orders', label: 'Đơn hàng' }, // UC14.3 (tái dùng UC10)
-    ],
-  },
-  {
-    heading: 'Phân tích (BI)', // UC15
-    items: [
-      { to: '/seller/analytics/revenue', label: 'Doanh thu' },
-      { to: '/seller/analytics/customers', label: 'Khách hàng' },
-      { to: '/seller/analytics/behavior', label: 'Hành vi' },
-      { to: '/seller/analytics/body-shapes', label: 'Dáng người' },
-      { to: '/seller/analytics/inventory', label: 'Tồn kho' },
-    ],
-  },
-  {
-    heading: 'Chăm sóc & tiếp thị',
-    items: [
-      { to: '/seller/promotions', label: 'Khuyến mãi' },
-      { to: '/seller/ad-orders', label: 'Quảng cáo banner' }, // Backlog B.26
-      { to: '/seller/voucher-orders', label: 'Mua voucher' }, // Backlog B.27
-      { to: '/seller/reviews', label: 'Đánh giá & Hỏi đáp' },
+      { to: '/seller/notifications', label: 'Thông báo' }, // #11 Quản lý thông báo
       { to: '/seller/messages', label: 'Tin nhắn' },
       { to: '/seller/support', label: 'Hỗ trợ' },
+      { to: '/profile', label: 'Cài đặt tài khoản' },
     ],
   },
 ];
@@ -45,6 +49,7 @@ const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: b
 export default function SellerLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const nav = useNavigate();
+  const loc = useLocation();
   const [open, setOpen] = useState(false);
 
   const linkCls = ({ isActive }: { isActive: boolean }) =>
@@ -58,11 +63,24 @@ export default function SellerLayout({ children }: { children: ReactNode }) {
         <div key={g.heading}>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-ink/40 px-3 mb-1.5">{g.heading}</p>
           <div className="space-y-0.5">
-            {g.items.map((n) => (
-              <NavLink key={n.to} to={n.to} end={n.end} onClick={() => setOpen(false)} className={linkCls}>
-                {n.label}
-              </NavLink>
-            ))}
+            {g.items.map((n) => {
+              const showSub = n.sub && (loc.pathname === n.to || n.sub.some((s) => loc.pathname === s.to));
+              return (
+                <div key={n.to}>
+                  <NavLink to={n.to} end={n.end} onClick={() => setOpen(false)} className={linkCls}>{n.label}</NavLink>
+                  {showSub && (
+                    <div className="ml-3 mt-0.5 space-y-0.5 border-l border-brand/15 pl-2">
+                      {n.sub!.map((s) => (
+                        <NavLink key={s.to} to={s.to} onClick={() => setOpen(false)}
+                          className={({ isActive }) => `block px-2 py-1 rounded text-[13px] ${isActive ? 'text-brand font-medium' : 'text-ink/50 hover:text-brand'}`}>
+                          {s.label}
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}
