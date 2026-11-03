@@ -40,9 +40,15 @@ export async function uploadReviewVideo(file: File): Promise<string> {
 export async function getProductQuestions(productId: number | string): Promise<PublicQuestion[]> {
   return (await api.get(`/questions/product/${productId}`)).data.questions;
 }
-export async function createQuestion(productId: number, question: string) {
-  return (await api.post('/questions', { productId, question })).data;
+export async function createQuestion(productId: number, question: string, orderId?: number) {
+  return (await api.post('/questions', { productId, question, orderId })).data;
 }
+
+// ---- Đánh giá & hỏi đáp CỦA TÔI (gắn với đơn) ----
+export interface MyReview { id: number; rating: number; comment: string | null; sellerReply: string | null; createdAt: string; product: { id: number; name: string } | null; order: { code: string } | null }
+export interface MyQuestion { id: number; question: string; answer: string | null; createdAt: string; product: { id: number; name: string } | null; order: { code: string } | null }
+export async function getMyReviews(): Promise<MyReview[]> { return (await api.get('/reviews/mine')).data.reviews; }
+export async function getMyQuestions(): Promise<MyQuestion[]> { return (await api.get('/questions/mine')).data.questions; }
 
 // ---- Thông báo (UC12.4) ----
 export async function getNotifications(filter?: { type?: string; unread?: boolean }): Promise<{ items: Notification[]; unread: number }> {
@@ -56,8 +62,8 @@ export async function markNotificationRead(id: number) { return (await api.patch
 export async function markAllNotificationsRead() { return (await api.patch('/notifications/read-all')).data; }
 
 // ---- Người bán (UC12.2/12.3) ----
-export interface SellerReview { id: number; rating: number; comment: string | null; sellerReply: string | null; createdAt: string; user?: { fullName: string }; product?: { name: string } }
-export interface SellerQuestion { id: number; question: string; answer: string | null; createdAt: string; user?: { fullName: string }; product?: { name: string } }
+export interface SellerReview { id: number; rating: number; comment: string | null; sellerReply: string | null; createdAt: string; user?: { fullName: string }; product?: { name: string }; order?: { code: string } | null }
+export interface SellerQuestion { id: number; question: string; answer: string | null; createdAt: string; user?: { fullName: string }; product?: { name: string }; order?: { code: string } | null }
 export async function getSellerReviews(): Promise<SellerReview[]> { return (await api.get('/seller/reviews')).data.reviews; }
 export async function replyReview(id: number, reply: string) { return (await api.patch(`/seller/reviews/${id}/reply`, { reply })).data; }
 export async function getSellerQuestions(): Promise<SellerQuestion[]> { return (await api.get('/seller/questions')).data.questions; }

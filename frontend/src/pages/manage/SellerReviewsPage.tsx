@@ -35,7 +35,7 @@ export default function SellerReviewsPage() {
             <div key={r.id} className="bg-white rounded-xl border border-black/5 p-4">
               <div className="flex items-center gap-2">
                 <span className="text-amber-500">{'★'.repeat(r.rating)}<span className="text-gray-200">{'★'.repeat(5 - r.rating)}</span></span>
-                <span className="text-xs text-gray-400">{r.user?.fullName} · {r.product?.name}</span>
+                <span className="text-xs text-gray-400">{r.user?.fullName} · {r.product?.name}{r.order ? ` · Đơn ${r.order.code}` : ''}</span>
               </div>
               {r.comment && <p className="text-sm text-ink mt-1">{r.comment}</p>}
               {r.sellerReply ? <p className="text-sm text-brand mt-2 pl-3 border-l-2 border-brand/30">Phản hồi: {r.sellerReply}</p>
@@ -46,7 +46,7 @@ export default function SellerReviewsPage() {
         !questions || questions.length === 0 ? <Empty text="Chưa có câu hỏi" />
           : <div className="space-y-3">{questions.map((q) => (
             <div key={q.id} className="bg-white rounded-xl border border-black/5 p-4">
-              <p className="text-sm text-ink"><span className="text-xs text-gray-400">{q.user?.fullName} · {q.product?.name}:</span> {q.question}</p>
+              <p className="text-sm text-ink"><span className="text-xs text-gray-400">{q.user?.fullName} · {q.product?.name}{q.order ? ` · Đơn ${q.order.code}` : ''}:</span> {q.question}</p>
               {q.answer ? <p className="text-sm text-brand mt-2 pl-3 border-l-2 border-brand/30">Trả lời: {q.answer}</p>
                 : <button onClick={() => answer(q.id)} className="mt-2 bg-brand text-white rounded-lg px-4 py-1.5 text-sm">Trả lời</button>}
             </div>

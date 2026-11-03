@@ -74,6 +74,17 @@ export async function createReview(req: Request, res: Response, next: NextFuncti
   }
 }
 
+// GET /api/reviews/mine - đánh giá của chính khách hàng (gom theo đơn ở FE)
+export async function listMyReviews(req: Request, res: Response, next: NextFunction) {
+  try {
+    const rows = await prisma.review.findMany({
+      where: { userId: req.user!.userId }, orderBy: { createdAt: 'desc' }, take: 200,
+      include: { product: { select: { id: true, name: true } }, order: { select: { code: true } } },
+    });
+    res.json({ reviews: rows });
+  } catch (err) { next(err); }
+}
+
 // POST /api/reviews/upload - tải ảnh đánh giá, trả về URL (UC12.1)
 export async function uploadReviewImagesHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -139,7 +150,7 @@ export async function listSellerReviews(req: Request, res: Response, next: NextF
     if (user.role !== 'ADMIN') where.product = { sellerId: user.userId };
     const rows = await prisma.review.findMany({
       where, orderBy: { createdAt: 'desc' },
-      include: { user: { select: { fullName: true } }, product: { select: { name: true } } },
+      include: { user: { select: { fullName: true } }, product: { select: { name: true } }, order: { select: { code: true } } },
     });
     res.json({ reviews: rows });
   } catch (err) {
@@ -176,7 +187,7 @@ export async function listAdminReviews(req: Request, res: Response, next: NextFu
     const rows = await prisma.review.findMany({
       where: status ? { status: status as any } : {},
       orderBy: { createdAt: 'desc' },
-      include: { user: { select: { fullName: true } }, product: { select: { name: true } } },
+      include: { user: { select: { fullName: true } }, product: { select: { name: true } }, order: { select: { code: true } } },
     });
     res.json({ reviews: rows });
   } catch (err) {

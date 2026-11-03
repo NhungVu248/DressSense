@@ -8,9 +8,9 @@ import type { JwtPayload } from '../utils/jwt';
 //  UC12.3 - Hỏi đáp sản phẩm. Khách đặt câu hỏi, người bán trả lời.
 // ============================================================
 
-const createSchema = z.object({ productId: z.coerce.number().int(), question: z.string().trim().min(1) });
+const createSchema = z.object({ productId: z.coerce.number().int(), question: z.string().trim().min(1), orderId: z.coerce.number().int().optional() });
 
-// POST /api/questions - khách đặt câu hỏi (không bắt buộc đã mua)
+// POST /api/questions - khách đặt câu hỏi (có thể gắn với đơn đã mua)
 export async function createQuestion(req: Request, res: Response, next: NextFunction) {
   try {
     const body = createSchema.safeParse(req.body);
@@ -18,7 +18,17 @@ export async function createQuestion(req: Request, res: Response, next: NextFunc
     const product = await prisma.product.findUnique({ where: { id: body.data.productId }, select: { id: true, status: true, deletedAt: true, sellerId: true, name: true } });
     // 5E - sản phẩm phải đang hiển thị
     if (!product || product.deletedAt || product.status !== 'ACTIVE') return res.status(404).json({ message: 'Sản phẩm không khả dụng.' });
-    const q = await prisma.productQuestion.create({ data: { productId: product.id, userId: req.user!.userId, question: body.data.question } });
+    // Nếu hỏi từ một đơn: đơn phải thuộc khách và chứa sản phẩm này
+    let orderId: number | undefined;
+    if (body.data.orderId != null) {
+      const ord = await prisma.order.findFirst({
+        where: { id: body.data.orderId, userId: req.user!.userId, items: { some: { productId: product.id } } },
+        select: { id: true },
+      });
+      if (!ord) return res.status(400).json({ message: 'Đơn hàng không hợp lệ cho sản phẩm này.' });
+      orderId = ord.id;
+    }
+    const q = await prisma.productQuestion.create({ data: { productId: product.id, userId: req.user!.userId, question: body.data.question, orderId } });
     notify(product.sellerId, 'QA', 'Câu hỏi mới', `Có câu hỏi về sản phẩm "${product.name}".`, `/manage/reviews`);
     res.status(201).json({ question: q });
   } catch (err) {
@@ -44,6 +54,17 @@ export async function getProductQuestions(req: Request, res: Response, next: Nex
   }
 }
 
+// GET /api/questions/mine - câu hỏi của chính khách hàng (gom theo đơn ở FE)
+export async function listMyQuestions(req: Request, res: Response, next: NextFunction) {
+  try {
+    const rows = await prisma.productQuestion.findMany({
+      where: { userId: req.user!.userId }, orderBy: { createdAt: 'desc' }, take: 200,
+      include: { product: { select: { id: true, name: true } }, order: { select: { code: true } } },
+    });
+    res.json({ questions: rows });
+  } catch (err) { next(err); }
+}
+
 // ---- Người bán ----
 async function assertSellerQuestion(id: number, user: JwtPayload) {
   const q = await prisma.productQuestion.findUnique({ where: { id }, include: { product: { select: { sellerId: true, name: true } } } });
@@ -59,7 +80,7 @@ export async function listSellerQuestions(req: Request, res: Response, next: Nex
     if (user.role !== 'ADMIN') where.product = { sellerId: user.userId };
     const rows = await prisma.productQuestion.findMany({
       where, orderBy: { createdAt: 'desc' },
-      include: { user: { select: { fullName: true } }, product: { select: { name: true } } },
+      include: { user: { select: { fullName: true } }, product: { select: { name: true } }, order: { select: { code: true } } },
     });
     res.json({ questions: rows });
   } catch (err) {

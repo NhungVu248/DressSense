@@ -197,7 +197,7 @@ export async function getProduct(req: Request, res: Response, next: NextFunction
     const product = await prisma.product.findUnique({
       where: { id },
       include: {
-        images: true, variants: true, category: true, reviews: true,
+        images: { orderBy: { sortOrder: 'asc' } }, videos: { orderBy: { sortOrder: 'asc' } }, variants: true, category: true, reviews: true,
         bodyFits: { orderBy: { score: 'desc' } }, // UC4 - điểm tương thích dáng (cao->thấp)
         analysis: true, // UC4.1 - nhãn thuộc tính đề xuất/đã xác nhận
       },
@@ -226,7 +226,7 @@ export async function getManagedProduct(req: Request, res: Response, next: NextF
     if (!guard.ok) return res.status(guard.code).json({ message: guard.message });
     const product = await prisma.product.findUnique({
       where: { id },
-      include: { images: true, variants: { orderBy: { size: 'asc' } }, category: true, analysis: true },
+      include: { images: { orderBy: { sortOrder: 'asc' } }, videos: { orderBy: { sortOrder: 'asc' } }, variants: { orderBy: { size: 'asc' } }, category: true, analysis: true },
     });
     if (!product) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
     res.json({ product });
@@ -264,30 +264,53 @@ const createSchema = z.object({
   // UC6.3 - trạng thái + biến thể (size + tồn kho ban đầu, không âm)
   status: z.enum(['DRAFT', 'PENDING', 'ACTIVE', 'HIDDEN']).optional(),
   variants: z.array(z.object({ size: z.string().min(1), stock: z.coerce.number().int().min(0) })).optional(),
+  // Ảnh sản phẩm (tối thiểu 5, 1 ảnh bìa) + video (tối đa 5)
   images: z.array(z.object({ url: z.string().min(1), isPrimary: z.boolean().optional() })).optional(),
+  videos: z.array(z.object({ url: z.string().min(1) })).optional(),
 });
+
+const MIN_IMAGES = 5;
+const MAX_IMAGES = 10;
+const MAX_VIDEOS = 5;
+
+// Kiểm tra & chuẩn hóa danh sách ảnh/video. Trả lỗi (string) nếu không hợp lệ.
+function validateMedia(images?: { url: string; isPrimary?: boolean }[], videos?: { url: string }[]): string | null {
+  if (!images || images.length < MIN_IMAGES) return `Vui lòng thêm tối thiểu ${MIN_IMAGES} ảnh sản phẩm.`;
+  if (images.length > MAX_IMAGES) return `Tối đa ${MAX_IMAGES} ảnh mỗi sản phẩm.`;
+  if (videos && videos.length > MAX_VIDEOS) return `Tối đa ${MAX_VIDEOS} video mỗi sản phẩm.`;
+  return null;
+}
+
+// Dựng dữ liệu ảnh (xác định ảnh bìa: isPrimary đầu tiên, mặc định ảnh đầu).
+function buildImageRows(images: { url: string; isPrimary?: boolean }[]) {
+  let primaryIdx = images.findIndex((i) => i.isPrimary);
+  if (primaryIdx < 0) primaryIdx = 0;
+  return images.map((i, idx) => ({ url: i.url, isPrimary: idx === primaryIdx, sortOrder: idx }));
+}
 
 // POST /api/products  (chỉ SELLER/ADMIN) - UC6.3 thêm sản phẩm (nguyên tử + tự phân tích UC4.1)
 export async function createProduct(req: Request, res: Response, next: NextFunction) {
   try {
-    const { variants, images, status, ...fields } = createSchema.parse(req.body);
+    const { variants, status, images, videos, ...fields } = createSchema.parse(req.body);
     // 7F - danh mục phải hợp lệ và đang hoạt động
     const cat = await prisma.category.findUnique({ where: { id: fields.categoryId } });
     if (!cat || !cat.active) return res.status(400).json({ message: 'Danh mục không hợp lệ hoặc đã bị ẩn. Vui lòng chọn lại.' });
+    // Ảnh tối thiểu 5 + video tối đa 5
+    const mediaErr = validateMedia(images, videos);
+    if (mediaErr) return res.status(400).json({ message: mediaErr });
     // Backlog thuế: nếu người bán nhập giá chưa thuế -> giá cuối = chưa thuế + VAT (backend tính lại cho chuẩn)
     if (fields.priceBeforeTax != null) {
       const vat = await getVatConfig();
       fields.price = finalPriceFromBeforeTax(fields.priceBeforeTax, vat.rate);
     }
     const st = status ?? 'ACTIVE';
-    // 8E - nguyên tử: tạo trọn vẹn SP + biến thể (+tồn kho) + ảnh hoặc không gì
+    // 8E - nguyên tử: tạo trọn vẹn SP + biến thể (+tồn kho) + ảnh + video hoặc không gì
     const product = await prisma.product.create({
       data: {
         ...fields, sellerId: req.user!.userId, status: st,
         variants: variants && variants.length ? { create: variants.map((v) => ({ size: v.size, stock: v.stock })) } : undefined,
-        images: images && images.length ? {
-          create: images.map((im, idx) => ({ url: im.url, isPrimary: im.isPrimary ?? (idx === 0) })),
-        } : undefined,
+        images: { create: buildImageRows(images!) },
+        videos: videos && videos.length ? { create: videos.map((v, i) => ({ url: v.url, sortOrder: i })) } : undefined,
       },
       include: { images: true },
     });
@@ -308,9 +331,14 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
     const id = Number(req.params.id);
     const guard = await assertCanEdit(req, id);
     if (!guard.ok) return res.status(guard.code).json({ message: guard.message });
-    const { variants, images, ...d } = updateSchema.parse(req.body);
+    const { variants, images, videos, ...d } = updateSchema.parse(req.body);
     const before = await prisma.product.findUnique({ where: { id } });
     if (!before) return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
+    // Ảnh/video: nếu client gửi kèm thì thay toàn bộ, bắt buộc tối thiểu 5 ảnh
+    if (images !== undefined) {
+      const mediaErr = validateMedia(images, videos);
+      if (mediaErr) return res.status(400).json({ message: mediaErr });
+    }
     // Backlog thuế: đổi giá chưa thuế -> tính lại giá cuối
     if (d.priceBeforeTax != null) {
       const vat = await getVatConfig();
@@ -321,18 +349,14 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
       if (!cat || !cat.active) return res.status(400).json({ message: 'Danh mục không hợp lệ hoặc đã bị ẩn.' }); // 7F
     }
     const updated = await prisma.product.update({ where: { id }, data: d as any });
-    // Cập nhật danh sách ảnh sản phẩm nếu có truyền lên
+    // Thay toàn bộ ảnh/video khi client gửi kèm
     if (images !== undefined) {
-      await prisma.productImage.deleteMany({ where: { productId: id } });
-      if (images.length > 0) {
-        await prisma.productImage.createMany({
-          data: images.map((im, idx) => ({
-            productId: id,
-            url: im.url,
-            isPrimary: im.isPrimary ?? (idx === 0),
-          })),
-        });
-      }
+      await prisma.$transaction([
+        prisma.productImage.deleteMany({ where: { productId: id } }),
+        prisma.productImage.createMany({ data: buildImageRows(images).map((r) => ({ ...r, productId: id })) }),
+        prisma.productVideo.deleteMany({ where: { productId: id } }),
+        ...(videos && videos.length ? [prisma.productVideo.createMany({ data: videos.map((v, i) => ({ productId: id, url: v.url, sortOrder: i })) })] : []),
+      ]);
     }
     // 3b - thêm/sửa biến thể (upsert theo size)
     if (variants) for (const v of variants) {

@@ -10,6 +10,7 @@ import { listSellerQuestions, answerQuestion } from '../controllers/question.con
 import { getMyShop, updateMyShop, submitMyShop } from '../controllers/shop.controller';
 import { getSellerReport } from '../controllers/seller-report.controller';
 import { getSellerFinance, listSellerCommissions, listSellerSettlements, updateSellerBankInfo } from '../controllers/commission-seller.controller';
+import { uploadMediaImages, listMediaImages, deleteMediaImage, uploadMediaVideos } from '../controllers/media.controller';
 import {
   createBannerOrder, listMyBannerOrders, payBannerOrder, markPaidSandbox, cancelBannerOrder,
 } from '../controllers/banner-order.controller';
@@ -34,6 +35,12 @@ router.post('/shop/submit', submitMyShop);
 
 // UC14.4 - báo cáo doanh thu gian hàng
 router.get('/report', getSellerReport);
+
+// Kho ảnh gian hàng (tái sử dụng) + video sản phẩm
+router.get('/media/images', listMediaImages);
+router.post('/media/images', uploadMediaImages);
+router.delete('/media/images/:id', deleteMediaImage);
+router.post('/media/videos', uploadMediaVideos);
 
 // Mục 3 - Tài chính & doanh thu (hoa hồng, số dư, lịch sử thanh toán, thông tin nhận tiền)
 router.get('/finance', getSellerFinance);

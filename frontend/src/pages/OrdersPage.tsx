@@ -10,6 +10,7 @@ import {
 } from '../lib/order';
 import { ReturnModal, ComplaintModal, ReviewModal } from '../components/SupportModals';
 import { openConversation } from '../lib/messages';
+import { createQuestion } from '../lib/interact';
 
 const STATUS_CLS: Record<OrderStatus, string> = {
   AWAITING_PAYMENT: 'bg-orange-100 text-orange-700', PENDING: 'bg-amber-100 text-amber-700',
@@ -35,7 +36,10 @@ export function OrdersPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="font-display text-3xl text-ink mb-5">Đơn hàng của tôi</h1>
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+        <h1 className="font-display text-3xl text-ink">Đơn hàng của tôi</h1>
+        <Link to="/my-feedback" className="text-sm text-brand border border-brand/30 rounded-full px-4 py-1.5 hover:bg-brand-light">Đánh giá & Hỏi đáp của tôi</Link>
+      </div>
 
       <div className="flex gap-2 overflow-x-auto no-scrollbar mb-5">
         {FILTERS.map((f) => (
@@ -134,6 +138,7 @@ export function OrderDetailPage() {
   const [showComplaint, setShowComplaint] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
   const [reviewItem, setReviewItem] = useState<Order['items'][number] | null>(null);
+  const [askItem, setAskItem] = useState<Order['items'][number] | null>(null);
   const [reason, setReason] = useState(CANCEL_REASONS[0]);
   const [busy, setBusy] = useState(false);
 
@@ -168,6 +173,7 @@ export function OrderDetailPage() {
   const canCancelRequest = (o.status === 'CONFIRMED' || o.status === 'PREPARING') && !o.cancelRequested;
   const canReturn = o.status === 'DELIVERED' || o.status === 'COMPLETED'; // UC11.1
   const canReview = o.status === 'DELIVERED' || o.status === 'COMPLETED'; // UC12.1
+  const canAsk = o.status !== 'CANCELLED' && o.status !== 'AWAITING_PAYMENT'; // UC12.3 - hỏi đáp gắn với đơn
   const canInvoice = o.status === 'DELIVERED' || o.status === 'COMPLETED'; // Backlog - hóa đơn VAT
   const canComplain = ['CONFIRMED', 'PREPARING', 'SHIPPING', 'DELIVERED', 'COMPLETED'].includes(o.status); // UC11.2
 
@@ -211,6 +217,7 @@ export function OrderDetailPage() {
             <li key={it.id} className="flex items-center justify-between gap-2 py-2 text-sm">
               <span className="text-ink flex-1">{it.name}{it.size && <span className="text-gray-400"> · Size {it.size}</span>} <span className="text-gray-400">× {it.quantity}</span></span>
               {canReview && <button onClick={() => setReviewItem(it)} className="text-xs text-brand border border-brand/30 rounded-full px-2.5 py-1 hover:bg-brand-light whitespace-nowrap">Đánh giá</button>}
+              {canAsk && <button onClick={() => setAskItem(it)} className="text-xs text-gray-600 border border-black/15 rounded-full px-2.5 py-1 hover:border-brand whitespace-nowrap">Hỏi đáp</button>}
               <span>{formatVND(it.price * it.quantity)}</span>
             </li>
           ))}
@@ -253,6 +260,7 @@ export function OrderDetailPage() {
       {showReturn && <ReturnModal order={o} onClose={() => setShowReturn(false)} onDone={() => { setShowReturn(false); refresh(); }} />}
       {showComplaint && <ComplaintModal orderId={o.id} onClose={() => setShowComplaint(false)} onDone={() => setShowComplaint(false)} />}
       {reviewItem && <ReviewModal orderId={o.id} item={reviewItem} onClose={() => setReviewItem(null)} onDone={() => setReviewItem(null)} />}
+      {askItem && <AskQuestionModal orderId={o.id} item={askItem} onClose={() => setAskItem(null)} />}
       {showInvoice && <InvoiceModal order={o} onClose={() => setShowInvoice(false)} onDone={() => { setShowInvoice(false); window.open(`/orders/${o.id}/invoice`, '_blank'); }} />}
 
       {showCancel && (
@@ -276,6 +284,43 @@ export function OrderDetailPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// UC12.3 - gửi câu hỏi về sản phẩm gắn với đơn đã mua
+function AskQuestionModal({ orderId, item, onClose }: { orderId: number; item: Order['items'][number]; onClose: () => void }) {
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  async function submit() {
+    if (!text.trim()) { alert('Vui lòng nhập câu hỏi.'); return; }
+    setBusy(true);
+    try { await createQuestion(item.productId, text.trim(), orderId); setDone(true); }
+    catch (e: any) { alert(e?.response?.data?.message ?? 'Không gửi được câu hỏi.'); }
+    finally { setBusy(false); }
+  }
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <h3 className="font-display text-xl text-ink mb-1">Hỏi đáp sản phẩm</h3>
+        <p className="text-sm text-gray-500 mb-3">{item.name}</p>
+        {done ? (
+          <>
+            <p className="text-sm text-green-600 mb-4">Đã gửi câu hỏi. Người bán sẽ trả lời sớm; bạn xem trong mục “Đánh giá & Hỏi đáp của tôi”.</p>
+            <button onClick={onClose} className="w-full bg-brand text-white rounded-lg py-2.5 text-sm">Đóng</button>
+          </>
+        ) : (
+          <>
+            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Nhập câu hỏi về sản phẩm này…" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3" />
+            <div className="flex gap-2">
+              <button onClick={submit} disabled={busy} className="flex-1 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-2.5 text-sm">{busy ? 'Đang gửi…' : 'Gửi câu hỏi'}</button>
+              <button onClick={onClose} className="border border-black/15 rounded-lg px-4 py-2.5 text-sm">Đóng</button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

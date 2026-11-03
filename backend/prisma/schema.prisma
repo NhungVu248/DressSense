@@ -457,6 +457,7 @@ model Product {
   updatedAt DateTime @updatedAt
 
   images     ProductImage[]
+  videos     ProductVideo[] // tối đa 5 video sản phẩm
   variants   ProductVariant[]
   cartItems  CartItem[]
   wishlist   Wishlist[] // UC8.2 - được lưu trong danh sách yêu thích
@@ -528,7 +529,29 @@ model ProductImage {
   productId Int
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   url       String
-  isPrimary Boolean @default(false)
+  isPrimary Boolean @default(false) // ảnh bìa sản phẩm
+  sortOrder Int     @default(0) // thứ tự hiển thị
+}
+
+// Video sản phẩm (tối đa 5, giới hạn ở controller). Khác với video đánh giá (Review.videoUrl).
+model ProductVideo {
+  id        Int     @id @default(autoincrement())
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  sortOrder Int     @default(0)
+
+  @@index([productId])
+}
+
+// Kho ảnh dùng lại của từng gian hàng: tải lên 1 lần, chọn lại cho nhiều sản phẩm.
+model MediaAsset {
+  id        Int      @id @default(autoincrement())
+  sellerId  Int // = User.id (gian hàng sở hữu ảnh)
+  url       String
+  createdAt DateTime @default(now())
+
+  @@index([sellerId])
 }
 
 model ProductVariant {
@@ -656,6 +679,7 @@ model Order {
   complaints     Complaint[] // UC11.2
   incidents      DeliveryIncident[] // UC11.3
   reviews        Review[] // UC12.1
+  questions      ProductQuestion[] // UC12.3 - hỏi đáp gắn với đơn
   invoice        Invoice? // Backlog - hóa đơn VAT (xuất theo yêu cầu khách)
   commissions    OrderCommission[] // Hoa hồng sàn phát sinh từ đơn (ghi nhận khi COMPLETED)
 
@@ -1067,6 +1091,9 @@ model ProductQuestion {
   product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   userId     Int
   user       User      @relation(fields: [userId], references: [id])
+  // UC12.3 - hỏi đáp gắn với đơn hàng đã mua (tùy chọn, để gom theo đơn)
+  orderId    Int?
+  order      Order?    @relation(fields: [orderId], references: [id])
   question   String    @db.Text
   answer     String?   @db.Text
   answeredBy Int? // id người bán trả lời
@@ -1074,6 +1101,7 @@ model ProductQuestion {
   createdAt  DateTime  @default(now())
 
   @@index([productId])
+  @@index([orderId])
 }
 
 enum NotificationType {

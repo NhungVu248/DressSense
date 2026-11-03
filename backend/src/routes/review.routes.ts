@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createReview, getProductReviews, uploadReviewImagesHandler, uploadReviewVideoHandler } from '../controllers/review.controller';
+import { createReview, getProductReviews, uploadReviewImagesHandler, uploadReviewVideoHandler, listMyReviews } from '../controllers/review.controller';
 import { authenticate } from '../middlewares/auth';
 import { uploadReviewImages, uploadReviewVideo } from '../middlewares/upload';
 
@@ -10,6 +10,7 @@ router.get('/product/:id', getProductReviews);
 
 // cần đăng nhập: tạo đánh giá + tải ảnh
 router.use(authenticate);
+router.get('/mine', listMyReviews);
 router.post('/', createReview);
 router.post('/upload', (req, res, next) => {
   uploadReviewImages(req, res, (err: any) => {

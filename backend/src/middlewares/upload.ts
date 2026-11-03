@@ -107,6 +107,48 @@ export const uploadEvidence = multer({
   },
 }).array('files', 5);
 
+// ---------- Ảnh sản phẩm (kho ảnh gian hàng) + video sản phẩm ----------
+const PRODUCT_IMG_DIR = path.join(process.cwd(), 'uploads', 'products');
+fs.mkdirSync(PRODUCT_IMG_DIR, { recursive: true });
+
+const productImgStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, PRODUCT_IMG_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `p-u${req.user?.userId}-${Date.now()}-${Math.round(Math.random() * 1e4)}${ext}`);
+  },
+});
+
+export const uploadProductImages = multer({
+  storage: productImgStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB mỗi ảnh
+  fileFilter: (_req, file, cb) => {
+    if (!ALLOWED_MIME.includes(file.mimetype)) return cb(new Error('INVALID_IMAGE_TYPE'));
+    cb(null, true);
+  },
+}).array('files', 10); // tải tối đa 10 ảnh mỗi lượt vào kho
+
+const PRODUCT_VIDEO_DIR = path.join(process.cwd(), 'uploads', 'product-videos');
+fs.mkdirSync(PRODUCT_VIDEO_DIR, { recursive: true });
+const PRODUCT_VIDEO_MIME = ['video/mp4', 'video/webm', 'video/quicktime'];
+
+const productVideoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, PRODUCT_VIDEO_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.mp4';
+    cb(null, `pv-u${req.user?.userId}-${Date.now()}-${Math.round(Math.random() * 1e4)}${ext}`);
+  },
+});
+
+export const uploadProductVideos = multer({
+  storage: productVideoStorage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB mỗi video
+  fileFilter: (_req, file, cb) => {
+    if (!PRODUCT_VIDEO_MIME.includes(file.mimetype)) return cb(new Error('INVALID_VIDEO_TYPE'));
+    cb(null, true);
+  },
+}).array('files', 5); // tối đa 5 video mỗi lượt
+
 // ---------- UC6.7 - Tệp CSV nhập sản phẩm: giữ trong bộ nhớ ----------
 export const uploadCsv = multer({
   storage: multer.memoryStorage(),

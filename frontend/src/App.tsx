@@ -15,6 +15,7 @@ import WishlistPage from './pages/WishlistPage';
 import CheckoutPage from './pages/CheckoutPage';
 import CheckoutResultPage from './pages/CheckoutResultPage';
 import { OrdersPage, OrderDetailPage } from './pages/OrdersPage';
+import MyFeedbackPage from './pages/MyFeedbackPage';
 import InvoicePage from './pages/InvoicePage';
 import TransactionHistoryPage from './pages/TransactionHistoryPage';
 // UC1 - Khách hàng
@@ -176,6 +177,7 @@ export default function App() {
       <Route path="/orders" element={<RequireAuth><ShopLayout><OrdersPage /></ShopLayout></RequireAuth>} />
       <Route path="/orders/:id" element={<RequireAuth><ShopLayout><OrderDetailPage /></ShopLayout></RequireAuth>} />
       <Route path="/orders/:id/invoice" element={<RequireAuth><ShopLayout><InvoicePage /></ShopLayout></RequireAuth>} />{/* Backlog - hóa đơn VAT */}
+      <Route path="/my-feedback" element={<RequireAuth><ShopLayout><MyFeedbackPage /></ShopLayout></RequireAuth>} />{/* Đánh giá & Hỏi đáp của tôi */}
       <Route path="/transactions" element={<RequireAuth><ShopLayout><TransactionHistoryPage /></ShopLayout></RequireAuth>} />
 
       {/* UC11 - Đổi/trả & khiếu nại (khách) */}

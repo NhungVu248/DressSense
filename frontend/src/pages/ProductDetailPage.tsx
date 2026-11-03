@@ -154,12 +154,21 @@ export default function ProductDetailPage() {
           <div className="flex flex-col gap-3 shrink-0">
             {images.map((im, i) => (
               <button key={i} onClick={() => setImg(i)} className={`w-16 h-20 rounded-md overflow-hidden border-2 ${img === i ? 'border-brand' : 'border-transparent'}`}>
-                <img src={im.url} alt="" onError={(e) => { e.currentTarget.src = PRODUCT_PLACEHOLDER; }} className="w-full h-full object-cover bg-brand-light" />
+                <img src={mediaUrl(im.url)} alt="" onError={(e) => { e.currentTarget.src = PRODUCT_PLACEHOLDER; }} className="w-full h-full object-cover bg-brand-light" />
               </button>
             ))}
           </div>
-          <div className="flex-1 aspect-[4/5] rounded-xl overflow-hidden bg-brand-light">
-            <img src={images[img]?.url} alt={p.name} onError={(e) => { e.currentTarget.src = PRODUCT_PLACEHOLDER; }} className="w-full h-full object-cover" />
+          <div className="flex-1">
+            <div className="aspect-[4/5] rounded-xl overflow-hidden bg-brand-light">
+              <img src={images[img]?.url ? mediaUrl(images[img].url) : PRODUCT_PLACEHOLDER} alt={p.name} onError={(e) => { e.currentTarget.src = PRODUCT_PLACEHOLDER; }} className="w-full h-full object-cover" />
+            </div>
+            {Array.isArray((p as any).videos) && (p as any).videos.length > 0 && (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {((p as any).videos as { url: string }[]).map((v, i) => (
+                  <video key={i} src={mediaUrl(v.url)} controls className="w-full rounded-lg bg-black/5" />
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
