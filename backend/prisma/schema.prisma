@@ -144,6 +144,11 @@ model Shop {
   selfDelivery    Boolean @default(false) // true = người bán tự giao (tự chịu rủi ro)
   selfDeliveryFee Int? // phí giao người bán tự đặt (null/0 = miễn phí) khi tự giao
 
+  // Tài chính: thông tin nhận tiền để Admin đối soát & thanh toán (mục 3 - Tài chính & doanh thu)
+  bankName          String? // tên ngân hàng nhận tiền
+  bankAccountNo     String? // số tài khoản
+  bankAccountName   String? // tên chủ tài khoản
+
   // Kiểm duyệt (UC16.3)
   status       ShopStatus @default(DRAFT)
   rejectReason String?    @db.Text // lý do từ chối (hiển thị cho Người bán sửa lại)
@@ -652,6 +657,7 @@ model Order {
   incidents      DeliveryIncident[] // UC11.3
   reviews        Review[] // UC12.1
   invoice        Invoice? // Backlog - hóa đơn VAT (xuất theo yêu cầu khách)
+  commissions    OrderCommission[] // Hoa hồng sàn phát sinh từ đơn (ghi nhận khi COMPLETED)
 
   @@index([userId])
   @@index([sellerId])
@@ -1551,4 +1557,141 @@ model PlatformAnnouncement {
   createdAt      DateTime             @default(now())
 
   @@index([status])
+}
+
+// ============================================================
+//  Quản lý hoa hồng & đối soát/thanh toán Người bán
+//  (Luồng tiền: Buyer -> (online: sàn giữ hộ) / (COD: Seller thu) ->
+//   sàn hưởng hoa hồng %, Seller nhận phần còn lại; đối soát & chi trả thủ công.)
+//  Quy ước:
+//   - base_amount (giá trị tính phí) = hàng CHƯA thuế, SAU giảm giá (phân bổ theo dòng).
+//   - Đơn ONLINE đã trả: sàn PHẢI TRẢ Seller phần net. Đơn COD: Seller PHẢI TRẢ sàn hoa hồng.
+// ============================================================
+
+enum CommissionPolicyStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// 2.1/2.2 - Chính sách hoa hồng: mặc định toàn sàn (categoryId null) hoặc theo danh mục,
+// có hiệu lực theo thời gian. Không xóa chính sách đã dùng -> chuyển INACTIVE + lưu log.
+model CommissionPolicy {
+  id            Int                    @id @default(autoincrement())
+  name          String // tên chính sách (vd "Hoa hồng thời trang")
+  categoryId    Int? // null = áp dụng mặc định toàn sàn; else = theo danh mục
+  commissionRate Float // tỷ lệ % (vd 5 = 5%)
+  effectiveFrom DateTime // ngày bắt đầu hiệu lực
+  effectiveTo   DateTime? // ngày kết thúc (null = không giới hạn)
+  status        CommissionPolicyStatus @default(ACTIVE)
+  note          String?                @db.Text
+  createdById   Int? // Admin tạo (= User.id)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@index([categoryId])
+  @@index([status])
+}
+
+// 2.2 - Lịch sử thay đổi chính sách hoa hồng (truy vết, mục 4 "phải có lịch sử & người thực hiện")
+model CommissionPolicyLog {
+  id        Int      @id @default(autoincrement())
+  policyId  Int? // chính sách liên quan (null nếu đã xóa cứng - không khuyến khích)
+  action    String // CREATE | UPDATE | ACTIVATE | DEACTIVATE
+  before    Json?
+  after     Json?
+  actorId   Int? // Admin thực hiện
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([policyId])
+}
+
+// 2.3 - Trạng thái một khoản hoa hồng phát sinh từ đơn
+enum CommissionStatus {
+  PENDING // chờ đơn đủ điều kiện (dự phòng - hiện ghi nhận thẳng CONFIRMED khi COMPLETED)
+  CONFIRMED // hoa hồng đã xác nhận (đơn hoàn tất)
+  REFUNDED // đã hoàn/điều chỉnh do trả hàng
+  CANCELLED // không phát sinh (đơn không đủ điều kiện)
+}
+
+// 2.3 / mục 5 - Hoa hồng ghi nhận theo TỪNG dòng hàng (để áp tỷ lệ theo danh mục).
+// base_amount phân bổ giảm giá & thuế theo tỷ trọng dòng. Lưu tỷ lệ trực tiếp để bảo toàn lịch sử.
+model OrderCommission {
+  id             Int              @id @default(autoincrement())
+  orderId        Int
+  order          Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItemId    Int? // = OrderItem.id (null nếu ghi nhận gộp cả đơn khi thiếu dữ liệu dòng)
+  sellerId       Int // = User.id (gian hàng sở hữu đơn)
+  categoryId     Int? // danh mục sản phẩm (xác định tỷ lệ áp dụng)
+  policyId       Int? // 5 - truy vết chính sách đã áp dụng (có thể null nếu dùng tỷ lệ mặc định runtime)
+  baseAmount     Int // giá trị tính phí (hàng chưa thuế, sau giảm giá) của dòng
+  commissionRate Float // tỷ lệ % đã chốt tại thời điểm ghi nhận
+  commissionAmount Int // tiền hoa hồng = round(baseAmount * rate / 100)
+  method         PaymentMethod // COD | VNPAY | VISA (xác định chiều tiền đối soát)
+  status         CommissionStatus @default(CONFIRMED)
+  settlementId   Int? // đợt đối soát đã đưa khoản này vào (null = chưa đối soát)
+  settlement     SellerSettlement? @relation(fields: [settlementId], references: [id], onDelete: SetNull)
+  note           String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([orderId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([settlementId])
+}
+
+// 2.4 / mục 4 - Chiều tiền của một đợt đối soát
+enum SettlementDirection {
+  PAYABLE // sàn PHẢI TRẢ Seller (đơn online đã thu hộ)
+  RECEIVABLE // Seller PHẢI TRẢ sàn (hoa hồng đơn COD)
+}
+
+enum SettlementStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
+
+// 2.4 - Đợt đối soát & thanh toán cho một Người bán.
+model SellerSettlement {
+  id                   Int                   @id @default(autoincrement())
+  code                 String                @unique // mã đợt (STLxxxx)
+  sellerId             Int // = User.id (gian hàng)
+  periodFrom           DateTime? // kỳ đối soát (tùy chọn)
+  periodTo             DateTime?
+  grossAmount          Int                   @default(0) // tổng tiền hàng được quyết toán (net của phần hàng)
+  commissionAmount     Int                   @default(0) // tổng hoa hồng khấu trừ/thu
+  adjustmentAmount     Int                   @default(0) // khoản điều chỉnh (chênh lệch, hoàn...)
+  netAmount            Int                   @default(0) // số tiền thực chi trả (theo direction)
+  direction            SettlementDirection   @default(PAYABLE)
+  status               SettlementStatus      @default(PENDING)
+  paymentMethod        String? // hình thức chi trả (chuyển khoản...)
+  transactionReference String? // mã giao dịch ngân hàng / chứng từ
+  note                 String?               @db.Text
+  createdById          Int? // Admin tạo đợt
+  paidAt               DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  commissions OrderCommission[]
+  items       SellerSettlementItem[]
+
+  @@index([sellerId])
+  @@index([status])
+}
+
+// 2.4 - Chi tiết các đơn trong một đợt đối soát (một đơn không vào 2 đợt khác nhau).
+model SellerSettlementItem {
+  id               Int              @id @default(autoincrement())
+  settlementId     Int
+  settlement       SellerSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  orderId          Int
+  orderCode        String? // snapshot mã đơn để hiển thị
+  orderAmount      Int // giá trị hàng được quyết toán của đơn (net phần hàng)
+  commissionAmount Int // hoa hồng của đơn
+  netAmount        Int // phần tác động tới số dư (có dấu theo chiều)
+
+  @@index([settlementId])
 }

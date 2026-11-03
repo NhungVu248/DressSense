@@ -7,6 +7,7 @@ import { priceOrderRows, getRunningFlashSales, pickFlashSale, effectivePrice } f
 import { startOnlinePayment } from '../services/payment.service';
 import { vnpayEnabled } from '../config/env';
 import { releaseReserved, finalizeStock } from '../services/order.service';
+import { generateOrderCommissions } from '../services/commission.service';
 import { notify } from '../services/notification.service';
 import { getVatConfig, taxPortionOfInclusive, getBoolSetting } from '../services/settings.service';
 import { CANCELLABLE_DIRECT, CANCELLABLE_REQUEST, type OrderStatusValue } from '../constants/order-status';
@@ -289,6 +290,7 @@ export async function confirmReceipt(req: Request, res: Response, next: NextFunc
     await prisma.$transaction(async (db) => {
       await db.order.update({ where: { id: order.id }, data: { status: 'COMPLETED', completedAt: now } });
       await finalizeStock(db, order.items); // chốt tồn kho khi hoàn tất
+      await generateOrderCommissions(db, order.id); // ghi nhận hoa hồng sàn (CONFIRMED)
     });
     res.json({ ok: true, status: 'COMPLETED', completedAt: now });
   } catch (err) {

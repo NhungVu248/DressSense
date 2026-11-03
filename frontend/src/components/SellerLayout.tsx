@@ -24,6 +24,7 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
       { to: '/seller/shipping', label: 'Vận chuyển' }, // #6 Quản lý vận chuyển
       { to: '/seller/products', label: 'Sản phẩm' }, // #2 + #3 (chọn danh mục)
       { to: '/seller/orders', label: 'Đơn hàng' }, // #5 + #7 (thanh toán)
+      { to: '/seller/finance', label: 'Tài chính & doanh thu' }, // Mục 3 - hoa hồng, số dư, lịch sử thanh toán
       { to: '/seller/inventory', label: 'Tồn kho' }, // #4 Quản lý tồn kho
       {
         to: '/seller/promotions', label: 'Khuyến mãi', // #8 Quản lý khuyến mãi + mua dịch vụ tiếp thị

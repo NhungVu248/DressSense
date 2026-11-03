@@ -22,9 +22,12 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
       },
       { to: '/admin/orders', label: 'Đơn hàng' }, // #6
       {
-        to: '/admin/platform-revenue', label: 'Tài chính', // #7 + Thống kê BI (UC15)
+        to: '/admin/finance/report', label: 'Tài chính', // #7 Hoa hồng & đối soát + Thống kê BI (UC15)
         sub: [
-          { to: '/admin/analytics/revenue', label: 'Doanh thu' },
+          { to: '/admin/finance/policies', label: 'Chính sách hoa hồng' },
+          { to: '/admin/finance/commissions', label: 'Giao dịch hoa hồng' },
+          { to: '/admin/finance/settlements', label: 'Đối soát & thanh toán' },
+          { to: '/admin/analytics/revenue', label: 'Thống kê doanh thu' },
           { to: '/admin/analytics/customers', label: 'Khách hàng' },
           { to: '/admin/analytics/behavior', label: 'Hành vi' },
           { to: '/admin/analytics/body-shapes', label: 'Dáng người' },

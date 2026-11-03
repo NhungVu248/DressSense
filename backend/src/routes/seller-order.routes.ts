@@ -9,6 +9,7 @@ import { listSellerReviews, replyReview } from '../controllers/review.controller
 import { listSellerQuestions, answerQuestion } from '../controllers/question.controller';
 import { getMyShop, updateMyShop, submitMyShop } from '../controllers/shop.controller';
 import { getSellerReport } from '../controllers/seller-report.controller';
+import { getSellerFinance, listSellerCommissions, listSellerSettlements, updateSellerBankInfo } from '../controllers/commission-seller.controller';
 import {
   createBannerOrder, listMyBannerOrders, payBannerOrder, markPaidSandbox, cancelBannerOrder,
 } from '../controllers/banner-order.controller';
@@ -33,6 +34,12 @@ router.post('/shop/submit', submitMyShop);
 
 // UC14.4 - báo cáo doanh thu gian hàng
 router.get('/report', getSellerReport);
+
+// Mục 3 - Tài chính & doanh thu (hoa hồng, số dư, lịch sử thanh toán, thông tin nhận tiền)
+router.get('/finance', getSellerFinance);
+router.get('/finance/commissions', listSellerCommissions);
+router.get('/finance/settlements', listSellerSettlements);
+router.put('/finance/bank', updateSellerBankInfo);
 
 router.get('/orders', listSellerOrders);
 router.patch('/orders/:id/status', updateOrderStatus);          // cập nhật trạng thái theo thứ tự

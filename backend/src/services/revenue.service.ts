@@ -1,4 +1,5 @@
 import { getNumberSetting } from './settings.service';
+import { prisma } from '../lib/prisma';
 
 // ============================================================
 //  Mô hình phí sàn & doanh thu (Backlog B.25 / C.42).
@@ -23,8 +24,19 @@ export interface FeeBreakdown {
   platformFee: number; // phí sàn (hoa hồng) trích từ người bán
 }
 
-// % hoa hồng sàn hiện hành (0 nếu chưa cấu hình).
+// % hoa hồng sàn mặc định hiện hành (0 nếu chưa cấu hình).
+// Ưu tiên chính sách hoa hồng mặc định đang hiệu lực; nếu chưa có thì dùng setting cũ.
 export async function getPlatformFeeRate(): Promise<number> {
+  const now = new Date();
+  try {
+    const def = await prisma.commissionPolicy.findFirst({
+      where: { status: 'ACTIVE', categoryId: null, effectiveFrom: { lte: now }, OR: [{ effectiveTo: null }, { effectiveTo: { gte: now } }] },
+      orderBy: { effectiveFrom: 'desc' },
+    });
+    if (def) return def.commissionRate > 0 ? def.commissionRate : 0;
+  } catch {
+    /* bảng chính sách có thể chưa migrate - rơi về setting */
+  }
   const rate = await getNumberSetting('platformFeeRate', 0);
   return rate > 0 ? rate : 0;
 }

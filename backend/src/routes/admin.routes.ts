@@ -26,6 +26,11 @@ import {
   listAnnouncements, createAnnouncement, updateAnnouncement, publishAnnouncement, deleteAnnouncement,
 } from '../controllers/announcement.controller';
 import { listAllOrders, getOrderDetailAdmin } from '../controllers/admin-order.controller';
+import {
+  listCommissionPolicies, createCommissionPolicy, updateCommissionPolicy, setCommissionPolicyStatus, getCommissionPolicyHistory,
+  listOrderCommissions, getSettlementBalances, listEligibleOrders, createSettlement, confirmSettlementPayment,
+  cancelSettlement, listSettlements, getSettlement, getCommissionReport,
+} from '../controllers/commission-admin.controller';
 import { authenticate, authorize } from '../middlewares/auth';
 
 const router = Router();
@@ -60,8 +65,28 @@ router.patch('/shops/:id/suspension', setShopSuspension);
 // UC16.1 - Dashboard quản trị
 router.get('/dashboard', getAdminDashboard);
 
-// Backlog C.42 - Doanh thu của sàn (phí hoa hồng + banner)
+// Backlog C.42 - Doanh thu của sàn (phí hoa hồng + banner) - giữ tương thích; thay bằng /commission/report
 router.get('/platform-revenue', getPlatformRevenue);
+
+// Mục 2 - Quản lý & cấu hình hoa hồng / đối soát
+// 2.1/2.2 - Chính sách hoa hồng
+router.get('/commission/policies', listCommissionPolicies);
+router.post('/commission/policies', createCommissionPolicy);
+router.get('/commission/policies/history', getCommissionPolicyHistory);
+router.put('/commission/policies/:id', updateCommissionPolicy);
+router.patch('/commission/policies/:id/status', setCommissionPolicyStatus);
+// 2.3 - Giao dịch hoa hồng
+router.get('/commission/transactions', listOrderCommissions);
+// 2.4 - Đối soát & thanh toán Seller
+router.get('/commission/settlements/balances', getSettlementBalances);
+router.get('/commission/settlements/eligible', listEligibleOrders);
+router.get('/commission/settlements', listSettlements);
+router.post('/commission/settlements', createSettlement);
+router.get('/commission/settlements/:id', getSettlement);
+router.post('/commission/settlements/:id/pay', confirmSettlementPayment);
+router.post('/commission/settlements/:id/cancel', cancelSettlement);
+// 2.5 - Báo cáo doanh thu hoa hồng
+router.get('/commission/report', getCommissionReport);
 
 // Backlog C.41 - Duyệt đơn quảng cáo banner + bảng timeline
 router.get('/ad-orders', listAdminBannerOrders);

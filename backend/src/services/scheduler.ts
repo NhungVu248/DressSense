@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { finalizeStock } from './order.service';
+import { generateOrderCommissions } from './commission.service';
 import { notify } from './notification.service';
 import { dispatchCampaign } from '../controllers/campaign.controller';
 
@@ -23,6 +24,7 @@ export async function runAutoComplete(): Promise<number> {
       await prisma.$transaction(async (db) => {
         await db.order.update({ where: { id: o.id }, data: { status: 'COMPLETED', completedAt: new Date() } });
         await finalizeStock(db, o.items); // chốt tồn kho như khi khách xác nhận nhận hàng
+        await generateOrderCommissions(db, o.id); // ghi nhận hoa hồng sàn (CONFIRMED)
       });
       notify(o.userId, 'ORDER', 'Đơn hàng đã hoàn tất', `Đơn ${o.code} được tự động hoàn tất sau ${AUTO_COMPLETE_DAYS} ngày kể từ khi giao.`, `/orders/${o.id}`);
     } catch {

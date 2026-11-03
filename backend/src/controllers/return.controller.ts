@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { createRefund } from '../services/refund.service';
+import { adjustCommissionsForReturn } from '../services/commission.service';
 import { notify } from '../services/notification.service';
 import type { JwtPayload } from '../utils/jwt';
 
@@ -147,6 +148,8 @@ export async function approveReturn(req: Request, res: Response, next: NextFunct
       await db.returnRequest.update({ where: { id: rr.id }, data: { status: 'APPROVED', resolvedAt: new Date(), sellerNote: req.body?.note ?? 'Đã chấp thuận trả hàng' } });
     });
     const refund = await createRefund(rr.orderId, rr.refundAmount ?? 0, `Trả hàng ${rr.code}`, 'SELLER');
+    // Điều chỉnh hoa hồng theo phần hàng được hoàn (chỉ phần chưa đối soát)
+    await adjustCommissionsForReturn(prisma, rr.orderId, rr.items.map((ri) => ({ orderItemId: ri.orderItemId, quantity: ri.quantity })));
     await prisma.returnRequest.update({ where: { id: rr.id }, data: { status: 'COMPLETED' } });
     res.json({ ok: true, status: 'COMPLETED', refund });
   } catch (err) {

@@ -18,7 +18,8 @@
     "db:seed:promotion": "tsx prisma/seed-promotion.ts",
     "db:seed:banner": "tsx prisma/seed-banner.ts",
     "db:seed:shop": "tsx prisma/seed-shop.ts",
-    "db:seed:setting": "tsx prisma/seed-setting.ts"
+    "db:seed:setting": "tsx prisma/seed-setting.ts",
+    "db:seed:commission": "tsx prisma/seed-commission.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",

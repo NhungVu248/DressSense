@@ -1,15 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { formatVND } from '../../lib/products';
-import { getPlatformRevenue } from '../../lib/admin';
+import { getCommissionReport } from '../../lib/finance';
 
-// Backlog C.42 - Quản lý doanh thu của SÀN: hoa hồng từ người bán + phí banner QC.
+// 2.5 - Báo cáo doanh thu hoa hồng (gộp doanh thu sàn C.42: + banner + voucher).
 const PRESETS = [
-  { value: 'today', label: 'Hôm nay' },
-  { value: '7d', label: '7 ngày' },
-  { value: '30d', label: '30 ngày' },
-  { value: 'month', label: 'Tháng này' },
-  { value: 'custom', label: 'Tùy chọn' },
+  { value: 'today', label: 'Hôm nay' }, { value: '7d', label: '7 ngày' },
+  { value: '30d', label: '30 ngày' }, { value: 'month', label: 'Tháng này' }, { value: 'custom', label: 'Tùy chọn' },
 ];
 
 function StatCard({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
@@ -23,13 +20,13 @@ function StatCard({ label, value, hint, accent }: { label: string; value: string
 }
 
 function FeeChart({ data }: { data: { date: string; commission: number }[] }) {
-  if (!data.length) return <div className="h-48 flex items-center justify-center text-sm text-ink/40">Chưa có phí hoa hồng trong kỳ.</div>;
+  if (!data.length) return <div className="h-48 flex items-center justify-center text-sm text-ink/40">Chưa có hoa hồng trong kỳ.</div>;
   const max = Math.max(...data.map((d) => d.commission), 1);
   const W = 720, H = 180, pad = 8;
   const bw = (W - pad * 2) / data.length;
   return (
     <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${W} ${H + 26}`} className="w-full min-w-[480px]" role="img" aria-label="Biểu đồ phí sàn">
+      <svg viewBox={`0 0 ${W} ${H + 26}`} className="w-full min-w-[480px]" role="img" aria-label="Biểu đồ hoa hồng">
         {data.map((d, i) => {
           const h = Math.round((d.commission / max) * H);
           const x = pad + i * bw;
@@ -48,43 +45,26 @@ function FeeChart({ data }: { data: { date: string; commission: number }[] }) {
   );
 }
 
-export default function AdminPlatformRevenuePage() {
+export default function AdminCommissionReportPage() {
   const [preset, setPreset] = useState('30d');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-
-  const params = useMemo(() => {
-    if (preset === 'custom') return from && to ? { from, to } : null;
-    return { preset };
-  }, [preset, from, to]);
-
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['platform-revenue', params],
-    queryFn: () => getPlatformRevenue(params!),
-    enabled: !!params,
-  });
-
+  const params = useMemo(() => (preset === 'custom' ? (from && to ? { from, to } : null) : { preset }), [preset, from, to]);
+  const { data, isLoading, isError } = useQuery({ queryKey: ['commission-report', params], queryFn: () => getCommissionReport(params!), enabled: !!params });
   const m = data?.metrics;
 
   return (
     <div className="p-5 md:p-8 max-w-6xl">
       <div className="mb-5">
-        <p className="text-xs uppercase tracking-widest text-ink/40">Tài chính sàn</p>
-        <h1 className="font-display text-3xl font-bold">Doanh thu của sàn</h1>
-        <p className="text-sm text-ink/50 mt-1">
-          Doanh thu sàn gồm phí hoa hồng thu từ người bán (hiện {data?.feeRate ?? 0}%) và phí chạy banner quảng cáo.
-        </p>
+        <p className="text-xs uppercase tracking-widest text-ink/40">Tài chính</p>
+        <h1 className="font-display text-3xl font-bold">Báo cáo doanh thu hoa hồng</h1>
+        <p className="text-sm text-ink/50 mt-1">Doanh thu sàn = hoa hồng người bán + phí banner + phí voucher. GMV không phải doanh thu của sàn.</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-5">
         {PRESETS.map((p) => (
-          <button
-            key={p.value}
-            onClick={() => setPreset(p.value)}
-            className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
-              preset === p.value ? 'bg-brand text-white border-brand' : 'border-brand/20 text-ink/70 hover:border-brand/50'
-            }`}
-          >
+          <button key={p.value} onClick={() => setPreset(p.value)}
+            className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${preset === p.value ? 'bg-brand text-white border-brand' : 'border-brand/20 text-ink/70 hover:border-brand/50'}`}>
             {p.label}
           </button>
         ))}
@@ -105,33 +85,36 @@ export default function AdminPlatformRevenuePage() {
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
             <StatCard label="Tổng thu của sàn" value={formatVND(m.platformIncome)} hint="Hoa hồng + banner + voucher" accent />
-            <StatCard label="Phí hoa hồng người bán" value={formatVND(m.commissionTotal)} />
+            <StatCard label="Hoa hồng phát sinh" value={formatVND(m.commissionTotal)} hint="Trong kỳ" />
+            <StatCard label="Hoa hồng đã xác nhận" value={formatVND(m.confirmedCommission)} />
+            <StatCard label="Hoa hồng hoàn/điều chỉnh" value={formatVND(m.refundedCommission)} />
+            <StatCard label="GMV toàn sàn" value={formatVND(m.gmv)} hint="Tổng giá trị giao dịch" />
             <StatCard label="Phí banner quảng cáo" value={formatVND(m.bannerRevenue)} />
             <StatCard label="Phí bán voucher" value={formatVND(m.voucherRevenue)} />
-            <StatCard label="GMV toàn sàn" value={formatVND(m.gmv)} hint="Tổng giá trị giao dịch" />
-            <StatCard label="Thuế VAT thu hộ" value={formatVND(m.taxTotal)} hint="Nộp nhà nước" />
-            <StatCard label="Thực nhận của người bán" value={formatVND(m.sellerNet)} />
-            <StatCard label="Tiền hoàn trả" value={formatVND(m.refundTotal)} />
             <StatCard label="Số đơn hợp lệ" value={String(m.orderCount)} />
           </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6">
+            <StatCard label="Đang phải trả Seller" value={formatVND(m.payableToSellers)} hint="Đơn online chưa đối soát" />
+            <StatCard label="Seller phải trả sàn" value={formatVND(m.receivableFromSellers)} hint="Hoa hồng COD chưa đối soát" />
+            <StatCard label="Đã thanh toán Seller" value={formatVND(m.paidToSellers)} hint="Các đợt đã chi trả" />
+          </div>
+
           <div className="rounded-2xl border border-brand/10 bg-white p-4 mb-6">
-            <h2 className="font-display text-lg font-bold mb-3">Phí hoa hồng theo thời gian</h2>
+            <h2 className="font-display text-lg font-bold mb-3">Hoa hồng theo thời gian</h2>
             <FeeChart data={data!.commissionSeries} />
           </div>
 
           <div className="rounded-2xl border border-brand/10 bg-white p-4">
-            <h2 className="font-display text-lg font-bold mb-3">Doanh thu theo gian hàng</h2>
-            {data!.byShop.length === 0 ? (
-              <p className="text-sm text-ink/40">Chưa có dữ liệu trong kỳ.</p>
-            ) : (
+            <h2 className="font-display text-lg font-bold mb-3">Hoa hồng theo gian hàng</h2>
+            {data!.byShop.length === 0 ? <p className="text-sm text-ink/40">Chưa có dữ liệu trong kỳ.</p> : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-ink/50 border-b border-brand/10">
                       <th className="py-2 pr-3 font-medium">#</th>
                       <th className="py-2 pr-3 font-medium">Gian hàng</th>
-                      <th className="py-2 pr-3 font-medium text-right">GMV</th>
+                      <th className="py-2 pr-3 font-medium text-right">Giá trị tính phí</th>
                       <th className="py-2 font-medium text-right">Hoa hồng sàn</th>
                     </tr>
                   </thead>
@@ -140,7 +123,7 @@ export default function AdminPlatformRevenuePage() {
                       <tr key={s.sellerId} className="border-b border-brand/5 last:border-0">
                         <td className="py-2 pr-3 text-ink/40">{i + 1}</td>
                         <td className="py-2 pr-3">{s.shopName}</td>
-                        <td className="py-2 pr-3 text-right font-medium">{formatVND(s.gmv)}</td>
+                        <td className="py-2 pr-3 text-right font-medium">{formatVND(s.base)}</td>
                         <td className="py-2 text-right text-brand font-medium">{formatVND(s.commission)}</td>
                       </tr>
                     ))}
