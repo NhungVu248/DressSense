@@ -72,6 +72,7 @@ import AdminShopsPage from './pages/admin/AdminShopsPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminContentPage from './pages/admin/AdminContentPage';
+import AdminPlatformRevenuePage from './pages/admin/AdminPlatformRevenuePage';
 import AdminForgotPasswordPage from './pages/admin/AdminForgotPasswordPage';
 import AdminPasswordResetsPage from './pages/admin/AdminPasswordResetsPage';
 // UC15 - Phân tích dữ liệu kinh doanh (BI) - trang dùng chung cho Seller & Admin
@@ -172,6 +173,8 @@ export default function App() {
       <Route path="/admin/complaints" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminComplaintsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/reviews" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminReviewsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/shops" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminShopsPage /></AdminLayout></RequireAuth>} />{/* UC14.1/UC16.3 */}
+      {/* Backlog C.42 - Doanh thu của sàn (phí hoa hồng + banner) */}
+      <Route path="/admin/platform-revenue" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminPlatformRevenuePage /></AdminLayout></RequireAuth>} />
       {/* UC15 - Phân tích (BI) trong Admin (toàn hệ thống) */}
       <Route path="/admin/analytics/revenue" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><RevenueAnalyticsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/analytics/customers" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><CustomerAnalyticsPage /></AdminLayout></RequireAuth>} />

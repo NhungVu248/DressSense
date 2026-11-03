@@ -24,6 +24,8 @@ const DEFAULTS = [
   { key: 'shipIntlFee', value: '200000', type: 'number', label: 'Phí giao quốc tế (đ)', group: 'Vận chuyển', description: 'Phí cố định cho đơn giao quốc tế (không áp dụng miễn phí/phụ phí nội địa).' },
   { key: 'shipRemoteSurcharge', value: '20000', type: 'number', label: 'Phụ phí khu vực xa (đ)', group: 'Vận chuyển', description: 'Cộng thêm khi giao tới tỉnh/khu vực xa (vùng sâu, hải đảo).' },
   { key: 'shipRemoteProvinces', value: 'Hà Giang,Cao Bằng,Lai Châu,Điện Biên,Sơn La,Kon Tum,Lào Cai,Bắc Kạn', type: 'string', label: 'Tỉnh/khu vực xa', group: 'Vận chuyển', description: 'Danh sách tỉnh áp phụ phí khu vực xa, phân tách bằng dấu phẩy.' },
+  // Backlog B.25/C.42 - Phí sàn & doanh thu
+  { key: 'platformFeeRate', value: '5', type: 'number', label: 'Phí sàn / hoa hồng (%)', group: 'Phí sàn & Doanh thu', description: 'Phần trăm hoa hồng sàn trích trên giá trị hàng chưa thuế (sau giảm giá). Trừ thẳng khỏi doanh thu thực nhận của người bán.' },
 ];
 
 async function main() {

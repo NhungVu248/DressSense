@@ -13,6 +13,20 @@ export interface AdminDashboard {
 export const getAdminDashboard = (params: { preset?: string; from?: string; to?: string }) =>
   api.get<AdminDashboard>('/admin/dashboard', { params }).then((r) => r.data);
 
+// ---- Backlog C.42 Doanh thu của sàn ----
+export interface PlatformRevenue {
+  range: { from: string; to: string; preset: string };
+  feeRate: number;
+  metrics: {
+    gmv: number; taxTotal: number; commissionTotal: number; bannerRevenue: number;
+    platformIncome: number; refundTotal: number; sellerNet: number; orderCount: number;
+  };
+  commissionSeries: { date: string; commission: number }[];
+  byShop: { sellerId: number; shopName: string; gmv: number; commission: number }[];
+}
+export const getPlatformRevenue = (params: { preset?: string; from?: string; to?: string }) =>
+  api.get<PlatformRevenue>('/admin/platform-revenue', { params }).then((r) => r.data);
+
 // ---- UC16.5 Cấu hình hệ thống ----
 export interface Setting { key: string; value: string; type: string; label: string; description: string | null; group: string; updatedAt: string }
 export interface SettingLog { id: number; key: string; valueBefore: string | null; valueAfter: string; actorId: number; createdAt: string }

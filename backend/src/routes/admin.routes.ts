@@ -11,6 +11,7 @@ import { listAdminComplaints, adminResolveComplaint } from '../controllers/compl
 import { listAdminReviews, moderateReview } from '../controllers/review.controller';
 import { listShopsAdmin, approveShop, rejectShop, setShopSuspension, requestInfoShop } from '../controllers/shop.controller';
 import { getAdminDashboard } from '../controllers/admin-dashboard.controller';
+import { getPlatformRevenue } from '../controllers/platform-revenue.controller';
 import { listSettings, updateSettings, getSettingHistory } from '../controllers/settings.controller';
 import { listModerationProducts, moderateProduct } from '../controllers/content-moderation.controller';
 import { authenticate, authorize } from '../middlewares/auth';
@@ -46,6 +47,9 @@ router.patch('/shops/:id/suspension', setShopSuspension);
 
 // UC16.1 - Dashboard quản trị
 router.get('/dashboard', getAdminDashboard);
+
+// Backlog C.42 - Doanh thu của sàn (phí hoa hồng + banner)
+router.get('/platform-revenue', getPlatformRevenue);
 
 // UC16.4 - Kiểm duyệt nội dung (sản phẩm; đánh giá dùng /admin/reviews sẵn có)
 router.get('/moderation/products', listModerationProducts);

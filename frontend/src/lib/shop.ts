@@ -93,6 +93,9 @@ export interface ReportMetrics {
   completedCount: number;
   cancelledCount: number;
   refundAmount: number;
+  taxAmount: number; // Backlog B.25 - VAT thu hộ
+  platformFee: number; // Backlog B.25 - phí sàn (hoa hồng)
+  feeRate: number; // % hoa hồng áp dụng
   netRevenue: number;
 }
 export interface ReportResponse {

@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import type { JwtPayload } from '../utils/jwt';
+import { getPlatformFeeRate, feeBreakdown } from '../services/revenue.service';
 
 // ============================================================
 //  UC14.4 - Báo cáo doanh thu gian hàng (chỉ dữ liệu của Người bán).
@@ -75,7 +76,14 @@ export async function getSellerReport(req: Request, res: Response, next: NextFun
       },
     });
     const refundAmount = refundAgg._sum.amount ?? 0;
-    const netRevenue = revenue - refundAmount; // doanh thu thực nhận ước tính
+
+    // Backlog B.25 - phí sàn (hoa hồng) + thuế VAT, để tính doanh thu thực nhận đầy đủ
+    const feeRate = await getPlatformFeeRate();
+    const fees = feeBreakdown(valid, feeRate);
+    const taxAmount = fees.tax; // VAT thu hộ (nằm trong doanh thu tổng)
+    const platformFee = fees.platformFee; // phí trả cho sàn
+    // Thực nhận = tổng − thuế − phí sàn − hoàn tiền
+    const netRevenue = revenue - taxAmount - platformFee - refundAmount;
 
     // Biểu đồ doanh thu theo ngày
     const byDay = new Map<string, number>();
@@ -104,7 +112,7 @@ export async function getSellerReport(req: Request, res: Response, next: NextFun
 
     res.json({
       range: { from, to, preset },
-      metrics: { revenue, orderCount, soldQuantity, avgOrderValue, completedCount, cancelledCount, refundAmount, netRevenue },
+      metrics: { revenue, orderCount, soldQuantity, avgOrderValue, completedCount, cancelledCount, refundAmount, taxAmount, platformFee, feeRate, netRevenue },
       timeSeries,
       bestSellers,
     });

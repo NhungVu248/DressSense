@@ -37,6 +37,7 @@ const NAV_GROUPS: { heading: string; items: { to: string; label: string; end?: b
   {
     heading: 'Phân tích (BI)', // UC15 - toàn hệ thống
     items: [
+      { to: '/admin/platform-revenue', label: 'Doanh thu sàn' }, // Backlog C.42
       { to: '/admin/analytics/revenue', label: 'Doanh thu' },
       { to: '/admin/analytics/customers', label: 'Khách hàng' },
       { to: '/admin/analytics/behavior', label: 'Hành vi' },

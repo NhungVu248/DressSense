@@ -115,7 +115,9 @@ export default function SellerReportPage() {
           {/* Thẻ chỉ số */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
             <StatCard label="Tổng doanh thu" value={formatVND(m.revenue)} accent />
-            <StatCard label="Doanh thu thực nhận" value={formatVND(m.netRevenue)} hint="Sau khi trừ hoàn tiền" />
+            <StatCard label="Doanh thu thực nhận" value={formatVND(m.netRevenue)} hint="Tổng − thuế − phí sàn − hoàn tiền" accent />
+            <StatCard label={`Phí sàn (hoa hồng ${m.feeRate ?? 0}%)`} value={formatVND(m.platformFee ?? 0)} hint="Chuyển cho sàn TMĐT" />
+            <StatCard label="Thuế VAT (thu hộ)" value={formatVND(m.taxAmount ?? 0)} hint="Nộp nhà nước, không phải thực nhận" />
             <StatCard label="Số đơn hàng" value={String(m.orderCount)} />
             <StatCard label="Giá trị đơn trung bình" value={formatVND(m.avgOrderValue)} />
             <StatCard label="Sản phẩm đã bán" value={String(m.soldQuantity)} />
