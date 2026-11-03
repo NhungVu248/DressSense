@@ -19,7 +19,7 @@ export default function AdminComplaintsPage() {
       <h1 className="font-display text-3xl font-bold text-ink mb-4">Phân xử khiếu nại</h1>
       <div className="flex gap-2 mb-5 flex-wrap">
         {FILTERS.map((f) => (
-          <button key={f.v} onClick={() => setStatus(f.v)} className={`text-sm px-4 py-1.5 rounded-full border ${status === f.v ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 text-gray-600'}`}>{f.label}</button>
+          <button key={f.v} onClick={() => setStatus(f.v)} className={`text-sm px-4 py-1.5 rounded-full border ${status === f.v ? 'border-brand bg-brand text-white' : 'border-brand/20 text-ink/70'}`}>{f.label}</button>
         ))}
       </div>
       {isLoading ? <p className="text-gray-400">Đang tải…</p>
@@ -48,9 +48,9 @@ function Row({ c, onDone }: { c: Complaint; onDone: () => void }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border p-4">
+    <div className="bg-white rounded-xl border border-black/5 p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="font-medium text-gray-900">{c.code} <span className="text-xs text-gray-400">· {c.type} · {c.user?.fullName}</span></p>
+        <p className="font-medium text-ink">{c.code} <span className="text-xs text-gray-400">· {c.type} · {c.user?.fullName}</span></p>
         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{COMPLAINT_STATUS_LABEL[c.status]}</span>
       </div>
       <p className="text-sm text-gray-600 mt-1">Đơn {c.order?.code} ({c.order?.total != null ? formatVND(c.order.total) : ''} · {c.order?.paymentStatus}): {c.content}</p>
@@ -59,16 +59,16 @@ function Row({ c, onDone }: { c: Complaint; onDone: () => void }) {
 
       {canResolve && (open ? (
         <div className="mt-3 space-y-2">
-          <textarea value={decision} onChange={(e) => setDecision(e.target.value)} placeholder="Quyết định xử lý" rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-          <input value={refundAmount} onChange={(e) => setRefundAmount(e.target.value.replace(/\D/g, ''))} placeholder="Số tiền hoàn (để trống nếu không hoàn)" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+          <textarea value={decision} onChange={(e) => setDecision(e.target.value)} placeholder="Quyết định xử lý" rows={2} className="w-full border border-brand/20 rounded-lg px-3 py-2 text-sm" />
+          <input value={refundAmount} onChange={(e) => setRefundAmount(e.target.value.replace(/\D/g, ''))} placeholder="Số tiền hoàn (để trống nếu không hoàn)" className="w-full border border-brand/20 rounded-lg px-3 py-2 text-sm" />
           <div className="flex gap-2">
-            <button onClick={() => submit(false)} disabled={busy} className="bg-gray-900 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50">Xử lý</button>
+            <button onClick={() => submit(false)} disabled={busy} className="bg-brand text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50">Xử lý</button>
             <button onClick={() => submit(true)} disabled={busy} className="border border-red-200 text-red-600 rounded-lg px-4 py-2 text-sm">Từ chối (không hợp lệ)</button>
-            <button onClick={() => setOpen(false)} className="border border-gray-300 rounded-lg px-4 py-2 text-sm">Đóng</button>
+            <button onClick={() => setOpen(false)} className="border border-brand/20 rounded-lg px-4 py-2 text-sm">Đóng</button>
           </div>
         </div>
       ) : (
-        <button onClick={() => setOpen(true)} className="mt-3 bg-gray-900 text-white rounded-lg px-4 py-1.5 text-sm">Phân xử</button>
+        <button onClick={() => setOpen(true)} className="mt-3 bg-brand text-white rounded-lg px-4 py-1.5 text-sm">Phân xử</button>
       ))}
     </div>
   );

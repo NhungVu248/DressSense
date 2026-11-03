@@ -25,7 +25,7 @@ export default function AdminReviewsPage() {
       <h1 className="font-display text-3xl font-bold text-ink mb-4">Kiểm duyệt đánh giá</h1>
       <div className="flex gap-2 mb-5">
         {FILTERS.map((f) => (
-          <button key={f.v} onClick={() => setStatus(f.v)} className={`text-sm px-4 py-1.5 rounded-full border ${status === f.v ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 text-gray-600'}`}>{f.label}</button>
+          <button key={f.v} onClick={() => setStatus(f.v)} className={`text-sm px-4 py-1.5 rounded-full border ${status === f.v ? 'border-brand bg-brand text-white' : 'border-brand/20 text-ink/70'}`}>{f.label}</button>
         ))}
       </div>
       {isLoading ? <p className="text-gray-400">Đang tải…</p>
@@ -40,7 +40,7 @@ export default function AdminReviewsPage() {
               {r.comment && <p className="text-sm text-gray-700 mt-1">{r.comment}</p>}
               <div className="mt-2">
                 {r.status === 'HIDDEN'
-                  ? <button onClick={() => unhide(r.id)} className="border border-gray-300 rounded-lg px-4 py-1.5 text-sm">Hiện lại</button>
+                  ? <button onClick={() => unhide(r.id)} className="border border-brand/20 text-ink/70 rounded-lg px-4 py-1.5 text-sm">Hiện lại</button>
                   : <button onClick={() => hide(r.id)} className="border border-red-200 text-red-600 rounded-lg px-4 py-1.5 text-sm">Ẩn (vi phạm)</button>}
               </div>
             </div>
