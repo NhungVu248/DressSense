@@ -2,11 +2,10 @@
 CREATE TABLE `ShopShippingMethod` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `shopId` INTEGER NOT NULL,
-    `systemCode` VARCHAR(191) NULL,
     `carrierName` VARCHAR(191) NOT NULL,
     `serviceName` VARCHAR(191) NULL,
     `shippingFee` INTEGER NOT NULL DEFAULT 0,
-    `estimatedDays` VARCHAR(191) NULL,
+    `estimatedDays` INTEGER NULL,
     `description` TEXT NULL,
     `status` ENUM('ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE',
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
