@@ -18,7 +18,7 @@ export interface PlatformRevenue {
   range: { from: string; to: string; preset: string };
   feeRate: number;
   metrics: {
-    gmv: number; taxTotal: number; commissionTotal: number; bannerRevenue: number;
+    gmv: number; taxTotal: number; commissionTotal: number; bannerRevenue: number; voucherRevenue: number;
     platformIncome: number; refundTotal: number; sellerNet: number; orderCount: number;
   };
   commissionSeries: { date: string; commission: number }[];

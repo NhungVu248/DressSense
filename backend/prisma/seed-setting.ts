@@ -30,6 +30,9 @@ const DEFAULTS = [
   { key: 'adFeeHeroPerWeek', value: '500000', type: 'number', label: 'Phí banner trang chủ lớn / tuần (đ)', group: 'Quảng cáo', description: 'Đơn giá mỗi tuần cho vị trí banner lớn đầu trang chủ (HOME_HERO).' },
   { key: 'adFeeStripPerWeek', value: '250000', type: 'number', label: 'Phí dải banner trang chủ / tuần (đ)', group: 'Quảng cáo', description: 'Đơn giá mỗi tuần cho dải banner phụ trang chủ (HOME_STRIP).' },
   { key: 'adFeePromoPerWeek', value: '150000', type: 'number', label: 'Phí banner trang khuyến mãi / tuần (đ)', group: 'Quảng cáo', description: 'Đơn giá mỗi tuần cho banner trang chương trình khuyến mãi (PROMO_PAGE).' },
+  // Backlog B.27/C.45 - Phí mua gói voucher
+  { key: 'voucherFeeSingle', value: '50000', type: 'number', label: 'Phí mua voucher lẻ (đ)', group: 'Quảng cáo', description: 'Phí gói khi người bán mua lẻ một voucher (người bán tự chịu phần giảm giá cho khách).' },
+  { key: 'voucherFeeComboMonth', value: '120000', type: 'number', label: 'Phí combo voucher theo tháng (đ)', group: 'Quảng cáo', description: 'Phí gói combo voucher chạy trong một tháng (ưu đãi hơn mua lẻ).' },
 ];
 
 async function main() {

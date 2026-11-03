@@ -88,6 +88,7 @@ model User {
   voucherUsages   VoucherUsage[] // lượt dùng voucher của Khách hàng
   flashSaleUsages FlashSaleUsage[] // số suất flash sale đã mua của Khách hàng
   bannerOrders    BannerOrder[]    @relation("SellerBannerOrders") // Backlog B.26 - đơn đăng ký chạy banner
+  voucherOrders   VoucherOrder[]   @relation("SellerVoucherOrders") // Backlog B.27 - đơn mua gói voucher
 
   // UC14.1 - hồ sơ gian hàng (1-1 với Người bán)
   shop Shop? @relation("UserShop")
@@ -1216,6 +1217,51 @@ model BannerOrder {
   reviewedById Int?
   reviewedAt   DateTime?
   bannerId     Int? // Banner được tạo khi duyệt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sellerId])
+  @@index([status])
+}
+
+// Backlog B.27/C.45 - Đơn mua gói voucher của gian hàng.
+// Người bán chọn gói (lẻ/combo tháng) + khai báo mức chiết khấu, trả phí gói cho sàn
+// (người bán TỰ CHỊU phần tiền giảm cho khách qua voucher sellerId). Admin duyệt -> sinh Voucher.
+// Vòng đời status: PENDING_PAYMENT -> PENDING_REVIEW (đã trả phí) -> APPROVED | REJECTED.
+model VoucherOrder {
+  id       Int    @id @default(autoincrement())
+  code     String @unique // mã đơn mua voucher (VCHxxxx) - dùng làm txnRef VNPAY
+  sellerId Int
+  seller   User   @relation("SellerVoucherOrders", fields: [sellerId], references: [id])
+
+  packageType String // SINGLE (mua lẻ) | COMBO_MONTH (combo tháng)
+  fee         Int // phí gói trả cho sàn (đ)
+
+  // Khai báo voucher muốn phát hành (snapshot) - sao chép sang Voucher khi duyệt
+  desiredCode  String // mã voucher mong muốn (viết hoa, duy nhất khi tạo)
+  description  String?
+  discountType VoucherType // PERCENT | FIXED
+  value        Int
+  minOrder     Int         @default(0)
+  maxDiscount  Int?
+  startsAt     DateTime
+  endsAt       DateTime
+  usageLimit   Int?
+  perUserLimit Int?
+
+  // Thanh toán (tách khỏi luồng thanh toán đơn hàng)
+  paymentMethod String    @default("VNPAY") // VNPAY | VISA
+  paymentStatus String    @default("UNPAID") // UNPAID | PAID
+  paymentRef    String?
+  paidAt        DateTime?
+
+  // Duyệt (Admin - C.45)
+  status       String    @default("PENDING_PAYMENT")
+  reviewReason String?   @db.Text
+  reviewedById Int?
+  reviewedAt   DateTime?
+  voucherId    Int? // Voucher được tạo khi duyệt
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

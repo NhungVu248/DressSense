@@ -15,6 +15,9 @@ import { getPlatformRevenue } from '../controllers/platform-revenue.controller';
 import {
   listAdminBannerOrders, bannerTimeline, approveBannerOrder, rejectBannerOrder,
 } from '../controllers/banner-order.controller';
+import {
+  listAdminVoucherOrders, approveVoucherOrder, rejectVoucherOrder,
+} from '../controllers/voucher-order.controller';
 import { listSettings, updateSettings, getSettingHistory } from '../controllers/settings.controller';
 import { listModerationProducts, moderateProduct } from '../controllers/content-moderation.controller';
 import { authenticate, authorize } from '../middlewares/auth';
@@ -59,6 +62,11 @@ router.get('/ad-orders', listAdminBannerOrders);
 router.get('/ad-orders/timeline', bannerTimeline);
 router.post('/ad-orders/:id/approve', approveBannerOrder);
 router.post('/ad-orders/:id/reject', rejectBannerOrder);
+
+// Backlog C.45 - Duyệt đơn mua gói voucher
+router.get('/voucher-orders', listAdminVoucherOrders);
+router.post('/voucher-orders/:id/approve', approveVoucherOrder);
+router.post('/voucher-orders/:id/reject', rejectVoucherOrder);
 
 // UC16.4 - Kiểm duyệt nội dung (sản phẩm; đánh giá dùng /admin/reviews sẵn có)
 router.get('/moderation/products', listModerationProducts);

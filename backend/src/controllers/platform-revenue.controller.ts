@@ -57,8 +57,9 @@ export async function getPlatformRevenue(req: Request, res: Response, next: Next
       }
     }
 
-    // Doanh thu banner quảng cáo trong kỳ (phí đã thanh toán) - nếu model đã có
+    // Doanh thu banner quảng cáo + phí bán voucher trong kỳ (phí đã thanh toán)
     const bannerRevenue = await bannerFeeInRange(from, to);
+    const voucherRevenue = await voucherFeeInRange(from, to);
 
     // Hoàn tiền (giảm doanh thu người bán, không ảnh hưởng phí sàn)
     const refundAgg = await prisma.paymentTransaction.aggregate({
@@ -67,7 +68,7 @@ export async function getPlatformRevenue(req: Request, res: Response, next: Next
     });
     const refundTotal = refundAgg._sum.amount ?? 0;
 
-    const platformIncome = commissionTotal + bannerRevenue; // tổng thu của sàn
+    const platformIncome = commissionTotal + bannerRevenue + voucherRevenue; // tổng thu của sàn
     const sellerNet = gmv - taxTotal - commissionTotal - refundTotal; // tổng thực nhận của người bán
 
     const commissionSeries = [...byDay.entries()].sort().map(([date, commission]) => ({ date, commission }));
@@ -86,7 +87,7 @@ export async function getPlatformRevenue(req: Request, res: Response, next: Next
     res.json({
       range: { from, to, preset },
       feeRate,
-      metrics: { gmv, taxTotal, commissionTotal, bannerRevenue, platformIncome, refundTotal, sellerNet, orderCount: orders.length },
+      metrics: { gmv, taxTotal, commissionTotal, bannerRevenue, voucherRevenue, platformIncome, refundTotal, sellerNet, orderCount: orders.length },
       commissionSeries,
       byShop: byShopRows,
     });
@@ -104,6 +105,21 @@ async function bannerFeeInRange(from: Date, to: Date): Promise<number> {
       where: { paymentStatus: 'PAID', paidAt: { gte: from, lte: to } },
     });
     return agg._sum.amount ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+// Tổng phí mua voucher đã thanh toán trong kỳ (Backlog B.27/C.45).
+async function voucherFeeInRange(from: Date, to: Date): Promise<number> {
+  try {
+    const anyPrisma = prisma as any;
+    if (!anyPrisma.voucherOrder) return 0;
+    const agg = await anyPrisma.voucherOrder.aggregate({
+      _sum: { fee: true },
+      where: { paymentStatus: 'PAID', paidAt: { gte: from, lte: to } },
+    });
+    return agg._sum.fee ?? 0;
   } catch {
     return 0;
   }

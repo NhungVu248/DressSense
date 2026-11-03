@@ -12,6 +12,9 @@ import { getSellerReport } from '../controllers/seller-report.controller';
 import {
   createBannerOrder, listMyBannerOrders, payBannerOrder, markPaidSandbox, cancelBannerOrder,
 } from '../controllers/banner-order.controller';
+import {
+  createVoucherOrder, listMyVoucherOrders, payVoucherOrder, markVoucherPaidSandbox, cancelVoucherOrder,
+} from '../controllers/voucher-order.controller';
 import { authenticate, authorize } from '../middlewares/auth';
 
 const router = Router();
@@ -61,5 +64,12 @@ router.post('/ad-orders', createBannerOrder);
 router.post('/ad-orders/:id/pay', payBannerOrder);
 router.post('/ad-orders/:id/mark-paid', markPaidSandbox);
 router.delete('/ad-orders/:id', cancelBannerOrder);
+
+// Backlog B.27 - đơn mua gói voucher (gian hàng)
+router.get('/voucher-orders', listMyVoucherOrders);
+router.post('/voucher-orders', createVoucherOrder);
+router.post('/voucher-orders/:id/pay', payVoucherOrder);
+router.post('/voucher-orders/:id/mark-paid', markVoucherPaidSandbox);
+router.delete('/voucher-orders/:id', cancelVoucherOrder);
 
 export default router;

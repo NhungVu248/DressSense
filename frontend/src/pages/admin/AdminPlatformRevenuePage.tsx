@@ -104,9 +104,10 @@ export default function AdminPlatformRevenuePage() {
       {m && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-            <StatCard label="Tổng thu của sàn" value={formatVND(m.platformIncome)} hint="Hoa hồng + banner" accent />
+            <StatCard label="Tổng thu của sàn" value={formatVND(m.platformIncome)} hint="Hoa hồng + banner + voucher" accent />
             <StatCard label="Phí hoa hồng người bán" value={formatVND(m.commissionTotal)} />
             <StatCard label="Phí banner quảng cáo" value={formatVND(m.bannerRevenue)} />
+            <StatCard label="Phí bán voucher" value={formatVND(m.voucherRevenue)} />
             <StatCard label="GMV toàn sàn" value={formatVND(m.gmv)} hint="Tổng giá trị giao dịch" />
             <StatCard label="Thuế VAT thu hộ" value={formatVND(m.taxTotal)} hint="Nộp nhà nước" />
             <StatCard label="Thực nhận của người bán" value={formatVND(m.sellerNet)} />
