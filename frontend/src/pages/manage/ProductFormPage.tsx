@@ -13,6 +13,9 @@ const FIELDS: Array<{ key: string; label: string }> = [
   { key: 'brand', label: 'Thương hiệu' }, { key: 'color', label: 'Màu sắc' },
   { key: 'material', label: 'Chất liệu' }, { key: 'style', label: 'Phong cách' },
   { key: 'garmentType', label: 'Loại trang phục' }, { key: 'occasion', label: 'Dịp dùng' },
+  // Backlog B.29/C.44 - trường dữ liệu mở rộng
+  { key: 'sku', label: 'Mã SKU' }, { key: 'origin', label: 'Xuất xứ' },
+  { key: 'warranty', label: 'Bảo hành' },
 ];
 
 export default function ProductFormPage({ basePath = '/manage/products' }: { basePath?: string }) {
@@ -51,6 +54,7 @@ export default function ProductFormPage({ basePath = '/manage/products' }: { bas
           categoryId: String(p.categoryId ?? ''), status: p.status ?? 'ACTIVE',
           brand: p.brand ?? '', color: p.color ?? '', material: p.material ?? '',
           style: p.style ?? '', garmentType: p.garmentType ?? '', occasion: p.occasion ?? '',
+          sku: p.sku ?? '', origin: p.origin ?? '', warranty: p.warranty ?? '', careInstructions: p.careInstructions ?? '',
         });
         if (p.variants?.length) setVariants(p.variants.map((v: any) => ({ size: v.size, stock: v.stock })));
       }
@@ -70,6 +74,7 @@ export default function ProductFormPage({ basePath = '/manage/products' }: { bas
       variants: variants.filter((v) => v.size.trim()).map((v) => ({ size: v.size.trim(), stock: Number(v.stock) || 0 })),
     };
     for (const { key } of FIELDS) if (f[key]?.trim()) payload[key] = f[key].trim();
+    if (f.careInstructions?.trim()) payload.careInstructions = f.careInstructions.trim(); // Backlog B.29/C.44
     setSaving(true);
     try {
       if (editing) { await api.patch(`/products/${id}`, payload); setSuccess('Đã cập nhật sản phẩm.'); }
@@ -122,6 +127,10 @@ export default function ProductFormPage({ basePath = '/manage/products' }: { bas
             </label>
           ))}
         </div>
+        <label className="block">
+          <span className="block text-xs text-gray-500 mb-1">Hướng dẫn bảo quản</span>
+          <textarea value={f.careInstructions ?? ''} onChange={(e) => set('careInstructions', e.target.value)} rows={2} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="VD: Giặt tay, không dùng chất tẩy, phơi trong bóng râm…" />
+        </label>
         <label className="block">
           <span className="block text-xs text-gray-500 mb-1">Trạng thái</span>
           <select value={f.status} onChange={(e) => set('status', e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">

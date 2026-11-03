@@ -256,6 +256,11 @@ const createSchema = z.object({
   brand: z.string().optional(),
   occasion: z.string().optional(),
   tags: z.array(z.string()).optional(),
+  // Backlog B.29/C.44 - trường dữ liệu sản phẩm mở rộng
+  sku: z.string().optional(),
+  origin: z.string().optional(),
+  careInstructions: z.string().optional(),
+  warranty: z.string().optional(),
   // UC6.3 - trạng thái + biến thể (size + tồn kho ban đầu, không âm)
   status: z.enum(['DRAFT', 'PENDING', 'ACTIVE', 'HIDDEN']).optional(),
   variants: z.array(z.object({ size: z.string().min(1), stock: z.coerce.number().int().min(0) })).optional(),

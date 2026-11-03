@@ -14,6 +14,10 @@ export default function EditProfilePage() {
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  // Backlog B.29/C.44 - hồ sơ cá nhân đầy đủ hơn
+  const [gender, setGender] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [bio, setBio] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
@@ -31,7 +35,10 @@ export default function EditProfilePage() {
   const [contactLoading, setContactLoading] = useState(false);
 
   useEffect(() => {
-    if (user) { setFullName(user.fullName); setPhone(user.phone || ''); setMarketingOptIn(user.marketingOptIn !== false); }
+    if (user) {
+      setFullName(user.fullName); setPhone(user.phone || ''); setMarketingOptIn(user.marketingOptIn !== false);
+      setGender(user.gender || ''); setDateOfBirth(user.dateOfBirth ? String(user.dateOfBirth).slice(0, 10) : ''); setBio(user.bio || '');
+    }
   }, [user]);
 
   if (!user) return null;
@@ -49,8 +56,11 @@ export default function EditProfilePage() {
   async function saveBasicInfo() {
     setError(''); setSuccess(''); setSaving(true);
     try {
-      const body: Record<string, string> = { fullName };
+      const body: Record<string, unknown> = { fullName };
       if (!user!.phone && phone) body.phone = phone; // chỉ gửi phone nếu đang khai báo lần đầu
+      body.gender = gender || null; // Backlog B.29/C.44
+      body.dateOfBirth = dateOfBirth || null;
+      body.bio = bio || null;
       const res = await api.patch('/users/me', body);
       setSession(getToken()!, res.data.user);
       setSuccess('Cập nhật hồ sơ thành công');
@@ -126,6 +136,26 @@ export default function EditProfilePage() {
           disabled={!!user.phone} placeholder="Chưa khai báo"
           hint={user.phone ? 'Để đổi số điện thoại, dùng mục "Email / SĐT" bên dưới' : undefined}
         />
+        {/* Backlog B.29/C.44 - hồ sơ cá nhân đầy đủ hơn */}
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <label className="block">
+            <span className="block text-sm text-gray-600 mb-1">Giới tính</span>
+            <select value={gender} onChange={(e) => setGender(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+              <option value="">— Chọn —</option>
+              <option value="Nam">Nam</option>
+              <option value="Nữ">Nữ</option>
+              <option value="Khác">Khác</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="block text-sm text-gray-600 mb-1">Ngày sinh</span>
+            <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+          </label>
+        </div>
+        <label className="block mb-3">
+          <span className="block text-sm text-gray-600 mb-1">Giới thiệu bản thân</span>
+          <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} maxLength={500} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" placeholder="Vài dòng giới thiệu (hiển thị trong hồ sơ)…" />
+        </label>
         <PrimaryButton onClick={saveBasicInfo} disabled={saving}>
           {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
         </PrimaryButton>

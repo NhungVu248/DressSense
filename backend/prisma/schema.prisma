@@ -47,6 +47,11 @@ model User {
   // Cổng Người bán: tên gian hàng dự kiến khai báo khi đăng ký (UC1.1)
   shopName String?
 
+  // Backlog B.29/C.44 - hồ sơ cá nhân đầy đủ hơn (Người bán & Admin, dùng chung mọi vai trò)
+  gender      String? // Nam | Nữ | Khác
+  dateOfBirth DateTime? // ngày sinh
+  bio         String?   @db.Text // giới thiệu ngắn
+
   // UC3.1 - Đồng ý xử lý dữ liệu cơ thể (informed consent), null = chưa đồng ý
   bodyDataConsentAt DateTime?
 
@@ -436,6 +441,12 @@ model Product {
   brand        String? // thương hiệu (đồng bộ CustomerProfile.preferredBrands - UC2.1)
   occasion     String? // dịp dùng chính: WORK|PARTY|STREET|SPORT|TRAVEL|SCHOOL (ánh xạ UC2.1c)
   tags         Json? // nhãn thuộc tính linh hoạt (kiểu DeepFashion attributes)
+
+  // Backlog B.29/C.44 - mở rộng trường dữ liệu sản phẩm (đồng bộ Người bán & Admin)
+  sku              String? // mã SKU nội bộ của gian hàng
+  origin           String? // xuất xứ / nơi sản xuất
+  careInstructions String? @db.Text // hướng dẫn bảo quản / giặt ủi
+  warranty         String? // thông tin bảo hành / đổi trả của sản phẩm
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

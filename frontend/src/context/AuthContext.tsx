@@ -12,6 +12,9 @@ export interface User {
   avatarUrl: string | null;
   shopName: string | null;
   marketingOptIn?: boolean; // UC13.3 - nhận thông báo khuyến mãi
+  gender?: string | null; // Backlog B.29/C.44 - hồ sơ đầy đủ hơn
+  dateOfBirth?: string | null;
+  bio?: string | null;
 }
 
 interface LoginResult {

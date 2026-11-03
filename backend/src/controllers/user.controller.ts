@@ -11,6 +11,7 @@ function publicUser(u: any) {
     id: u.id, email: u.email, phone: u.phone, fullName: u.fullName,
     role: u.role, status: u.status, avatarUrl: u.avatarUrl, shopName: u.shopName,
     marketingOptIn: u.marketingOptIn, // UC13.3 - nhận thông báo khuyến mãi
+    gender: u.gender, dateOfBirth: u.dateOfBirth, bio: u.bio, // Backlog B.29/C.44 - hồ sơ đầy đủ hơn
     provider: u.provider, createdAt: u.createdAt,
   };
 }
@@ -57,6 +58,10 @@ const updateSchema = z.object({
   fullName: z.string().min(1, 'Vui lòng nhập họ tên').optional(),
   phone: z.string().optional(), // đổi trực tiếp CHỈ khi chưa có SĐT (lần đầu khai báo)
   marketingOptIn: z.boolean().optional(), // UC13.3 10a - bật/tắt nhận thông báo khuyến mãi
+  // Backlog B.29/C.44 - hồ sơ cá nhân đầy đủ hơn
+  gender: z.enum(['Nam', 'Nữ', 'Khác']).nullable().optional(),
+  dateOfBirth: z.coerce.date().nullable().optional(),
+  bio: z.string().max(500).nullable().optional(),
 });
 
 // PATCH /api/users/me - cập nhật các trường không nhạy cảm
@@ -69,6 +74,9 @@ export async function updateMyProfile(req: Request, res: Response, next: NextFun
     const patch: Record<string, unknown> = {};
     if (data.fullName !== undefined) patch.fullName = data.fullName;
     if (data.marketingOptIn !== undefined) patch.marketingOptIn = data.marketingOptIn;
+    if (data.gender !== undefined) patch.gender = data.gender;
+    if (data.dateOfBirth !== undefined) patch.dateOfBirth = data.dateOfBirth;
+    if (data.bio !== undefined) patch.bio = data.bio;
 
     // Khai báo SĐT lần đầu (chưa có) không cần OTP; đổi SĐT đã có -> dùng luồng OTP riêng (3b)
     if (data.phone !== undefined && !current.phone) {

@@ -210,12 +210,20 @@ export default function ProductDetailPage() {
       <div className="py-6 text-sm text-gray-600 leading-relaxed max-w-3xl">
         {tab === 'desc' && <p className="whitespace-pre-line">{p.description || 'Chưa có mô tả cho sản phẩm này.'}</p>}
         {tab === 'detail' && (
-          <dl className="grid sm:grid-cols-2 gap-x-8 gap-y-2">
-            {([['Danh mục', p.category.name], ['Chất liệu', p.material], ['Màu sắc', p.color], ['Họa tiết', p.pattern], ['Kiểu dáng', p.garmentType], ['Thương hiệu', p.brand]] as [string, string | null | undefined][])
-              .filter(([, v]) => v).map(([k, v]) => (
-                <div key={k} className="flex justify-between border-b border-black/5 py-1.5"><dt className="text-gray-400">{k}</dt><dd className="text-ink">{v}</dd></div>
-              ))}
-          </dl>
+          <>
+            <dl className="grid sm:grid-cols-2 gap-x-8 gap-y-2">
+              {([['Danh mục', p.category.name], ['Chất liệu', p.material], ['Màu sắc', p.color], ['Họa tiết', p.pattern], ['Kiểu dáng', p.garmentType], ['Thương hiệu', p.brand], ['Xuất xứ', p.origin], ['Bảo hành', p.warranty]] as [string, string | null | undefined][])
+                .filter(([, v]) => v).map(([k, v]) => (
+                  <div key={k} className="flex justify-between border-b border-black/5 py-1.5"><dt className="text-gray-400">{k}</dt><dd className="text-ink">{v}</dd></div>
+                ))}
+            </dl>
+            {p.careInstructions && (
+              <div className="mt-4">
+                <p className="text-gray-400 mb-1">Hướng dẫn bảo quản</p>
+                <p className="whitespace-pre-line text-ink">{p.careInstructions}</p>
+              </div>
+            )}
+          </>
         )}
         {tab === 'reviews' && <ReviewsTab productId={p.id} />}
         {tab === 'qa' && <QaTab productId={p.id} loggedIn={!!user} onLogin={() => nav('/login')} />}

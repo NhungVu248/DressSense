@@ -60,7 +60,10 @@ export default function ProfilePage() {
           <dl className="mt-3 space-y-1 text-sm">
             <div className="flex gap-2"><dt className="text-gray-400 w-16">Email</dt><dd>{user.email || <em className="text-gray-300">chưa có</em>}</dd></div>
             <div className="flex gap-2"><dt className="text-gray-400 w-16">SĐT</dt><dd>{user.phone || <em className="text-gray-300">chưa có</em>}</dd></div>
+            {user.gender && <div className="flex gap-2"><dt className="text-gray-400 w-16">Giới tính</dt><dd>{user.gender}</dd></div>}
+            {user.dateOfBirth && <div className="flex gap-2"><dt className="text-gray-400 w-16">Ngày sinh</dt><dd>{String(user.dateOfBirth).slice(0, 10)}</dd></div>}
           </dl>
+          {user.bio && <p className="mt-2 text-sm text-gray-600 italic">{user.bio}</p>}
         </div>
         <Link to="/profile/edit" className="text-sm text-indigo-600 hover:underline whitespace-nowrap">Chỉnh sửa</Link>
       </div>

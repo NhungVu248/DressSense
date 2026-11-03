@@ -41,6 +41,9 @@ export interface ProductDetail extends Omit<ProductCard, 'sizes' | 'ratingAvg' |
   pattern?: string | null;
   brand?: string | null;
   garmentType?: string | null;
+  origin?: string | null; // Backlog B.29/C.44
+  warranty?: string | null;
+  careInstructions?: string | null;
   variants: ProductVariant[];
   reviews: { id: number; rating: number; comment?: string | null; createdAt: string }[];
   salePrice?: number | null;
