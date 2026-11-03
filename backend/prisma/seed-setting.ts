@@ -10,6 +10,8 @@ const DEFAULTS = [
   { key: 'payEnabledCOD', value: 'true', type: 'boolean', label: 'Cho phép thanh toán COD', group: 'Thanh toán', description: 'Bật/tắt phương thức thanh toán khi nhận hàng (COD).' },
   { key: 'payEnabledVNPAY', value: 'true', type: 'boolean', label: 'Cho phép thanh toán VNPAY', group: 'Thanh toán', description: 'Bật/tắt thanh toán qua VNPAY (cần cấu hình VNP_* mới hoạt động).' },
   { key: 'payEnabledVISA', value: 'true', type: 'boolean', label: 'Cho phép thanh toán thẻ quốc tế (Visa)', group: 'Thanh toán', description: 'Bật/tắt thanh toán thẻ quốc tế qua VNPAY.' },
+  // Backlog C.43 - Quản lý đánh giá: từ cấm -> tự động chặn & ẩn
+  { key: 'bannedWords', value: 'lừa đảo,hàng giả,hàng nhái,scam,súc vật,rác rưởi', type: 'string', label: 'Danh sách từ cấm (đánh giá)', group: 'Kiểm duyệt', description: 'Đánh giá chứa từ trong danh sách này sẽ bị tự động chặn & ẩn. Phân tách bằng dấu phẩy.' },
   { key: 'complaintGraceDays', value: '3', type: 'number', label: 'Thời gian kích hoạt khiếu nại (ngày)', group: 'Chính sách', description: 'Quá thời gian giao dự kiến + N ngày mới cho phép khiếu nại.' },
   { key: 'lowStockThreshold', value: '5', type: 'number', label: 'Ngưỡng cảnh báo tồn kho thấp (mặc định)', group: 'Kho vận', description: 'Dùng khi biến thể chưa đặt ngưỡng riêng.' },
   { key: 'freeShipThreshold', value: '500000', type: 'number', label: 'Ngưỡng miễn phí vận chuyển (đ)', group: 'Kho vận', description: 'Đơn đạt ngưỡng này được xét miễn phí vận chuyển.' },

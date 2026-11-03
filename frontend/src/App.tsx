@@ -192,9 +192,9 @@ export default function App() {
       <Route path="/admin/promotions" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminPromotionsPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/banners" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminBannersPage /></AdminLayout></RequireAuth>} />
       <Route path="/admin/campaigns" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><AdminCampaignsPage /></AdminLayout></RequireAuth>} />
-      <Route path="/admin/products" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductManagePage basePath="/admin/products" /></AdminLayout></RequireAuth>} />
-      <Route path="/admin/products/new" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductFormPage basePath="/admin/products" /></AdminLayout></RequireAuth>} />
-      <Route path="/admin/products/:id/edit" element={<RequireAuth roles={['ADMIN']} loginPath="/admin/login"><AdminLayout><ProductFormPage basePath="/admin/products" /></AdminLayout></RequireAuth>} />
+      {/* Backlog C.40 - Admin không CRUD sản phẩm trực tiếp nữa; chuyển sang kiểm duyệt nội dung */}
+      <Route path="/admin/products" element={<Navigate to="/admin/content" replace />} />
+      <Route path="/admin/products/*" element={<Navigate to="/admin/content" replace />} />
 
       {/* ===== UC14 - SELLER PORTAL (khung riêng SellerLayout) ===== */}
       <Route path="/seller" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerReportPage /></SellerLayout></RequireAuth>} />{/* UC14.4 */}

@@ -2,7 +2,18 @@ import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { notify } from '../services/notification.service';
+import { getStringSetting } from '../services/settings.service';
 import type { JwtPayload } from '../utils/jwt';
+
+// Backlog C.43 - kiểm tra đánh giá có chứa từ cấm (không phân biệt hoa/thường, có dấu).
+async function containsBannedWord(text: string | null | undefined): Promise<boolean> {
+  if (!text) return false;
+  const raw = await getStringSetting('bannedWords', '');
+  const words = raw.split(',').map((w) => w.trim().toLowerCase()).filter(Boolean);
+  if (!words.length) return false;
+  const lower = text.toLowerCase();
+  return words.some((w) => lower.includes(w));
+}
 
 // ============================================================
 //  UC12.1 - Đánh giá sản phẩm (khách đã mua & nhận).
@@ -40,13 +51,24 @@ export async function createReview(req: Request, res: Response, next: NextFuncti
     const dup = await prisma.review.findFirst({ where: { orderId, productId } });
     if (dup) return res.status(409).json({ message: 'Bạn đã đánh giá sản phẩm này trong đơn hàng.', code: 'ALREADY_REVIEWED' });
 
+    // Backlog C.43 - đánh giá chứa từ cấm bị tự động chặn & ẩn
+    const banned = await containsBannedWord(comment);
     const review = await prisma.review.create({
-      data: { productId, userId, orderId, rating, comment: comment ?? null, images: images && images.length ? images : undefined, videoUrl: videoUrl || null },
+      data: {
+        productId, userId, orderId, rating, comment: comment ?? null,
+        images: images && images.length ? images : undefined, videoUrl: videoUrl || null,
+        status: banned ? 'HIDDEN' : undefined,
+      },
     });
-    // thông báo cho người bán có đánh giá mới
     const product = await prisma.product.findUnique({ where: { id: productId }, select: { sellerId: true, name: true } });
-    if (product) notify(product.sellerId, 'REVIEW', 'Đánh giá mới', `Sản phẩm "${product.name}" nhận đánh giá ${rating}★.`, `/manage/reviews`);
-    res.status(201).json({ review });
+    if (banned) {
+      // thông báo Quản trị viên để rà soát; không báo đánh giá mới cho người bán
+      const admins = await prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE' }, select: { id: true } });
+      await Promise.all(admins.map((a) => notify(a.id, 'REVIEW', 'Đánh giá bị ẩn tự động', `Một đánh giá chứa từ cấm đã bị ẩn (SP "${product?.name ?? productId}").`, '/admin/reviews')));
+    } else if (product) {
+      notify(product.sellerId, 'REVIEW', 'Đánh giá mới', `Sản phẩm "${product.name}" nhận đánh giá ${rating}★.`, `/manage/reviews`);
+    }
+    res.status(201).json({ review, hidden: banned, message: banned ? 'Đánh giá của bạn chứa từ ngữ không phù hợp và đã bị ẩn để chờ kiểm duyệt.' : undefined });
   } catch (err) {
     next(err);
   }
