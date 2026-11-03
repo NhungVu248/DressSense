@@ -25,6 +25,7 @@ export default function ProductDetailPage() {
   const [tab, setTab] = useState<Tab>('desc');
   const [modal, setModal] = useState<null | 'chart' | 'guide'>(null);
   const [adding, setAdding] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
 
   const { data: p, isLoading, error } = useQuery({ queryKey: ['product', id], queryFn: () => fetchProduct(id!), enabled: !!id });
   const { data: related } = useQuery({ queryKey: ['related', id], queryFn: () => fetchRelated(id!), enabled: !!id });
@@ -66,6 +67,23 @@ export default function ProductDetailPage() {
     } catch (e: any) {
       alert(e?.response?.data?.message ?? 'Không thêm được vào giỏ.'); // 4E.1 hết hàng
     } finally { setAdding(false); }
+  }
+
+  async function handleCheckout() {
+    if (!user) { alert('Vui lòng đăng nhập để thanh toán.'); nav('/login'); return; }
+    if (p!.variants.length > 0 && !size) { alert('Vui lòng chọn size trước khi thanh toán.'); return; }
+    if (selectedVariant && avail(selectedVariant) <= 0) { alert('Sản phẩm với kích cỡ này hiện đã hết hàng.'); return; }
+    setCheckingOut(true);
+    try {
+      await apiAddToCart(p!.id, selectedVariant?.id ?? null, 1);
+      recordBehavior(p!.id, 'ADD_TO_CART');
+      qc.invalidateQueries({ queryKey: ['cart-count'] });
+      qc.invalidateQueries({ queryKey: ['cart'] });
+      qc.invalidateQueries({ queryKey: ['checkout'] });
+      nav('/checkout');
+    } catch (e: any) {
+      alert(e?.response?.data?.message ?? 'Không thể tiến hành thanh toán.');
+    } finally { setCheckingOut(false); }
   }
 
   async function toggleWishlist() {
@@ -175,12 +193,17 @@ export default function ProductDetailPage() {
 
           {/* Hành động */}
           <div className="flex items-center gap-3 mt-6">
-            <button onClick={addToCart} disabled={adding || (!!selectedVariant && avail(selectedVariant) <= 0)}
-              className="flex-1 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-3 font-medium inline-flex items-center justify-center gap-2">
+            <button onClick={addToCart} disabled={adding || checkingOut || (!!selectedVariant && avail(selectedVariant) <= 0)}
+              className="flex-1 border border-brand text-brand hover:bg-brand/5 disabled:opacity-50 rounded-lg py-3 px-3 text-sm font-medium inline-flex items-center justify-center gap-2 transition-colors">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" /></svg>
-              {adding ? 'Đang thêm…' : 'Thêm vào giỏ hàng'}
+              {adding ? 'Đang thêm…' : 'Thêm vào giỏ'}
             </button>
-            <button onClick={toggleWishlist} className="w-12 h-12 grid place-items-center border border-black/15 rounded-lg hover:text-red-500" title="Yêu thích">♡</button>
+            <button onClick={handleCheckout} disabled={adding || checkingOut || (!!selectedVariant && avail(selectedVariant) <= 0)}
+              className="flex-1 bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-3 px-3 text-sm font-medium inline-flex items-center justify-center gap-2 transition-colors">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
+              {checkingOut ? 'Đang chuyển…' : 'Thanh toán'}
+            </button>
+            <button onClick={toggleWishlist} className="w-12 h-12 grid place-items-center border border-black/15 rounded-lg hover:text-red-500 shrink-0" title="Yêu thích">♡</button>
           </div>
           <div className="flex gap-3 mt-3">
             <button onClick={() => nav('/recommendations')} className="flex-1 border border-black/15 rounded-lg py-3 text-ink hover:border-brand">Xem gợi ý hợp với bạn</button>

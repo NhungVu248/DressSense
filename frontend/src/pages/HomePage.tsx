@@ -477,7 +477,7 @@ export default function HomePage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
                 <div className="absolute bottom-4 left-4 right-4 text-white">
                   <span className="inline-block text-[11px] font-semibold tracking-wider uppercase bg-white/20 backdrop-blur-md px-3 py-1 rounded-full">
-                    {activeSlide.tag}
+                    {(activeSlide as any).tag || activeSlide.eyebrow}
                   </span>
                 </div>
               </div>
