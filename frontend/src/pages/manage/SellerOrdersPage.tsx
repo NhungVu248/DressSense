@@ -4,9 +4,28 @@ import { formatVND } from '../../lib/products';
 import { promptDialog } from '../../components/Dialog';
 import {
   getSellerOrders, sellerUpdateStatus, sellerApproveCancel, sellerRejectCancel,
-  ORDER_STATUS_LABEL, type Order, type OrderStatus,
+  ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL, PAYMENT_METHOD_LABEL, type Order, type OrderStatus,
 } from '../../lib/order';
 import { createIncident, type IncidentType } from '../../lib/support';
+
+// Xuất danh sách đơn ra CSV (mở được bằng Excel, có BOM cho tiếng Việt).
+function exportOrdersCsv(orders: Order[]) {
+  const headers = ['Mã đơn', 'Ngày đặt', 'Khách', 'SĐT', 'Địa chỉ', 'Thanh toán', 'TT thanh toán', 'Trạng thái', 'Sản phẩm', 'Tạm tính', 'Giảm giá', 'Phí ship', 'Tổng'];
+  const esc = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const rows = orders.map((o) => [
+    o.code, new Date(o.createdAt).toLocaleString('vi-VN'), o.user?.fullName ?? '', o.phone,
+    [o.addressDetail, o.ward, o.district, o.province].filter(Boolean).join(', '),
+    PAYMENT_METHOD_LABEL[o.paymentMethod] ?? o.paymentMethod, PAYMENT_STATUS_LABEL[o.paymentStatus] ?? o.paymentStatus,
+    ORDER_STATUS_LABEL[o.status] ?? o.status,
+    o.items.map((it) => `${it.name}${it.size ? ` (${it.size})` : ''} x${it.quantity}`).join(' | '),
+    o.subtotal, o.discount, o.shippingFee, o.total,
+  ].map(esc).join(','));
+  const csv = '﻿' + [headers.map(esc).join(','), ...rows].join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = `don-hang-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
 
 const STATUS_CLS: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-700', CONFIRMED: 'bg-sky-100 text-sky-700',
@@ -39,7 +58,11 @@ export default function SellerOrdersPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="font-display text-3xl text-ink mb-5">Quản lý đơn hàng</h1>
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+        <h1 className="font-display text-3xl text-ink">Quản lý đơn hàng</h1>
+        <button onClick={() => orders && orders.length && exportOrdersCsv(orders)} disabled={!orders || orders.length === 0}
+          className="text-sm border border-brand/30 text-brand rounded-full px-4 py-1.5 hover:bg-brand-light disabled:opacity-40">⬇ Xuất CSV</button>
+      </div>
       <div className="flex gap-2 overflow-x-auto no-scrollbar mb-5">
         {FILTERS.map((f) => (
           <button key={f.value} onClick={() => setStatus(f.value)}
@@ -59,6 +82,7 @@ export default function SellerOrdersPage() {
 
 function SellerOrderCard({ o, onChanged }: { o: Order; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
   const [shipForm, setShipForm] = useState(false);
   const [carrier, setCarrier] = useState('');
   const [tracking, setTracking] = useState('');
@@ -103,6 +127,28 @@ function SellerOrderCard({ o, onChanged }: { o: Order; onChanged: () => void }) 
         {o.items.map((it) => <li key={it.id}>{it.name}{it.size && ` · Size ${it.size}`} × {it.quantity}</li>)}
       </ul>
       <p className="text-xs text-gray-400 mt-1">Giao đến: {o.recipientName} · {o.phone} · {o.addressDetail}, {o.ward}, {o.district}, {o.province}</p>
+
+      <button onClick={() => setOpen((v) => !v)} className="text-xs text-brand hover:underline mt-2">{open ? 'Thu gọn' : 'Xem chi tiết đơn'}</button>
+      {open && (
+        <div className="mt-2 border-t border-black/5 pt-2 text-sm">
+          <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-gray-600">
+            <div className="flex justify-between"><span>Thanh toán</span><span className="text-ink">{PAYMENT_METHOD_LABEL[o.paymentMethod] ?? o.paymentMethod} · {PAYMENT_STATUS_LABEL[o.paymentStatus] ?? o.paymentStatus}</span></div>
+            <div className="flex justify-between"><span>Tạm tính</span><span>{formatVND(o.subtotal)}</span></div>
+            {o.discount > 0 && <div className="flex justify-between text-brand"><span>Giảm giá {o.voucherCode && `(${o.voucherCode})`}</span><span>−{formatVND(o.discount)}</span></div>}
+            <div className="flex justify-between"><span>Phí vận chuyển</span><span>{o.shippingFee === 0 ? 'Miễn phí' : formatVND(o.shippingFee)}</span></div>
+            <div className="flex justify-between font-medium text-ink"><span>Tổng cộng</span><span>{formatVND(o.total)}</span></div>
+          </div>
+          {(o.carrier || o.trackingNumber) && (
+            <p className="text-xs text-gray-400 mt-2">Vận chuyển: {o.carrier ?? '—'}{o.trackingNumber ? ` · Mã VĐ ${o.trackingNumber}` : ''}{o.estimatedDelivery ? ` · Dự kiến ${new Date(o.estimatedDelivery).toLocaleDateString('vi-VN')}` : ''}</p>
+          )}
+          <div className="text-xs text-gray-400 mt-1 flex flex-wrap gap-x-4">
+            {o.confirmedAt && <span>Xác nhận: {new Date(o.confirmedAt).toLocaleDateString('vi-VN')}</span>}
+            {o.shippedAt && <span>Giao: {new Date(o.shippedAt).toLocaleDateString('vi-VN')}</span>}
+            {o.deliveredAt && <span>Đã giao: {new Date(o.deliveredAt).toLocaleDateString('vi-VN')}</span>}
+            {o.completedAt && <span>Hoàn tất: {new Date(o.completedAt).toLocaleDateString('vi-VN')}</span>}
+          </div>
+        </div>
+      )}
 
       {/* Yêu cầu hủy từ khách (UC10.5 3a) */}
       {o.cancelRequested && (

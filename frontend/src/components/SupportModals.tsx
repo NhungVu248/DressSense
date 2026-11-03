@@ -38,20 +38,22 @@ export function ReturnModal({ order, onClose, onDone }: { order: Order; onClose:
     }).catch(() => { /* dùng mặc định */ });
   }, []);
   const [description, setDescription] = useState('');
-  const [files, setFiles] = useState<File[]>([]);
+  const [images, setImages] = useState<File[]>([]);
+  const [video, setVideo] = useState<File | null>(null);
   const [exchangeSize, setExchangeSize] = useState('');
   const [busy, setBusy] = useState(false);
 
   const items = order.items.filter((i) => picked[i.id] > 0).map((i) => ({ orderItemId: i.id, quantity: picked[i.id] }));
 
-  const imageCount = files.filter((f) => f.type.startsWith('image/')).length;
-
   async function submit() {
     if (items.length === 0) { alert('Vui lòng chọn ít nhất một sản phẩm.'); return; }
-    if (imageCount < 3) { alert('Vui lòng tải lên tối thiểu 3 ảnh sản phẩm để chứng minh.'); return; } // yêu cầu ≥3 ảnh
+    if (!reason.trim()) { alert('Vui lòng chọn lý do.'); return; }
+    if (images.length === 0) { alert('Vui lòng tải lên ít nhất 1 ảnh sản phẩm để chứng minh.'); return; }
     setBusy(true);
     try {
-      const evidence = files.length ? await uploadEvidence('returns', files) : undefined;
+      // Gộp ảnh (tối đa 5) + video (tối đa 1) rồi tải lên; evidence lưu URL phân tách bằng dấu phẩy
+      const combined = [...images.slice(0, 5), ...(video ? [video] : [])];
+      const evidence = combined.length ? await uploadEvidence('returns', combined) : undefined;
       await createReturn({ orderId: order.id, type, items, reason, description: description || undefined, evidence, exchangeSize: type === 'EXCHANGE' ? exchangeSize || undefined : undefined });
       onDone(); alert('Đã gửi yêu cầu đổi/trả. Người bán sẽ xét duyệt.');
     } catch (e: any) { alert(e?.response?.data?.message ?? 'Không gửi được yêu cầu.'); }
@@ -84,12 +86,24 @@ export function ReturnModal({ order, onClose, onDone }: { order: Order; onClose:
       {type === 'EXCHANGE' && (
         <input value={exchangeSize} onChange={(e) => setExchangeSize(e.target.value)} placeholder="Size/màu muốn đổi (vd: L)" className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-3" />
       )}
+      <label className="block text-xs text-gray-500 mb-1">Lý do <span className="text-red-400">*</span></label>
       <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-3 bg-white">
         {reasons.map((r) => <option key={r}>{r}</option>)}
       </select>
-      <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả chi tiết (tuỳ chọn)" rows={2} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-2" />
-      <p className={`text-xs mb-1 ${imageCount < 3 ? 'text-red-500' : 'text-green-600'}`}>Bắt buộc tối thiểu 3 ảnh sản phẩm (đang có {imageCount}). Có thể kèm video.</p>
-      <EvidencePicker files={files} setFiles={setFiles} />
+      <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả chi tiết (tuỳ chọn)" rows={2} className="w-full border border-black/10 rounded-lg px-3 py-2 text-sm mb-3" />
+
+      <label className="block mb-3">
+        <span className="block text-xs text-gray-500 mb-1">Ảnh sản phẩm <span className="text-red-400">*</span> (JPG/PNG/WEBP, tối đa 5 ảnh)</span>
+        <input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(e) => setImages(Array.from(e.target.files ?? []).slice(0, 5))}
+          className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border file:border-black/15 file:bg-cream file:px-3 file:py-1.5 file:text-sm" />
+        <span className={`block text-xs mt-1 ${images.length === 0 ? 'text-red-500' : 'text-green-600'}`}>{images.length}/5 ảnh đã chọn</span>
+      </label>
+      <label className="block mb-4">
+        <span className="block text-xs text-gray-500 mb-1">Video (MP4/WEBM/MOV, tối đa 1, tuỳ chọn)</span>
+        <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(e) => setVideo(e.target.files?.[0] ?? null)}
+          className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border file:border-black/15 file:bg-cream file:px-3 file:py-1.5 file:text-sm" />
+        {video && <span className="block text-xs text-gray-400 mt-1">Đã chọn: {video.name}</span>}
+      </label>
       <button onClick={submit} disabled={busy} className="w-full bg-brand hover:bg-brand-dark disabled:opacity-50 text-white rounded-lg py-2.5 text-sm">{busy ? 'Đang gửi…' : 'Gửi yêu cầu'}</button>
     </Modal>
   );

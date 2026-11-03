@@ -21,7 +21,7 @@ function Evidence({ value }: { value: string | null | undefined }) {
       {urls.map((u, i) => {
         const src = u.startsWith('http') ? u : MEDIA_ORIGIN + u;
         return /\.(mp4|webm|mov)$/i.test(u)
-          ? <a key={i} href={src} target="_blank" rel="noreferrer" className="text-xs text-brand underline">▶ Video {i + 1}</a>
+          ? <video key={i} src={src} controls className="w-40 rounded-lg bg-black/5" />
           : <a key={i} href={src} target="_blank" rel="noreferrer"><img src={src} alt="" className="w-14 h-14 object-cover rounded-lg bg-brand-light" /></a>;
       })}
     </div>

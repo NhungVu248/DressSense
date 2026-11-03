@@ -41,7 +41,7 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
     items: [
       { to: '/seller/notifications', label: 'Thông báo' }, // #11 Quản lý thông báo
       { to: '/seller/messages', label: 'Tin nhắn' },
-      { to: '/seller/support', label: 'Hỗ trợ' },
+      { to: '/seller/support', label: 'Đơn hoàn & Hỗ trợ' }, // đổi/trả, khiếu nại, sự cố
       { to: '/profile', label: 'Cài đặt tài khoản' },
     ],
   },
