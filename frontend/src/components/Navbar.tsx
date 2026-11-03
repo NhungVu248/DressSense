@@ -21,12 +21,14 @@ const CATEGORY_ITEMS = [
 
 function Icon({ path, badge }: { path: string; badge?: number }) {
   return (
-    <span className="relative">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <span className="relative inline-block">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d={path} />
       </svg>
       {badge != null && badge > 0 && (
-        <span className="absolute -top-1.5 -right-1.5 bg-brand text-white text-[9px] leading-none w-4 h-4 grid place-items-center rounded-full font-semibold">{badge}</span>
+        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] leading-none w-4 h-4 grid place-items-center rounded-full font-semibold">
+          {badge}
+        </span>
       )}
     </span>
   );
@@ -36,317 +38,422 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
   const location = useLocation();
-  const [menu, setMenu] = useState(false);             // dropdown tài khoản (desktop)
-  const [catMenu, setCatMenu] = useState(false);       // dropdown danh mục
-  const [mobile, setMobile] = useState(false);         // menu điện thoại
-  const [visualSearch, setVisualSearch] = useState(false); // modal tìm kiếm bằng hình ảnh
+
+  // State dropdowns
+  const [productMenu, setProductMenu] = useState(false); // Menu 2 cột "Sản phẩm" theo hình minh họa
+  const [showCategoriesSub, setShowCategoriesSub] = useState(false); // Danh sách danh mục con
+  const [searchOpen, setSearchOpen] = useState(false);   // Mở thanh tìm kiếm khi bấm icon kính lúp
+  const [accountMenu, setAccountMenu] = useState(false); // Dropdown tài khoản
+  const [mobileMenu, setMobileMenu] = useState(false);   // Menu mobile hamburger
+  const [visualSearch, setVisualSearch] = useState(false); // Modal tìm kiếm bằng hình ảnh
+
+  const prodRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const accRef = useRef<HTMLDivElement>(null);
-  const catRef = useRef<HTMLDivElement>(null);
 
   const avatar = user?.avatarUrl
     ? ((import.meta.env.VITE_API_URL || '/api').replace('/api', '') + user.avatarUrl)
     : DEFAULT_AVATAR;
 
-  // UC8.1 - số mục trong giỏ (badge)
+  // Badge giỏ hàng & thông báo
   const { data: cartCount } = useQuery({ queryKey: ['cart-count'], queryFn: getCartCount, enabled: !!user, staleTime: 30_000 });
-  // UC12.4 - số thông báo chưa đọc (badge)
   const { data: notifCount } = useQuery({ queryKey: ['notif-count'], queryFn: notificationCount, enabled: !!user, staleTime: 30_000 });
 
+  // Đóng dropdown khi click ra ngoài
   useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (accRef.current && !accRef.current.contains(e.target as Node)) setMenu(false);
-      if (catRef.current && !catRef.current.contains(e.target as Node)) setCatMenu(false);
+    const handleOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (prodRef.current && !prodRef.current.contains(target)) {
+        setProductMenu(false);
+        setShowCategoriesSub(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(target)) setSearchOpen(false);
+      if (accRef.current && !accRef.current.contains(target)) setAccountMenu(false);
     };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
   }, []);
 
   const curPath = location.pathname;
-  const curSearch = location.search;
-
-  function isActive(to: string) {
-    if (to === '/') return curPath === '/' && !curSearch;
-    if (to === '/products') return curPath === '/products' && !curSearch.includes('sort=');
-    if (to.includes('sort=newest')) return curPath === '/products' && curSearch.includes('sort=newest');
-    if (to.includes('sort=bestselling')) return curPath === '/products' && curSearch.includes('sort=bestselling');
-    if (to === '/profile/body') return curPath === '/profile/body';
-    if (to === '/recommendations') return curPath === '/recommendations';
-    return curPath === to;
-  }
+  const isProductsActive = curPath.startsWith('/products');
 
   return (
     <>
-      <header className="sticky top-0 z-30 shadow-2xs">
-        {/* A. ANNOUNCEMENT BAR (giữ nguyên dải thông báo hiện tại) */}
-        <div className="bg-brand-dark text-white/90 text-xs">
-          <div className="max-w-6xl mx-auto px-4 h-9 flex items-center justify-center gap-3 text-center">
-            <span className="hidden sm:inline tracking-wide">Một chút phong cách. Một chút riêng bạn.</span>
-            <Link to="/products?sort=newest" className="font-medium hover:text-white underline-offset-2 hover:underline">
+      <header className="sticky top-0 z-40 shadow-sm">
+        {/* A. ANNOUNCEMENT BAR */}
+        <div className="bg-black text-white/85 text-xs border-b border-white/10">
+          <div className="max-w-6xl mx-auto px-4 h-8 flex items-center justify-center gap-3 text-center">
+            <span className="hidden sm:inline tracking-wide text-white/70">Một chút phong cách. Một chút riêng bạn.</span>
+            <Link to="/products?sort=newest" className="font-medium hover:text-white underline-offset-2 hover:underline text-emerald-400">
               Khám phá bộ sưu tập mới →
             </Link>
           </div>
         </div>
 
-        {/* B. HEADER VÀ NAVBAR */}
-        <nav className="bg-cream/95 backdrop-blur-md border-b border-black/5">
-          <div className="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
-            {/* Logo DressSense */}
-            <Link to="/" className="font-display text-2xl font-bold text-ink shrink-0 tracking-tight" onClick={() => setMobile(false)}>
-              DressSense<span className="text-brand">.</span>
+        {/* B. NAVBAR THEO HÌNH MINH HỌA */}
+        <nav className="bg-ink text-white border-b border-white/10 transition-colors">
+          <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+            {/* 1. Logo DressSense */}
+            <Link
+              to="/"
+              className="font-display text-2xl font-bold tracking-tight text-white shrink-0 hover:opacity-90 transition-opacity"
+              onClick={() => { setMobileMenu(false); setProductMenu(false); }}
+            >
+              DressSense<span className="text-emerald-400">.</span>
             </Link>
 
-            {/* Thanh điều hướng chính - Desktop */}
-            <div className="hidden lg:flex items-center gap-5 text-sm text-gray-600 ml-1">
+            {/* 2. Thanh điều hướng trung tâm Desktop */}
+            <div className="hidden md:flex items-center gap-8 text-sm">
+              {/* Trang chủ */}
               <Link
                 to="/"
-                className={`transition-colors py-1 ${isActive('/') ? 'text-brand font-semibold border-b-2 border-brand' : 'hover:text-brand'}`}
+                className={`transition-colors font-medium ${
+                  curPath === '/' && !location.search
+                    ? 'text-emerald-400 font-semibold'
+                    : 'text-white/90 hover:text-white'
+                }`}
               >
                 Trang chủ
               </Link>
-              <Link
-                to="/products"
-                className={`transition-colors py-1 ${isActive('/products') ? 'text-brand font-semibold border-b-2 border-brand' : 'hover:text-brand'}`}
-              >
-                Sản phẩm
-              </Link>
 
-              {/* Danh mục (Dropdown) */}
-              <div className="relative" ref={catRef}>
+              {/* Sản phẩm ⌄ (Dropdown 2 cột: Khám phá & Xu hướng) */}
+              <div className="relative" ref={prodRef}>
                 <button
                   type="button"
-                  onClick={() => setCatMenu((v) => !v)}
-                  className="flex items-center gap-1 hover:text-brand transition-colors py-1"
+                  onClick={() => setProductMenu((prev) => !prev)}
+                  className={`inline-flex items-center gap-1.5 font-medium transition-colors py-1 ${
+                    productMenu || isProductsActive
+                      ? 'text-emerald-400 font-semibold'
+                      : 'text-white/90 hover:text-white'
+                  }`}
+                  aria-expanded={productMenu}
+                  aria-haspopup="true"
                 >
-                  <span>Danh mục</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`transition-transform duration-200 ${catMenu ? 'rotate-180' : ''}`}>
-                    <path d="m6 9 6 6 6-6"/>
-                  </svg>
+                  <span>Sản phẩm</span>
+                  <span className={`text-xs transition-transform duration-200 ${productMenu ? 'rotate-180' : ''}`}>
+                    ⌄
+                  </span>
                 </button>
-                {catMenu && (
-                  <div className="absolute left-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-black/5 py-2 z-40 text-sm">
-                    {CATEGORY_ITEMS.map((cat) => (
-                      <Link
-                        key={cat.label}
-                        to={cat.to}
-                        onClick={() => setCatMenu(false)}
-                        className="block px-4 py-2 text-ink hover:bg-cream hover:text-brand transition-colors"
-                      >
-                        {cat.label}
-                      </Link>
-                    ))}
+
+                {/* Dropdown Menu theo đúng hình minh họa khi người dùng chọn Sản phẩm */}
+                {productMenu && (
+                  <div className="absolute left-0 mt-3 w-80 bg-ink/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/15 p-5 z-50 text-white animate-fadeIn">
+                    <div className="text-[11px] uppercase tracking-wider text-white/50 mb-3 pb-2 border-b border-white/10">
+                      Menu sản phẩm
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                      {/* Cột 1: Khám phá */}
+                      <div className="space-y-2.5">
+                        <h4 className="font-semibold text-white text-sm tracking-wide">
+                          Khám phá
+                        </h4>
+                        <ul className="space-y-2 text-sm text-white/80">
+                          <li>
+                            <Link
+                              to="/products"
+                              onClick={() => setProductMenu(false)}
+                              className="hover:text-emerald-400 transition-colors flex items-center gap-2"
+                            >
+                              <span className="text-white/40">•</span>
+                              <span>Tất cả sản phẩm</span>
+                            </Link>
+                          </li>
+                          <li>
+                            <button
+                              type="button"
+                              onClick={() => setShowCategoriesSub((v) => !v)}
+                              className="hover:text-emerald-400 transition-colors flex items-center justify-between w-full text-left"
+                            >
+                              <span className="flex items-center gap-2">
+                                <span className="text-white/40">•</span>
+                                <span>Danh mục</span>
+                              </span>
+                              <span className="text-xs text-white/40">{showCategoriesSub ? '▲' : '▼'}</span>
+                            </button>
+                            {/* Danh sách danh mục con mở rộng */}
+                            {showCategoriesSub && (
+                              <div className="pl-4 pt-2 space-y-1.5 border-l border-white/10 mt-1.5">
+                                {CATEGORY_ITEMS.map((cat) => (
+                                  <Link
+                                    key={cat.label}
+                                    to={cat.to}
+                                    onClick={() => setProductMenu(false)}
+                                    className="block text-xs text-white/70 hover:text-emerald-400 transition-colors"
+                                  >
+                                    {cat.label}
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </li>
+                          <li>
+                            <Link
+                              to="/products"
+                              onClick={() => setProductMenu(false)}
+                              className="hover:text-emerald-400 transition-colors flex items-center gap-2"
+                            >
+                              <span className="text-white/40">•</span>
+                              <span>Bộ sưu tập</span>
+                            </Link>
+                          </li>
+                        </ul>
+                      </div>
+
+                      {/* Cột 2: Xu hướng */}
+                      <div className="space-y-2.5">
+                        <h4 className="font-semibold text-white text-sm tracking-wide">
+                          Xu hướng
+                        </h4>
+                        <ul className="space-y-2 text-sm text-white/80">
+                          <li>
+                            <Link
+                              to="/products?sort=newest"
+                              onClick={() => setProductMenu(false)}
+                              className="hover:text-emerald-400 transition-colors flex items-center gap-2"
+                            >
+                              <span className="text-white/40">•</span>
+                              <span>Hàng mới</span>
+                            </Link>
+                          </li>
+                          <li>
+                            <Link
+                              to="/products?sort=bestselling"
+                              onClick={() => setProductMenu(false)}
+                              className="hover:text-emerald-400 transition-colors flex items-center gap-2"
+                            >
+                              <span className="text-white/40">•</span>
+                              <span>Bán chạy</span>
+                            </Link>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
 
-              <Link
-                to="/products"
-                className="hover:text-brand transition-colors py-1"
-              >
-                Bộ sưu tập
-              </Link>
-
-              <Link
-                to="/recommendations"
-                className={`transition-colors py-1 ${isActive('/recommendations') ? 'text-brand font-semibold border-b-2 border-brand' : 'hover:text-brand'}`}
-              >
-                Gợi ý cho bạn
-              </Link>
-
-              {/* BẮT BUỘC: Mục Phân tích dáng trên Navbar dẫn đến đúng /profile/body */}
-              <Link
-                to="/profile/body"
-                className={`inline-flex items-center gap-1 font-medium transition-colors py-1 ${
-                  isActive('/profile/body')
-                    ? 'text-brand-dark font-bold border-b-2 border-brand'
-                    : 'text-brand hover:text-brand-dark'
-                }`}
-                title="Phân tích dáng người bằng AI"
-              >
-                <span aria-hidden>✨</span> Phân tích dáng
-              </Link>
-
-              <Link
-                to="/products?sort=newest"
-                className={`transition-colors py-1 ${isActive('/products?sort=newest') ? 'text-brand font-semibold border-b-2 border-brand' : 'hover:text-brand'}`}
-              >
-                Hàng mới
-              </Link>
-              <Link
-                to="/products?sort=bestselling"
-                className={`transition-colors py-1 ${isActive('/products?sort=bestselling') ? 'text-brand font-semibold border-b-2 border-brand' : 'hover:text-brand'}`}
-              >
-                Bán chạy
-              </Link>
-            </div>
-
-            {/* Ô tìm kiếm + Tìm kiếm bằng hình ảnh */}
-            <div className="hidden md:block ml-auto w-64 lg:w-72">
-              <SearchBar onOpenVisualSearch={() => setVisualSearch(true)} />
-            </div>
-
-            {/* Các icon công cụ phía phải */}
-            <div className="flex items-center gap-1 sm:gap-2 ml-auto md:ml-2 text-gray-600">
-              {/* Nút tìm kiếm bằng hình ảnh (mobile & shortcut) */}
-              <button
-                type="button"
-                onClick={() => setVisualSearch(true)}
-                className="p-2 hover:text-brand md:hidden"
-                title="Tìm kiếm bằng hình ảnh (AI)"
-                aria-label="Tìm kiếm bằng hình ảnh"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg>
-              </button>
-
-              {user && (
-                <Link to="/notifications" className="p-2 hover:text-brand transition-colors" title="Thông báo" aria-label="Thông báo">
-                  <Icon path="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" badge={notifCount} />
+              {/* Nhóm Gợi ý cho bạn & Phân tích dáng (Xếp 2 dòng theo đúng hình minh họa) */}
+              <div className="flex flex-col justify-center text-sm leading-tight text-left">
+                <Link
+                  to="/recommendations"
+                  className={`transition-colors font-medium py-0.5 ${
+                    curPath === '/recommendations' ? 'text-emerald-400 font-semibold' : 'text-white/90 hover:text-white'
+                  }`}
+                >
+                  Gợi ý cho bạn
                 </Link>
-              )}
+                <Link
+                  to="/profile/body"
+                  className={`inline-flex items-center gap-1 font-medium py-0.5 transition-colors ${
+                    curPath === '/profile/body' ? 'text-emerald-400 font-semibold' : 'text-white/90 hover:text-white'
+                  }`}
+                  title="Phân tích dáng người bằng AI"
+                >
+                  <span>Phân tích dáng</span>
+                  <span className="text-amber-400 animate-pulse">✨</span>
+                </Link>
+              </div>
+            </div>
 
-              <Link to="/wishlist" className="p-2 hover:text-brand transition-colors" title="Yêu thích" aria-label="Sản phẩm yêu thích">
+            {/* 3. Nhóm Icon công cụ bên phải (🔍 ♡ 🛒 👤) */}
+            <div className="flex items-center gap-2 sm:gap-3 text-white/90">
+              {/* Icon 🔍: Tìm kiếm */}
+              <div className="relative" ref={searchRef}>
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen((prev) => !prev)}
+                  className="p-2 hover:text-emerald-400 hover:bg-white/10 rounded-full transition-colors"
+                  title="Tìm kiếm sản phẩm"
+                  aria-label="Tìm kiếm"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </button>
+
+                {/* Dropdown hộp tìm kiếm khi nhấn icon 🔍 */}
+                {searchOpen && (
+                  <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white text-ink rounded-2xl shadow-2xl border border-black/10 p-3 z-50 animate-fadeIn">
+                    <SearchBar
+                      onNavigate={() => setSearchOpen(false)}
+                      onOpenVisualSearch={() => {
+                        setSearchOpen(false);
+                        setVisualSearch(true);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Icon ♡: Yêu thích */}
+              <Link
+                to="/wishlist"
+                className="p-2 hover:text-emerald-400 hover:bg-white/10 rounded-full transition-colors"
+                title="Sản phẩm yêu thích"
+                aria-label="Yêu thích"
+              >
                 <Icon path="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z" />
               </Link>
 
-              <button
-                onClick={() => (user ? nav('/profile') : nav('/login'))}
-                className="p-2 hover:text-brand md:hidden" title="Tài khoản" aria-label="Tài khoản"
+              {/* Icon 🛒: Giỏ hàng */}
+              <Link
+                to="/cart"
+                className="p-2 hover:text-emerald-400 hover:bg-white/10 rounded-full transition-colors"
+                title="Giỏ hàng"
+                aria-label="Giỏ hàng"
               >
-                <Icon path="M20 21a8 8 0 0 0-16 0M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
-              </button>
-
-              <Link to="/cart" className="p-2 hover:text-brand transition-colors" title="Giỏ hàng" aria-label="Giỏ hàng">
                 <Icon path="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0" badge={cartCount} />
               </Link>
 
-              {/* Tài khoản - Desktop dropdown */}
-              <div className="relative hidden md:block" ref={accRef}>
-                {user ? (
-                  <button onClick={() => setMenu((v) => !v)} className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-black/[0.04]">
-                    <img src={avatar} alt="" className="w-8 h-8 rounded-full object-cover bg-gray-100 ring-1 ring-black/5" />
-                    <span className="text-sm max-w-[7.5rem] truncate font-medium">{user.fullName}</span>
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2 text-sm ml-1">
-                    <Link to="/login" className="hover:text-brand px-2 py-1 font-medium">Đăng nhập</Link>
-                    <Link to="/register" className="bg-brand text-white px-3.5 py-1.5 rounded-full hover:bg-brand-dark transition-colors font-medium text-xs">Đăng ký</Link>
-                  </div>
-                )}
+              {/* Icon 👤: Tài khoản người dùng */}
+              <div className="relative" ref={accRef}>
+                <button
+                  type="button"
+                  onClick={() => setAccountMenu((prev) => !prev)}
+                  className="p-2 hover:text-emerald-400 hover:bg-white/10 rounded-full transition-colors flex items-center gap-1.5"
+                  title="Tài khoản"
+                  aria-label="Tài khoản"
+                >
+                  {user ? (
+                    <img src={avatar} alt="" className="w-6 h-6 rounded-full object-cover ring-1 ring-white/20" />
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  )}
+                </button>
 
-                {user && menu && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-black/5 py-2 text-sm z-40 animate-fadeIn" onClick={() => setMenu(false)}>
-                    <div className="px-4 py-2.5 border-b">
-                      <p className="font-medium text-ink truncate">{user.fullName}</p>
-                      <p className="text-xs text-gray-400 truncate">{user.email}</p>
-                    </div>
-                    <MenuLink to="/profile" label="Hồ sơ của tôi" />
-                    <MenuLink to="/orders" label="Đơn hàng của tôi" />
-                    <MenuLink to="/support" label="Đổi/trả & Khiếu nại" />
-                    <MenuLink to="/transactions" label="Lịch sử giao dịch" />
-                    {/* Giữ nguyên mục Phân tích dáng trong menu */}
-                    <MenuLink to="/profile/body" label="✨ Phân tích dáng người" hot />
-                    <MenuLink to="/profile/personalization" label="Hồ sơ cá nhân hóa" />
-                    <MenuLink to="/profile/sizes" label="Thông tin size" />
-                    <MenuLink to="/recommendations" label="Gợi ý cho bạn" />
-                    {user.role === 'ADMIN' && <MenuLink to="/admin" label="Trang quản trị" />}
-                    <div className="border-t my-1"></div>
-                    <button onClick={logout} className="w-full text-left px-4 py-2 text-red-500 hover:bg-cream transition-colors">Đăng xuất</button>
+                {/* Dropdown tài khoản */}
+                {accountMenu && (
+                  <div className="absolute right-0 mt-3 w-64 bg-white text-ink rounded-2xl shadow-2xl border border-black/10 py-2.5 text-sm z-50 animate-fadeIn" onClick={() => setAccountMenu(false)}>
+                    {user ? (
+                      <>
+                        <div className="px-4 py-2 border-b">
+                          <p className="font-semibold text-ink truncate">{user.fullName}</p>
+                          <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                        </div>
+                        <MenuLink to="/profile" label="Hồ sơ của tôi" />
+                        <MenuLink to="/orders" label="Đơn hàng của tôi" />
+                        <MenuLink to="/support" label="Đổi/trả & Khiếu nại" />
+                        <MenuLink to="/transactions" label="Lịch sử giao dịch" />
+                        <MenuLink to="/profile/body" label="✨ Phân tích dáng người" hot />
+                        <MenuLink to="/profile/personalization" label="Hồ sơ cá nhân hóa" />
+                        <MenuLink to="/recommendations" label="Gợi ý cho bạn" />
+                        {user.role === 'ADMIN' && <MenuLink to="/admin" label="Trang quản trị" />}
+                        <div className="border-t my-1"></div>
+                        <button onClick={logout} className="w-full text-left px-4 py-2 text-red-500 hover:bg-red-50 font-medium">
+                          Đăng xuất
+                        </button>
+                      </>
+                    ) : (
+                      <div className="p-3 space-y-2">
+                        <Link
+                          to="/login"
+                          className="block w-full py-2 text-center rounded-xl bg-ink text-white font-medium hover:bg-black transition-colors"
+                        >
+                          Đăng nhập
+                        </Link>
+                        <Link
+                          to="/register"
+                          className="block w-full py-2 text-center rounded-xl border border-black/15 text-ink font-medium hover:bg-gray-50 transition-colors"
+                        >
+                          Đăng ký tài khoản
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Nút mở Hamburger trên Mobile */}
+              {/* Nút Hamburger menu trên Mobile */}
               <button
-                onClick={() => setMobile((v) => !v)}
-                className="lg:hidden p-2 text-ink hover:text-brand"
-                aria-label="Mở menu"
-                aria-expanded={mobile}
+                type="button"
+                onClick={() => setMobileMenu((prev) => !prev)}
+                className="md:hidden p-2 text-white hover:text-emerald-400"
+                aria-label="Menu"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  {mobile ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+                  {mobileMenu ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
                 </svg>
               </button>
             </div>
           </div>
 
           {/* Menu điện thoại */}
-          {mobile && (
-            <div className="lg:hidden border-t border-black/5 bg-cream px-4 py-4 space-y-4 animate-fadeIn">
-              <SearchBar onNavigate={() => setMobile(false)} onOpenVisualSearch={() => { setMobile(false); setVisualSearch(true); }} />
+          {mobileMenu && (
+            <div className="md:hidden bg-ink/98 border-t border-white/10 px-4 py-4 space-y-4 animate-fadeIn text-sm">
+              <div className="pb-2">
+                <SearchBar
+                  onNavigate={() => setMobileMenu(false)}
+                  onOpenVisualSearch={() => { setMobileMenu(false); setVisualSearch(true); }}
+                />
+              </div>
 
-              <div className="flex flex-col text-sm divide-y divide-black/5">
-                <Link to="/" onClick={() => setMobile(false)} className={`py-2.5 hover:text-brand ${isActive('/') ? 'text-brand font-semibold' : ''}`}>
+              <div className="flex flex-col space-y-2 divide-y divide-white/10">
+                <Link to="/" onClick={() => setMobileMenu(false)} className="py-2 text-white hover:text-emerald-400 font-medium">
                   Trang chủ
                 </Link>
-                <Link to="/products" onClick={() => setMobile(false)} className={`py-2.5 hover:text-brand ${isActive('/products') ? 'text-brand font-semibold' : ''}`}>
-                  Sản phẩm
-                </Link>
-                <Link to="/products" onClick={() => setMobile(false)} className="py-2.5 hover:text-brand">
-                  Bộ sưu tập
-                </Link>
-                <Link to="/recommendations" onClick={() => setMobile(false)} className="py-2.5 hover:text-brand">
+
+                <div className="py-2 space-y-2">
+                  <p className="font-semibold text-emerald-400 text-xs uppercase tracking-wider">Sản phẩm - Khám phá</p>
+                  <Link to="/products" onClick={() => setMobileMenu(false)} className="block pl-3 text-white/80 hover:text-white">
+                    • Tất cả sản phẩm
+                  </Link>
+                  <Link to="/products" onClick={() => setMobileMenu(false)} className="block pl-3 text-white/80 hover:text-white">
+                    • Danh mục
+                  </Link>
+                  <Link to="/products" onClick={() => setMobileMenu(false)} className="block pl-3 text-white/80 hover:text-white">
+                    • Bộ sưu tập
+                  </Link>
+
+                  <p className="font-semibold text-emerald-400 text-xs uppercase tracking-wider pt-2">Sản phẩm - Xu hướng</p>
+                  <Link to="/products?sort=newest" onClick={() => setMobileMenu(false)} className="block pl-3 text-white/80 hover:text-white">
+                    • Hàng mới
+                  </Link>
+                  <Link to="/products?sort=bestselling" onClick={() => setMobileMenu(false)} className="block pl-3 text-white/80 hover:text-white">
+                    • Bán chạy
+                  </Link>
+                </div>
+
+                <Link to="/recommendations" onClick={() => setMobileMenu(false)} className="py-2 text-white hover:text-emerald-400 font-medium">
                   Gợi ý cho bạn
                 </Link>
 
-                {/* TUYỆT ĐỐI KHÔNG XÓA HOẶC ẨN MỤC PHÂN TÍCH DÁNG TRÊN MOBILE */}
-                <Link
-                  to="/profile/body"
-                  onClick={() => setMobile(false)}
-                  className="py-2.5 text-brand font-semibold flex items-center gap-1.5"
-                >
-                  <span>✨</span> Phân tích dáng
+                <Link to="/profile/body" onClick={() => setMobileMenu(false)} className="py-2 text-emerald-400 font-semibold flex items-center gap-1.5">
+                  <span>Phân tích dáng</span>
+                  <span className="text-amber-400">✨</span>
                 </Link>
 
-                <Link to="/products?sort=newest" onClick={() => setMobile(false)} className="py-2.5 hover:text-brand">
-                  Hàng mới
-                </Link>
-                <Link to="/products?sort=bestselling" onClick={() => setMobile(false)} className="py-2.5 hover:text-brand">
-                  Bán chạy
+                <Link to="/wishlist" onClick={() => setMobileMenu(false)} className="py-2 text-white/80 hover:text-white">
+                  Danh sách yêu thích
                 </Link>
 
-                {/* Danh mục nhanh trên mobile */}
-                <div className="py-2.5">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Danh mục nổi bật</p>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    {CATEGORY_ITEMS.map((c) => (
-                      <Link
-                        key={c.label}
-                        to={c.to}
-                        onClick={() => setMobile(false)}
-                        className="p-2 rounded bg-white/70 hover:bg-white text-ink hover:text-brand border border-black/5"
-                      >
-                        {c.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
+                <Link to="/cart" onClick={() => setMobileMenu(false)} className="py-2 text-white/80 hover:text-white flex items-center justify-between">
+                  <span>Giỏ hàng</span>
+                  {cartCount != null && cartCount > 0 && (
+                    <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">{cartCount}</span>
+                  )}
+                </Link>
 
                 {user ? (
-                  <div className="pt-2 space-y-1">
-                    <Link to="/profile" onClick={() => setMobile(false)} className="py-2 flex items-center gap-2">
-                      <img src={avatar} alt="" className="w-7 h-7 rounded-full object-cover bg-gray-100" />
-                      <span className="font-medium text-ink">{user.fullName}</span>
+                  <div className="pt-2 space-y-2">
+                    <Link to="/profile" onClick={() => setMobileMenu(false)} className="flex items-center gap-2 text-white font-medium">
+                      <img src={avatar} alt="" className="w-6 h-6 rounded-full object-cover" />
+                      <span>{user.fullName}</span>
                     </Link>
-                    <Link to="/orders" onClick={() => setMobile(false)} className="block py-2 text-gray-600 hover:text-brand">
-                      Đơn hàng của tôi
-                    </Link>
-                    {user.role === 'ADMIN' && (
-                      <Link to="/admin" onClick={() => setMobile(false)} className="block py-2 text-brand font-medium">
-                        Trang quản trị
-                      </Link>
-                    )}
-                    <button onClick={() => { setMobile(false); logout(); }} className="py-2 text-left text-red-500 font-medium">
+                    <button onClick={() => { setMobileMenu(false); logout(); }} className="text-left text-red-400 font-medium">
                       Đăng xuất
                     </button>
                   </div>
                 ) : (
-                  <div className="pt-3 flex gap-3">
-                    <Link to="/login" onClick={() => setMobile(false)} className="flex-1 py-2 text-center rounded-lg border border-gray-300 font-medium">
+                  <div className="pt-3 flex gap-2">
+                    <Link to="/login" onClick={() => setMobileMenu(false)} className="flex-1 py-2 text-center rounded-xl border border-white/20 text-white font-medium">
                       Đăng nhập
                     </Link>
-                    <Link to="/register" onClick={() => setMobile(false)} className="flex-1 py-2 text-center rounded-lg bg-brand text-white font-medium">
+                    <Link to="/register" onClick={() => setMobileMenu(false)} className="flex-1 py-2 text-center rounded-xl bg-emerald-500 text-ink font-semibold">
                       Đăng ký
                     </Link>
                   </div>
@@ -357,7 +464,7 @@ export default function Navbar() {
         </nav>
       </header>
 
-      {/* Modal tìm kiếm bằng hình ảnh */}
+      {/* Modal tìm kiếm bằng hình ảnh (khi nhấn camera từ thanh tìm kiếm) */}
       <VisualSearchModal isOpen={visualSearch} onClose={() => setVisualSearch(false)} />
     </>
   );
@@ -365,7 +472,7 @@ export default function Navbar() {
 
 function MenuLink({ to, label, hot }: { to: string; label: string; hot?: boolean }) {
   return (
-    <Link to={to} className={`block px-4 py-2 hover:bg-cream transition-colors ${hot ? 'text-brand font-medium' : 'text-ink'}`}>
+    <Link to={to} className={`block px-4 py-2 hover:bg-gray-50 transition-colors ${hot ? 'text-brand font-medium' : 'text-ink'}`}>
       {label}
     </Link>
   );

@@ -7,7 +7,28 @@ import { fetchProducts, formatVND, type ProductCard as Product } from '../lib/pr
 import ProductCard from '../components/ProductCard';
 import OutfitDetailModal, { type OutfitDetailData } from '../components/OutfitDetailModal';
 
-// 1. Dữ liệu Hero Banner Carousel (3 slide cao cấp chuẩn Editorial Fashion)
+interface ApiBanner {
+  id: number;
+  name: string;
+  imageUrl: string;
+  title: string | null;
+  subtitle: string | null;
+  position: string;
+  linkType: string;
+  linkValue: string | null;
+}
+
+function resolveBannerLink(b: { linkType: string; linkValue: string | null }): string {
+  switch (b.linkType) {
+    case 'PRODUCT': return `/products/${b.linkValue}`;
+    case 'CATEGORY': return `/products?categoryId=${b.linkValue}`;
+    case 'PROMO':
+    case 'URL': return b.linkValue || '/products';
+    default: return '/products';
+  }
+}
+
+// 1. Dữ liệu Hero Banner Carousel mặc định (chuẩn Editorial Fashion)
 const HERO_SLIDES = [
   {
     id: 1,
@@ -219,17 +240,64 @@ export default function HomePage() {
     return <Navigate to={`/products?${sp.toString()}`} replace />;
   }
 
-  // 1. Trạng thái Hero Carousel
+  // 1. Trạng thái Hero Carousel & Banners từ Admin
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+
+  // Lấy danh sách banner do Admin quản lý & đã duyệt (status = RUNNING)
+  const { data: adminHeroBanners } = useQuery({
+    queryKey: ['public-banners-hero'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/banners?position=HOME_HERO');
+        return (res.data.banners as ApiBanner[]) || [];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const { data: adminStripBanners } = useQuery({
+    queryKey: ['public-banners-strip'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/banners?position=HOME_STRIP');
+        return (res.data.banners as ApiBanner[]) || [];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 60 * 1000,
+  });
+
+  // Hợp nhất banner admin đã duyệt vào Hero Carousel
+  const heroSlides = useMemo(() => {
+    if (adminHeroBanners && adminHeroBanners.length > 0) {
+      const mapped = adminHeroBanners.map((b) => ({
+        id: `admin-${b.id}`,
+        eyebrow: 'CHIẾN DỊCH NỔI BẬT',
+        title: b.title || b.name,
+        description: b.subtitle || 'Khám phá ngay chương trình ưu đãi và các bộ sưu tập thời trang mới nhất được tuyển chọn dành riêng cho bạn.',
+        primaryCta: 'Khám phá ngay',
+        primaryLink: resolveBannerLink(b),
+        secondaryCta: 'Khám phá cùng AI',
+        secondaryLink: '#ai-recommendations',
+        image: b.imageUrl,
+        tag: 'BANNER ĐÃ DUYỆT',
+      }));
+      return [...mapped, ...HERO_SLIDES].slice(0, Math.max(3, mapped.length));
+    }
+    return HERO_SLIDES;
+  }, [adminHeroBanners]);
 
   useEffect(() => {
     if (isPaused) return;
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
     }, 6000);
     return () => clearInterval(interval);
-  }, [isPaused]);
+  }, [isPaused, heroSlides.length]);
 
   // 2. Trạng thái Tab gợi ý AI (Dành cho bạn / Tối giản / Công sở / Thanh lịch)
   type AiTab = 'FOR_YOU' | 'Minimalist' | 'Office' | 'Elegant';
@@ -344,10 +412,12 @@ export default function HomePage() {
     return [];
   }, [aiTab, recData, popularData, minimalistProducts, officeProducts, elegantProducts]);
 
+  const activeSlide = heroSlides[currentSlide] || heroSlides[0];
+
   return (
     <div className="space-y-16 sm:space-y-24 pb-16">
       {/* ========================================================
-          C. HERO BANNER CAROUSEL
+          C. HERO BANNER CAROUSEL (Tích hợp banner Admin đã duyệt)
           ======================================================== */}
       <section
         className="relative bg-cream overflow-hidden border-b border-black/5"
@@ -360,40 +430,40 @@ export default function HomePage() {
             <div className="lg:col-span-6 space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 text-brand text-xs font-semibold tracking-widest uppercase">
                 <span>✦</span>
-                <span>{HERO_SLIDES[currentSlide].eyebrow}</span>
+                <span>{activeSlide.eyebrow}</span>
               </div>
 
               <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-ink leading-[1.2] transition-all duration-500">
-                {HERO_SLIDES[currentSlide].title}
+                {activeSlide.title}
               </h1>
 
               <p className="text-base sm:text-lg text-gray-600 leading-relaxed max-w-xl transition-all duration-500">
-                {HERO_SLIDES[currentSlide].description}
+                {activeSlide.description}
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <Link
-                  to={HERO_SLIDES[currentSlide].primaryLink}
+                  to={activeSlide.primaryLink}
                   className="bg-brand text-white hover:bg-brand-dark px-7 py-3.5 rounded-full font-medium text-sm transition-all duration-300 shadow-md hover:shadow-lg inline-flex items-center gap-2"
                 >
-                  <span>{HERO_SLIDES[currentSlide].primaryCta}</span>
+                  <span>{activeSlide.primaryCta}</span>
                   <span>→</span>
                 </Link>
 
-                {HERO_SLIDES[currentSlide].secondaryLink.startsWith('#') ? (
+                {activeSlide.secondaryLink.startsWith('#') ? (
                   <a
-                    href={HERO_SLIDES[currentSlide].secondaryLink}
+                    href={activeSlide.secondaryLink}
                     className="border border-black/15 text-ink hover:border-brand hover:text-brand px-6 py-3.5 rounded-full font-medium text-sm transition-colors inline-flex items-center gap-2 bg-white/70"
                   >
-                    <span>{HERO_SLIDES[currentSlide].secondaryCta}</span>
+                    <span>{activeSlide.secondaryCta}</span>
                     <span>✨</span>
                   </a>
                 ) : (
                   <Link
-                    to={HERO_SLIDES[currentSlide].secondaryLink}
+                    to={activeSlide.secondaryLink}
                     className="border border-black/15 text-ink hover:border-brand hover:text-brand px-6 py-3.5 rounded-full font-medium text-sm transition-colors inline-flex items-center gap-2 bg-white/70"
                   >
-                    <span>{HERO_SLIDES[currentSlide].secondaryCta}</span>
+                    <span>{activeSlide.secondaryCta}</span>
                     <span>✨</span>
                   </Link>
                 )}
@@ -404,14 +474,14 @@ export default function HomePage() {
             <div className="lg:col-span-6">
               <div className="relative aspect-[4/5] sm:aspect-[16/11] lg:aspect-[4/5] max-w-lg mx-auto rounded-2xl overflow-hidden shadow-2xl bg-brand-light">
                 <img
-                  src={HERO_SLIDES[currentSlide].image}
-                  alt={HERO_SLIDES[currentSlide].title}
+                  src={activeSlide.image}
+                  alt={activeSlide.title}
                   className="w-full h-full object-cover transition-transform duration-700 hover:scale-[1.03]"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
                 <div className="absolute bottom-4 left-4 right-4 text-white">
                   <span className="inline-block text-[11px] font-semibold tracking-wider uppercase bg-white/20 backdrop-blur-md px-3 py-1 rounded-full">
-                    {HERO_SLIDES[currentSlide].tag}
+                    {activeSlide.tag}
                   </span>
                 </div>
               </div>
@@ -421,7 +491,7 @@ export default function HomePage() {
           {/* Điều hướng Carousel: Nút chuyển slide và indicators */}
           <div className="mt-8 pt-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {HERO_SLIDES.map((s, idx) => (
+              {heroSlides.map((s, idx) => (
                 <button
                   key={s.id}
                   onClick={() => setCurrentSlide(idx)}
@@ -435,14 +505,14 @@ export default function HomePage() {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setCurrentSlide((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)}
+                onClick={() => setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length)}
                 className="w-10 h-10 rounded-full border border-black/10 bg-white/80 hover:bg-white text-ink grid place-items-center transition-colors shadow-xs"
                 aria-label="Slide trước"
               >
                 ←
               </button>
               <button
-                onClick={() => setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length)}
+                onClick={() => setCurrentSlide((prev) => (prev + 1) % heroSlides.length)}
                 className="w-10 h-10 rounded-full border border-black/10 bg-white/80 hover:bg-white text-ink grid place-items-center transition-colors shadow-xs"
                 aria-label="Slide tiếp theo"
               >
@@ -511,6 +581,61 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {/* ========================================================
+          BANNER DẢI QUẢNG CÁO DO ADMIN ĐÃ DUYỆT (HOME_STRIP)
+          ======================================================== */}
+      {adminStripBanners && adminStripBanners.length > 0 && (
+        <section className="max-w-6xl mx-auto px-4">
+          <div className="space-y-6">
+            {adminStripBanners.map((b) => {
+              const href = resolveBannerLink(b);
+              const isExt = href.startsWith('http');
+              const Inner = (
+                <div className="group relative rounded-2xl overflow-hidden shadow-xs hover:shadow-lg transition-all duration-500 bg-brand-light">
+                  <div className="relative aspect-[21/9] sm:aspect-[4/1] w-full overflow-hidden">
+                    <img
+                      src={b.imageUrl}
+                      alt={b.name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
+                    <div className="absolute inset-0 flex flex-col justify-center px-6 sm:px-12 text-white max-w-xl">
+                      <span className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-brand-light mb-1">
+                        Ưu đãi đặc quyền
+                      </span>
+                      {b.title && (
+                        <h3 className="font-display text-xl sm:text-3xl font-bold leading-tight">
+                          {b.title}
+                        </h3>
+                      )}
+                      {b.subtitle && (
+                        <p className="mt-1 text-xs sm:text-sm text-white/85 line-clamp-2 leading-relaxed">
+                          {b.subtitle}
+                        </p>
+                      )}
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold mt-3 text-white group-hover:text-brand-light group-hover:underline">
+                        <span>Khám phá ngay</span>
+                        <span>→</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+
+              return isExt ? (
+                <a key={b.id} href={href} target="_blank" rel="noreferrer" className="block">
+                  {Inner}
+                </a>
+              ) : (
+                <Link key={b.id} to={href} className="block">
+                  {Inner}
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ========================================================
           F. ƯU ĐÃI NỔI BẬT (Flash Sale & Khuyến mãi)
@@ -904,4 +1029,3 @@ export default function HomePage() {
     </div>
   );
 }
-
