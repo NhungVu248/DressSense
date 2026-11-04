@@ -37,14 +37,16 @@ async function main() {
 
   // Tài khoản người bán mẫu
   const sellerPass = await bcrypt.hash('123456', 10);
+  // Seller chính dùng email thật của chủ dự án; đăng nhập lần đầu yêu cầu OTP (firstLoginAt = null)
   const seller = await prisma.user.upsert({
-    where: { email: 'seller@dresssense.vn' },
-    update: {},
+    where: { email: '9glhp1.vuhongnhung@gmail.com' },
+    update: { firstLoginAt: null },
     create: {
-      email: 'seller@dresssense.vn',
+      email: '9glhp1.vuhongnhung@gmail.com',
       password: sellerPass,
       fullName: 'Shop DressSense',
       role: 'SELLER',
+      firstLoginAt: null,
     },
   });
 
@@ -182,7 +184,7 @@ async function main() {
 
   console.log(`✅ Seed dữ liệu mẫu thành công! (${products.length} sản phẩm đã gán nhãn + điểm tương thích dáng)`);
   console.log('   Admin: admin@dresssense.vn / Admin@123');
-  console.log('   Seller: seller@dresssense.vn / 123456');
+  console.log('   Seller: 9glhp1.vuhongnhung@gmail.com / 123456 (đăng nhập lần đầu cần OTP)');
   console.log('   Customer: customer@dresssense.vn / 123456');
 }
 

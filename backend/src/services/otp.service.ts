@@ -1,7 +1,32 @@
 import type { OtpPurpose, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { generateOtp, hashOtp, verifyOtpHash } from '../utils/otp';
-import { AUTH_RULES, isDev } from '../config/env';
+import { AUTH_RULES, isDev, mailEnabled } from '../config/env';
+import { sendMail } from './mail.service';
+
+// Tiêu đề email theo mục đích OTP
+const OTP_SUBJECT: Record<OtpPurpose, string> = {
+  REGISTER: 'Mã xác thực đăng ký DressSense',
+  LOGIN: 'Mã OTP đăng nhập DressSense',
+  RESET_PASSWORD: 'Mã khôi phục mật khẩu DressSense',
+  CHANGE_CONTACT: 'Mã xác thực thay đổi thông tin DressSense',
+};
+
+// Gửi OTP qua email nếu target là email và đã cấu hình SMTP (không chặn luồng nếu lỗi).
+async function emailOtp(target: string, purpose: OtpPurpose, code: string): Promise<void> {
+  if (!mailEnabled() || !target.includes('@')) return;
+  try {
+    await sendMail({
+      to: target,
+      subject: OTP_SUBJECT[purpose],
+      html: `<p>Mã xác thực của bạn là:</p>
+        <p style="font-size:28px;font-weight:bold;letter-spacing:4px;color:#5c6b3c">${code}</p>
+        <p>Mã có hiệu lực trong ${AUTH_RULES.OTP_TTL_MINUTES} phút. Vui lòng không chia sẻ mã này cho người khác.</p>`,
+    });
+  } catch (e) {
+    console.warn('[OTP] gửi email thất bại:', (e as Error).message);
+  }
+}
 
 export type OtpError =
   | 'NOT_FOUND'      // không có OTP đang chờ
@@ -39,8 +64,9 @@ export async function createAndSendOtp(params: {
     },
   });
 
-  // TODO: tích hợp dịch vụ gửi email/SMS thật ở đây
+  // Gửi OTP qua email (nếu cấu hình SMTP) + luôn log console để tiện kiểm thử dev
   console.log(`[OTP] purpose=${purpose} target=${target} code=${code} (hết hạn ${AUTH_RULES.OTP_TTL_MINUTES} phút)`);
+  await emailOtp(target, purpose, code);
 
   return { expiresAt, devOtp: isDev ? code : undefined };
 }
