@@ -79,7 +79,15 @@ async function main() {
 
   // Sản phẩm mẫu (Tầng C - làm giàu thuộc tính phục vụ matching/gợi ý ở GĐ4-5)
   // Reset kho để re-seed sạch (dev; các bảng liên quan ảnh/biến thể/giỏ/hành vi tự cascade)
-  await prisma.product.deleteMany({});
+  // Nếu đã có đơn hàng tham chiếu sản phẩm (FK) thì GIỮ kho hiện tại, không reset/không tạo trùng.
+  let keepProducts = false;
+  try {
+    await prisma.product.deleteMany({});
+  } catch (e: any) {
+    if (e?.code !== 'P2003') throw e;
+    keepProducts = true;
+    console.log('ℹ️  Kho đã có đơn hàng tham chiếu → giữ nguyên sản phẩm hiện có, bỏ qua bước tạo lại sản phẩm.');
+  }
 
   const IMG = 'https://placehold.co/400x500?text=DressSense';
   const std = (s: string[]) => s.map((size, i) => ({ size, stock: 10 + i * 3 }));
@@ -154,7 +162,7 @@ async function main() {
   };
 
   let bi = 0;
-  for (const p of products) {
+  for (const p of keepProducts ? [] : products) {
     const { sizes, tags, ...data } = p;
     const slug = slugById[p.categoryId];
     await prisma.product.create({
