@@ -84,6 +84,7 @@ const placeSchema = z.object({
   shippingMethod: z.string().default('STANDARD'),
   paymentMethod: z.enum(['COD', 'VNPAY', 'VISA']),
   voucherCode: z.string().trim().optional(),
+  shippingVoucherCode: z.string().trim().optional(), // voucher vận chuyển (Shopee style)
   note: z.string().max(500).optional(),
 });
 
@@ -98,7 +99,7 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
     const userId = req.user!.userId;
     const body = placeSchema.safeParse(req.body);
     if (!body.success) return res.status(400).json({ message: 'Dữ liệu đặt hàng không hợp lệ.' });
-    const { addressId, shippingMethod, paymentMethod, voucherCode, note } = body.data;
+    const { addressId, shippingMethod, paymentMethod, voucherCode, shippingVoucherCode, note } = body.data;
 
     const online = paymentMethod !== 'COD';
     if (online && !vnpayEnabled()) {
@@ -143,6 +144,7 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
     if (voucherCode) {
       const v = await computeVoucher(voucherCode, totalSubtotal, { userId, items: ctxItems }); // kiểm lại khi checkout
       if (!v.valid) return res.status(400).json({ message: v.message, code: 'VOUCHER_INVALID' }); // 10c
+      if (v.voucher?.kind !== 'DISCOUNT') return res.status(400).json({ message: 'Mã này không phải mã giảm giá đơn hàng.', code: 'VOUCHER_INVALID' });
       discount = v.discount;
       voucherInfo = v.voucher;
     }
@@ -164,16 +166,37 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
     const [shipMethods, shipCfg] = await Promise.all([getShippingMethods(), getShippingConfig()]);
     const shopRows = await prisma.shop.findMany({ where: { ownerId: { in: entries.map(([sid]) => sid) } }, select: { ownerId: true, selfDelivery: true, selfDeliveryFee: true } });
     const shopByOwner = new Map<number, ShopDelivery>(shopRows.map((s) => [s.ownerId, s] as const));
+
+    // Phí ship từng gian hàng (tính trước để áp voucher vận chuyển trên tổng phí ship)
+    const groupSubtotals = entries.map(([, items]) => items.reduce((a, it) => a + effPrice(it) * it.quantity, 0));
+    const shipFees = entries.map(([sid], idx) =>
+      shippingFeeSync({ methodCode: shippingMethod, subtotal: groupSubtotals[idx], province: address.province, shop: shopByOwner.get(sid) }, shipMethods, shipCfg),
+    );
+    const shipFeeTotal = shipFees.reduce((a, b) => a + b, 0);
+
+    // Voucher VẬN CHUYỂN: giảm trên tổng phí ship rồi phân bổ theo phí ship từng gian hàng
+    let shippingDiscount = 0;
+    if (shippingVoucherCode) {
+      const sv = await computeVoucher(shippingVoucherCode, totalSubtotal, { userId, items: ctxItems, shipFee: shipFeeTotal });
+      if (!sv.valid) return res.status(400).json({ message: sv.message, code: 'VOUCHER_INVALID' });
+      if (sv.voucher?.kind !== 'SHIPPING') return res.status(400).json({ message: 'Mã này không phải mã giảm phí vận chuyển.', code: 'VOUCHER_INVALID' });
+      shippingDiscount = sv.discount;
+    }
+
+    const lastEligibleIdx = groupEligible.reduce((last, amt, i) => (amt > 0 ? i : last), -1);
+    const lastShipIdx = shipFees.reduce((last, f, i) => (f > 0 ? i : last), -1);
     let allocated = 0;
+    let allocatedShip = 0;
     const prepared = entries.map(([sid, items], idx) => {
-      const subtotal = items.reduce((a, it) => a + effPrice(it) * it.quantity, 0);
+      const subtotal = groupSubtotals[idx];
       // đơn cuối (trong các đơn đủ điều kiện) nhận phần dư để tổng giảm khớp tuyệt đối
-      const lastEligibleIdx = groupEligible.reduce((last, amt, i) => (amt > 0 ? i : last), -1);
       const d = totalEligible <= 0 ? 0 : idx === lastEligibleIdx ? discount - allocated : Math.floor((discount * groupEligible[idx]) / totalEligible);
       allocated += d;
-      // phí ship theo gian hàng: tự giao / phương thức hệ thống + phụ phí khu vực xa theo tỉnh nhận
-      const shippingFee = shippingFeeSync({ methodCode: shippingMethod, subtotal, province: address.province, shop: shopByOwner.get(sid) }, shipMethods, shipCfg);
-      return { sid, items, subtotal, discount: d, shippingFee, total: Math.max(0, subtotal - d + shippingFee) };
+      const shippingFee = shipFees[idx];
+      // voucher vận chuyển phân bổ theo phí ship; đơn cuối có phí ship nhận phần dư
+      const sd = shipFeeTotal <= 0 ? 0 : idx === lastShipIdx ? shippingDiscount - allocatedShip : Math.floor((shippingDiscount * shippingFee) / shipFeeTotal);
+      allocatedShip += sd;
+      return { sid, items, subtotal, discount: d, shippingFee, shippingDiscount: sd, total: Math.max(0, subtotal - d + shippingFee - sd) };
     });
     const checkoutCode = genCheckoutCode();
     // Backlog thuế: snapshot thuế suất + tiền thuế (giá cuối đã gồm thuế) để xuất hóa đơn sau này
@@ -191,7 +214,10 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
             paymentMethod, paymentStatus: online ? 'PENDING' : 'UNPAID',
             recipientName: address.recipientName, phone: address.phone,
             province: address.province, district: address.district, ward: address.ward, addressDetail: address.detail,
-            subtotal: g.subtotal, discount: g.discount, voucherCode: voucherCode ?? null, shippingMethod, shippingFee: g.shippingFee, total: g.total, note: note ?? null,
+            subtotal: g.subtotal, discount: g.discount, voucherCode: voucherCode ?? null,
+            shippingMethod, shippingFee: g.shippingFee,
+            shippingDiscount: g.shippingDiscount, shippingVoucherCode: shippingVoucherCode ?? null,
+            total: g.total, note: note ?? null,
             taxRate: vat.rate, taxAmount: taxPortionOfInclusive(g.subtotal, vat.rate), // thuế trong giá cuối (hóa đơn VAT)
             items: {
               create: g.items.map((it) => ({
@@ -220,17 +246,19 @@ export async function placeOrder(req: Request, res: Response, next: NextFunction
         });
       }
       // Voucher: tăng tổng lượt (1 lần/checkout) + lượt theo khách (perUserLimit)
-      if (voucherCode && discount > 0) {
-        const vrow = await db.voucher.findUnique({ where: { code: voucherCode.toUpperCase() }, select: { id: true } });
-        if (vrow) {
-          await db.voucher.update({ where: { id: vrow.id }, data: { usedCount: { increment: 1 } } });
-          await db.voucherUsage.upsert({
-            where: { voucherId_userId: { voucherId: vrow.id, userId } },
-            update: { count: { increment: 1 } },
-            create: { voucherId: vrow.id, userId, count: 1 },
-          });
-        }
-      }
+      // Áp cho cả mã giảm giá đơn hàng và mã giảm phí vận chuyển.
+      const consumeVoucher = async (code: string) => {
+        const vrow = await db.voucher.findUnique({ where: { code: code.toUpperCase() }, select: { id: true } });
+        if (!vrow) return;
+        await db.voucher.update({ where: { id: vrow.id }, data: { usedCount: { increment: 1 } } });
+        await db.voucherUsage.upsert({
+          where: { voucherId_userId: { voucherId: vrow.id, userId } },
+          update: { count: { increment: 1 } },
+          create: { voucherId: vrow.id, userId, count: 1 },
+        });
+      };
+      if (voucherCode && discount > 0) await consumeVoucher(voucherCode);
+      if (shippingVoucherCode && shippingDiscount > 0) await consumeVoucher(shippingVoucherCode);
       return created;
     });
 

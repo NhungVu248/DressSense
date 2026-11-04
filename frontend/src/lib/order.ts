@@ -33,7 +33,7 @@ export interface Order {
   paymentMethod: PaymentMethod; paymentStatus: PaymentStatus;
   recipientName: string; phone: string; province: string; district: string; ward: string; addressDetail: string;
   subtotal: number; discount: number; voucherCode: string | null;
-  shippingMethod: string; shippingFee: number; total: number; note: string | null;
+  shippingMethod: string; shippingFee: number; shippingDiscount?: number; shippingVoucherCode?: string | null; total: number; note: string | null;
   paidAt: string | null; createdAt: string;
   // UC10 - giao nhận + hủy
   carrier: string | null; trackingNumber: string | null; estimatedDelivery: string | null;
@@ -55,7 +55,8 @@ export const TRACKING_STEPS: { status: OrderStatus; label: string }[] = [
 ];
 
 export interface PlaceOrderBody {
-  addressId: number; shippingMethod: string; paymentMethod: PaymentMethod; voucherCode?: string; note?: string;
+  addressId: number; shippingMethod: string; paymentMethod: PaymentMethod;
+  voucherCode?: string; shippingVoucherCode?: string; note?: string;
 }
 
 export async function getCheckoutInfo(): Promise<CheckoutInfo> {

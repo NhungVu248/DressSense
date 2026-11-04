@@ -24,6 +24,7 @@ const voucherSchema = z.object({
   code: z.string().trim().min(3).max(30).regex(/^[A-Za-z0-9_-]+$/, 'Mã chỉ gồm chữ, số, gạch.'),
   description: z.string().trim().max(200).optional(),
   type: z.enum(['PERCENT', 'FIXED']),
+  kind: z.enum(['DISCOUNT', 'SHIPPING']).default('DISCOUNT'), // giảm giá đơn hàng hay giảm phí ship
   value: z.coerce.number().int().positive(),
   minOrder: z.coerce.number().int().min(0).default(0),
   maxDiscount: z.coerce.number().int().positive().nullable().optional(),
@@ -39,6 +40,8 @@ const voucherSchema = z.object({
 async function validateVoucherInput(req: Request, data: z.infer<typeof voucherSchema>): Promise<string | null> {
   if (data.type === 'PERCENT' && data.value > 100) return 'Giảm theo phần trăm phải trong khoảng 1–100.'; // 7E.1
   if (data.startsAt && data.endsAt && data.endsAt <= data.startsAt) return 'Thời gian kết thúc phải sau thời gian bắt đầu.'; // 7E
+  // Voucher vận chuyển áp cho toàn đơn (không theo phạm vi sản phẩm/danh mục)
+  if (data.kind === 'SHIPPING') return null;
   if (data.scope !== 'ALL' && data.scopeIds.length === 0) return 'Vui lòng chọn sản phẩm/danh mục áp dụng cho phạm vi đã chọn.';
   if (data.scope === 'PRODUCT' && !isAdmin(req)) {
     const owned = await prisma.product.count({ where: { id: { in: data.scopeIds }, sellerId: req.user!.userId } });
@@ -70,11 +73,14 @@ export async function createVoucher(req: Request, res: Response, next: NextFunct
     const sellerId = isAdmin(req) ? null : req.user!.userId; // Admin = toàn hệ thống; Người bán = của mình
     const v = await prisma.voucher.create({
       data: {
-        code, description: body.data.description ?? null, type: body.data.type, value: body.data.value,
+        code, description: body.data.description ?? null, type: body.data.type, kind: body.data.kind, value: body.data.value,
         minOrder: body.data.minOrder, maxDiscount: body.data.maxDiscount ?? null,
         startsAt: body.data.startsAt ?? null, endsAt: body.data.endsAt ?? null,
         usageLimit: body.data.usageLimit ?? null, perUserLimit: body.data.perUserLimit ?? null,
-        scope: body.data.scope, scopeIds: body.data.scopeIds, sellerId,
+        // voucher vận chuyển áp toàn đơn
+        scope: body.data.kind === 'SHIPPING' ? 'ALL' : body.data.scope,
+        scopeIds: body.data.kind === 'SHIPPING' ? [] : body.data.scopeIds,
+        sellerId,
         status: 'DRAFT', active: true, // 4a - lưu nháp, kích hoạt sau
       },
     });
@@ -113,9 +119,11 @@ export async function updateVoucher(req: Request, res: Response, next: NextFunct
     const updated = await prisma.voucher.update({
       where: { id: v.id },
       data: {
-        description: d.description, type: d.type, value: d.value, minOrder: d.minOrder,
+        description: d.description, type: d.type, kind: d.kind, value: d.value, minOrder: d.minOrder,
         maxDiscount: d.maxDiscount, startsAt: d.startsAt, endsAt: d.endsAt,
-        usageLimit: d.usageLimit, perUserLimit: d.perUserLimit, scope: d.scope, scopeIds: d.scopeIds,
+        usageLimit: d.usageLimit, perUserLimit: d.perUserLimit,
+        scope: d.kind === 'SHIPPING' ? 'ALL' : d.scope,
+        scopeIds: d.kind === 'SHIPPING' ? [] : d.scopeIds,
       },
     });
     res.json({ voucher: updated });

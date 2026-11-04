@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE `order` ADD COLUMN `shippingDiscount` INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN `shippingVoucherCode` VARCHAR(191) NULL;
+
+-- AlterTable
+ALTER TABLE `voucher` ADD COLUMN `kind` ENUM('DISCOUNT', 'SHIPPING') NOT NULL DEFAULT 'DISCOUNT';

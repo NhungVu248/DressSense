@@ -18,6 +18,7 @@ export interface VoucherCtxItem {
 export interface VoucherCtx {
   userId?: number;
   items?: VoucherCtxItem[];
+  shipFee?: number; // tổng phí vận chuyển (cần cho voucher SHIPPING)
 }
 
 export interface VoucherResult {
@@ -25,7 +26,7 @@ export interface VoucherResult {
   message: string;
   discount: number;
   voucher: null | {
-    code: string; description: string | null; type: 'PERCENT' | 'FIXED';
+    code: string; description: string | null; type: 'PERCENT' | 'FIXED'; kind: 'DISCOUNT' | 'SHIPPING';
     value: number; minOrder: number; maxDiscount: number | null;
     sellerId: number | null; scope: 'ALL' | 'PRODUCT' | 'CATEGORY'; scopeIds: number[];
   };
@@ -63,6 +64,7 @@ export async function computeVoucher(rawCode: string, subtotal: number, ctx: Vou
 
   const scope = v.scope as 'ALL' | 'PRODUCT' | 'CATEGORY';
   const scopeIds = Array.isArray(v.scopeIds) ? (v.scopeIds as number[]) : [];
+  const kind = (v as { kind?: 'DISCOUNT' | 'SHIPPING' }).kind ?? 'DISCOUNT';
 
   // Giới hạn mỗi khách (perUserLimit) - 11a
   if (v.perUserLimit != null && ctx.userId != null) {
@@ -70,7 +72,23 @@ export async function computeVoucher(rawCode: string, subtotal: number, ctx: Vou
     if (usage && usage.count >= v.perUserLimit) return fail('Bạn đã dùng hết số lần cho phép của mã này.');
   }
 
-  // Phạm vi áp dụng: cần ngữ cảnh giỏ để xác định phần đủ điều kiện.
+  const voucherOut = {
+    code: v.code, description: v.description, type: v.type as 'PERCENT' | 'FIXED', kind,
+    value: v.value, minOrder: v.minOrder, maxDiscount: v.maxDiscount,
+    sellerId: v.sellerId, scope, scopeIds,
+  };
+
+  // Voucher VẬN CHUYỂN: giảm trên tổng phí ship (không xét phạm vi sản phẩm/gian hàng).
+  if (kind === 'SHIPPING') {
+    const shipFee = ctx.shipFee ?? 0;
+    if (shipFee <= 0) return fail('Chưa có phí vận chuyển để áp mã (chọn địa chỉ/phương thức giao trước).');
+    let d = v.type === 'PERCENT' ? Math.floor((shipFee * v.value) / 100) : v.value;
+    if (v.type === 'PERCENT' && v.maxDiscount != null) d = Math.min(d, v.maxDiscount);
+    d = Math.min(d, shipFee);
+    return { valid: true, message: 'Đã áp dụng mã vận chuyển.', discount: d, voucher: voucherOut };
+  }
+
+  // Voucher GIẢM GIÁ: phạm vi áp dụng cần ngữ cảnh giỏ để xác định phần đủ điều kiện.
   let eligible = subtotal;
   if (scope !== 'ALL' || v.sellerId != null) {
     if (!ctx.items) {
@@ -85,26 +103,21 @@ export async function computeVoucher(rawCode: string, subtotal: number, ctx: Vou
   if (v.type === 'PERCENT' && v.maxDiscount != null) discount = Math.min(discount, v.maxDiscount);
   discount = Math.min(discount, eligible);
 
-  return {
-    valid: true,
-    message: 'Đã áp dụng mã giảm giá.',
-    discount,
-    voucher: {
-      code: v.code, description: v.description, type: v.type, value: v.value,
-      minOrder: v.minOrder, maxDiscount: v.maxDiscount,
-      sellerId: v.sellerId, scope, scopeIds,
-    },
-  };
+  return { valid: true, message: 'Đã áp dụng mã giảm giá.', discount, voucher: voucherOut };
 }
 
-const applySchema = z.object({ code: z.string().min(1), subtotal: z.coerce.number().int().min(0) });
+const applySchema = z.object({
+  code: z.string().min(1),
+  subtotal: z.coerce.number().int().min(0),
+  shipFee: z.coerce.number().int().min(0).optional(), // cho voucher vận chuyển
+});
 
 // POST /api/vouchers/apply - xem trước mức giảm cho giỏ (chưa đánh dấu đã dùng)
 export async function applyVoucher(req: Request, res: Response, next: NextFunction) {
   try {
     const body = applySchema.safeParse(req.body);
     if (!body.success) return res.status(400).json({ message: 'Dữ liệu không hợp lệ.' });
-    const result = await computeVoucher(body.data.code, body.data.subtotal, { userId: req.user?.userId });
+    const result = await computeVoucher(body.data.code, body.data.subtotal, { userId: req.user?.userId, shipFee: body.data.shipFee });
     if (!result.valid) return res.status(400).json(result);
     res.json(result);
   } catch (err) {
@@ -126,7 +139,7 @@ export async function listVouchers(_req: Request, res: Response, next: NextFunct
         ],
       },
       orderBy: { minOrder: 'asc' },
-      select: { code: true, description: true, type: true, value: true, minOrder: true, maxDiscount: true, endsAt: true, scope: true },
+      select: { code: true, description: true, type: true, kind: true, value: true, minOrder: true, maxDiscount: true, endsAt: true, scope: true },
     });
     res.json({ vouchers });
   } catch (err) {

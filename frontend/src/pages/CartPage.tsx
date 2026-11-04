@@ -3,19 +3,19 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { PRODUCT_PLACEHOLDER } from '../lib/placeholder';
 import { formatVND } from '../lib/products';
+import VoucherPicker, { type AppliedVoucher } from '../components/VoucherPicker';
 import {
-  getCart, updateCartItem, removeCartItem, listVouchers, applyVoucher,
-  type CartItem, type Voucher,
+  getCart, updateCartItem, removeCartItem, applyVoucher,
+  type CartItem,
 } from '../lib/cart';
 
 export default function CartPage() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const { data: cart, isLoading } = useQuery({ queryKey: ['cart'], queryFn: getCart });
-  const { data: vouchers } = useQuery({ queryKey: ['vouchers'], queryFn: listVouchers, staleTime: 5 * 60 * 1000 });
 
-  const [code, setCode] = useState('');
-  const [applied, setApplied] = useState<{ voucher: Voucher; discount: number } | null>(null);
+  const [applied, setApplied] = useState<AppliedVoucher | null>(null); // chỉ xem trước mã giảm giá (phí ship biết ở bước thanh toán)
+  const [showVoucher, setShowVoucher] = useState(false);
   const [voucherMsg, setVoucherMsg] = useState('');
 
   const refresh = () => { qc.invalidateQueries({ queryKey: ['cart'] }); qc.invalidateQueries({ queryKey: ['cart-count'] }); };
@@ -27,25 +27,16 @@ export default function CartPage() {
 
   const subtotal = cart?.selectedSubtotal ?? 0;
 
-  // UC8.3 - khi giỏ (tổng tiền) đổi, kiểm tra lại voucher đã áp
+  // UC8.3 - khi giỏ (tổng tiền) đổi, kiểm tra lại voucher giảm giá đã áp
   useEffect(() => {
     if (!applied) return;
     (async () => {
-      const r = await applyVoucher(applied.voucher.code, subtotal);
-      if (r.valid) setApplied({ voucher: r.voucher!, discount: r.discount });
+      const r = await applyVoucher(applied.code, subtotal);
+      if (r.valid && r.voucher) setApplied({ code: r.voucher.code, discount: r.discount, kind: r.voucher.kind });
       else { setApplied(null); setVoucherMsg(r.message); } // 7a - voucher hết hiệu lực khi giỏ đổi
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subtotal]);
-
-  async function doApply(c: string) {
-    setVoucherMsg('');
-    if (!c.trim()) return;
-    if (subtotal <= 0) { setVoucherMsg('Hãy chọn sản phẩm trước khi áp mã.'); return; }
-    const r = await applyVoucher(c.trim(), subtotal);
-    if (r.valid && r.voucher) { setApplied({ voucher: r.voucher, discount: r.discount }); setCode(''); setVoucherMsg(''); }
-    else { setApplied(null); setVoucherMsg(r.message); }
-  }
 
   function goCheckout() {
     if (!cart || cart.selectedCount === 0) { alert('Hãy chọn ít nhất một sản phẩm để thanh toán.'); return; }
@@ -89,29 +80,21 @@ export default function CartPage() {
           <aside className="bg-white rounded-xl border border-black/5 p-5 lg:sticky lg:top-28 space-y-4">
             <h2 className="font-medium text-ink">Tóm tắt đơn hàng</h2>
 
-            {/* Voucher */}
+            {/* Voucher (xem trước mã giảm giá; mã vận chuyển áp ở bước thanh toán) */}
             <div>
-              <div className="flex gap-2">
-                <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Nhập mã giảm giá"
-                  className="flex-1 border border-black/10 rounded-lg px-3 py-2 text-sm uppercase" />
-                <button onClick={() => doApply(code)} className="bg-ink text-white rounded-lg px-3 text-sm">Áp dụng</button>
-              </div>
+              <button onClick={() => { setVoucherMsg(''); setShowVoucher(true); }} disabled={subtotal <= 0}
+                className="w-full flex items-center justify-between gap-2 border border-black/10 rounded-lg px-3 py-2.5 text-sm hover:border-brand transition-colors disabled:opacity-50">
+                <span className="flex items-center gap-2 text-ink">🎟️ Mã khuyến mãi</span>
+                <span className="text-brand">{applied ? applied.code : 'Chọn / nhập mã'} ›</span>
+              </button>
               {voucherMsg && <p className="text-xs text-red-500 mt-1.5">{voucherMsg}</p>}
               {applied && (
                 <div className="flex items-center justify-between mt-2 text-sm bg-brand-light rounded-lg px-3 py-2">
-                  <span className="text-brand font-medium">{applied.voucher.code}</span>
+                  <span className="text-brand font-medium">🏷️ {applied.code}</span>
                   <button onClick={() => { setApplied(null); setVoucherMsg(''); }} className="text-xs text-gray-500 hover:text-red-500">Bỏ</button>
                 </div>
               )}
-              {vouchers && vouchers.length > 0 && !applied && (
-                <div className="mt-2 space-y-1">
-                  {vouchers.slice(0, 3).map((v) => (
-                    <button key={v.code} onClick={() => doApply(v.code)} className="w-full text-left text-xs border border-dashed border-black/15 rounded-lg px-2.5 py-1.5 hover:border-brand">
-                      <span className="font-medium text-ink">{v.code}</span> — <span className="text-gray-500">{v.description}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <p className="text-[11px] text-gray-400 mt-1.5">Mã vận chuyển sẽ chọn ở bước thanh toán (cần phí ship).</p>
             </div>
 
             <div className="border-t border-black/5 pt-3 space-y-1.5 text-sm">
@@ -128,6 +111,16 @@ export default function CartPage() {
             </button>
           </aside>
         </div>
+      )}
+
+      {showVoucher && (
+        <VoucherPicker
+          subtotal={subtotal} shipFee={0}
+          applied={applied} appliedShip={null}
+          onApply={(v) => { if (v.kind === 'DISCOUNT') setApplied(v); setShowVoucher(false); }}
+          onClear={() => setApplied(null)}
+          onClose={() => setShowVoucher(false)}
+        />
       )}
     </div>
   );

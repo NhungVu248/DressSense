@@ -11,7 +11,7 @@ import { money, fmtDate, toLocalInput, StatusBadge, inp, L, Modal } from '../../
 // ============================================================
 
 interface Voucher {
-  id: number; code: string; description: string | null; type: 'PERCENT' | 'FIXED'; value: number;
+  id: number; code: string; description: string | null; type: 'PERCENT' | 'FIXED'; kind: 'DISCOUNT' | 'SHIPPING'; value: number;
   minOrder: number; maxDiscount: number | null; startsAt: string | null; endsAt: string | null;
   usageLimit: number | null; usedCount: number; perUserLimit: number | null; status: string;
   scope: 'ALL' | 'PRODUCT' | 'CATEGORY'; scopeIds: number[]; sellerId: number | null;
@@ -91,7 +91,9 @@ export default function PromotionManagePage() {
               <tbody>
                 {vouchers.map((v) => (
                   <tr key={v.id} className="border-t border-brand/10">
-                    <td className="px-3 py-2 font-mono font-semibold">{v.code}{v.description && <div className="font-sans font-normal text-xs text-gray-400">{v.description}</div>}</td>
+                    <td className="px-3 py-2 font-mono font-semibold">{v.code}
+                      {v.kind === 'SHIPPING' && <span className="ml-1.5 align-middle font-sans text-[10px] bg-emerald-100 text-emerald-700 rounded px-1.5 py-0.5">🚚 Vận chuyển</span>}
+                      {v.description && <div className="font-sans font-normal text-xs text-gray-400">{v.description}</div>}</td>
                     <td className="px-3 py-2">{v.type === 'PERCENT' ? `${v.value}%${v.maxDiscount ? ` (tối đa ${money(v.maxDiscount)})` : ''}` : money(v.value)}{v.minOrder > 0 && <div className="text-xs text-gray-400">đơn từ {money(v.minOrder)}</div>}</td>
                     <td className="px-3 py-2 text-gray-600">{v.scope === 'ALL' ? 'Toàn bộ' : v.scope === 'PRODUCT' ? `SP (${v.scopeIds.length})` : `Danh mục (${v.scopeIds.length})`}{v.sellerId == null && <div className="text-xs text-amber-600">Toàn hệ thống</div>}</td>
                     <td className="px-3 py-2 text-gray-500 text-xs">{fmtDate(v.startsAt)}<br />→ {fmtDate(v.endsAt)}</td>
@@ -174,6 +176,7 @@ function VoucherFormModal({ initial, onClose }: { initial: Voucher | null; onClo
   const [products, setProducts] = useState<{ id: number; name: string }[]>([]);
   const [f, setF] = useState({
     code: initial?.code ?? '', description: initial?.description ?? '', type: initial?.type ?? 'PERCENT',
+    kind: initial?.kind ?? 'DISCOUNT',
     value: initial?.value ?? 10, minOrder: initial?.minOrder ?? 0, maxDiscount: initial?.maxDiscount ?? null as number | null,
     usageLimit: initial?.usageLimit ?? null as number | null, perUserLimit: initial?.perUserLimit ?? null as number | null,
     scope: initial?.scope ?? 'ALL', scopeIds: initial?.scopeIds ?? [] as number[],
@@ -196,10 +199,10 @@ function VoucherFormModal({ initial, onClose }: { initial: Voucher | null; onClo
   async function submit() {
     setErr(''); setSaving(true);
     const payload: any = {
-      code: f.code, description: f.description || undefined, type: f.type, value: Number(f.value),
+      code: f.code, description: f.description || undefined, type: f.type, kind: f.kind, value: Number(f.value),
       minOrder: Number(f.minOrder), maxDiscount: f.type === 'PERCENT' && f.maxDiscount ? Number(f.maxDiscount) : null,
       usageLimit: f.usageLimit ? Number(f.usageLimit) : null, perUserLimit: f.perUserLimit ? Number(f.perUserLimit) : null,
-      scope: f.scope, scopeIds: f.scope === 'ALL' ? [] : f.scopeIds,
+      scope: f.kind === 'SHIPPING' ? 'ALL' : f.scope, scopeIds: f.kind === 'SHIPPING' || f.scope === 'ALL' ? [] : f.scopeIds,
       startsAt: f.startsAt || null, endsAt: f.endsAt || null,
     };
     try {
@@ -215,6 +218,7 @@ function VoucherFormModal({ initial, onClose }: { initial: Voucher | null; onClo
       {running && <p className="text-xs text-amber-600 mb-2">Voucher đang diễn ra: chỉ sửa được mô tả, hạn và tổng lượt.</p>}
       <div className="grid grid-cols-2 gap-3">
         <L label="Mã voucher"><input value={f.code} disabled={!!initial} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase() })} className={inp} placeholder="VD: SALE10" /></L>
+        <L label="Phân loại"><select value={f.kind} disabled={running} onChange={(e) => setF({ ...f, kind: e.target.value as any })} className={inp}><option value="DISCOUNT">Giảm giá đơn hàng</option><option value="SHIPPING">Giảm phí vận chuyển</option></select></L>
         <L label="Loại giảm"><select value={f.type} disabled={running} onChange={(e) => setF({ ...f, type: e.target.value as any })} className={inp}><option value="PERCENT">Theo %</option><option value="FIXED">Số tiền cố định</option></select></L>
         <L label={f.type === 'PERCENT' ? 'Phần trăm (%)' : 'Số tiền (₫)'}><input type="number" value={f.value} disabled={running} onChange={(e) => setF({ ...f, value: Number(e.target.value) })} className={inp} /></L>
         {f.type === 'PERCENT' && <L label="Giảm tối đa (₫)"><input type="number" value={f.maxDiscount ?? ''} disabled={running} onChange={(e) => setF({ ...f, maxDiscount: e.target.value === '' ? null : Number(e.target.value) })} className={inp} placeholder="Không giới hạn" /></L>}
@@ -224,9 +228,9 @@ function VoucherFormModal({ initial, onClose }: { initial: Voucher | null; onClo
         <L label="Bắt đầu"><input type="datetime-local" value={f.startsAt} disabled={running} onChange={(e) => setF({ ...f, startsAt: e.target.value })} className={inp} /></L>
         <L label="Kết thúc"><input type="datetime-local" value={f.endsAt} onChange={(e) => setF({ ...f, endsAt: e.target.value })} className={inp} /></L>
         <L label="Mô tả" full><input value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} className={inp} placeholder="Hiển thị cho khách" /></L>
-        <L label="Phạm vi áp dụng" full><select value={f.scope} disabled={running} onChange={(e) => setF({ ...f, scope: e.target.value as any, scopeIds: [] })} className={inp}><option value="ALL">Toàn bộ sản phẩm</option><option value="CATEGORY">Theo danh mục</option><option value="PRODUCT">Theo sản phẩm</option></select></L>
+        {f.kind !== 'SHIPPING' && <L label="Phạm vi áp dụng" full><select value={f.scope} disabled={running} onChange={(e) => setF({ ...f, scope: e.target.value as any, scopeIds: [] })} className={inp}><option value="ALL">Toàn bộ sản phẩm</option><option value="CATEGORY">Theo danh mục</option><option value="PRODUCT">Theo sản phẩm</option></select></L>}
       </div>
-      {f.scope !== 'ALL' && !running && (
+      {f.kind !== 'SHIPPING' && f.scope !== 'ALL' && !running && (
         <div className="mt-2 max-h-36 overflow-y-auto border border-brand/15 rounded-lg p-2 flex flex-wrap gap-1.5">
           {(f.scope === 'CATEGORY' ? categories : products).map((o) => (
             <button key={o.id} type="button" onClick={() => toggleScopeId(o.id)}

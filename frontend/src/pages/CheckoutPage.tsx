@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { formatVND } from '../lib/products';
-import { applyVoucher } from '../lib/cart';
+import VoucherPicker, { type AppliedVoucher } from '../components/VoucherPicker';
 import {
   getCheckoutInfo, placeOrder, createAddress,
   PAYMENT_METHOD_LABEL, type PaymentMethod, type Address,
@@ -16,9 +16,9 @@ export default function CheckoutPage() {
   const [addressId, setAddressId] = useState<number | null>(null);
   const [shipping, setShipping] = useState('STANDARD');
   const [payment, setPayment] = useState<PaymentMethod>('COD');
-  const [voucher, setVoucher] = useState('');
-  const [applied, setApplied] = useState<{ code: string; discount: number } | null>(null);
-  const [voucherMsg, setVoucherMsg] = useState('');
+  const [applied, setApplied] = useState<AppliedVoucher | null>(null); // mã giảm giá
+  const [appliedShip, setAppliedShip] = useState<AppliedVoucher | null>(null); // mã vận chuyển
+  const [showVoucher, setShowVoucher] = useState(false);
   const [note, setNote] = useState('');
   const [showAddr, setShowAddr] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -55,7 +55,8 @@ export default function CheckoutPage() {
   }, [data, methodFee, method?.intl, cfg, isRemote]);
   const shipFee = shops.reduce((a, s) => a + s.shipFee, 0);
   const discount = applied?.discount ?? 0;
-  const total = Math.max(0, subtotal - discount + shipFee);
+  const shippingDiscount = Math.min(appliedShip?.discount ?? 0, shipFee); // không vượt phí ship hiện tại
+  const total = Math.max(0, subtotal - discount - shippingDiscount + shipFee);
 
   // Backlog C.37 - lọc theo phương thức Admin cho phép (online còn cần VNPAY đã cấu hình)
   const pm = data?.paymentMethods;
@@ -70,12 +71,13 @@ export default function CheckoutPage() {
     if (paymentOptions.length && !paymentOptions.includes(payment)) setPayment(paymentOptions[0]);
   }, [paymentOptions.join(','), payment]);
 
-  async function doApplyVoucher() {
-    setVoucherMsg('');
-    if (!voucher.trim()) return;
-    const r = await applyVoucher(voucher.trim(), subtotal);
-    if (r.valid && r.voucher) { setApplied({ code: r.voucher.code, discount: r.discount }); setVoucher(''); }
-    else { setApplied(null); setVoucherMsg(r.message); }
+  function applyPicked(v: AppliedVoucher) {
+    if (v.kind === 'SHIPPING') setAppliedShip(v);
+    else setApplied(v);
+  }
+  function clearVoucher(kind: 'DISCOUNT' | 'SHIPPING') {
+    if (kind === 'SHIPPING') setAppliedShip(null);
+    else setApplied(null);
   }
 
   async function submit() {
@@ -83,7 +85,7 @@ export default function CheckoutPage() {
     if (!selectedAddr) { setError('Vui lòng chọn địa chỉ giao hàng.'); return; }
     setPlacing(true);
     try {
-      const res = await placeOrder({ addressId: selectedAddr, shippingMethod: shipping, paymentMethod: payment, voucherCode: applied?.code, note: note || undefined });
+      const res = await placeOrder({ addressId: selectedAddr, shippingMethod: shipping, paymentMethod: payment, voucherCode: applied?.code, shippingVoucherCode: appliedShip?.code, note: note || undefined });
       qc.invalidateQueries({ queryKey: ['cart-count'] });
       if (res.payUrl) { window.location.href = res.payUrl; return; } // chuyển sang cổng VNPAY (thanh toán gộp)
       // COD: một checkout có thể tạo nhiều đơn (theo gian hàng) -> về danh sách đơn
@@ -199,17 +201,28 @@ export default function CheckoutPage() {
         {/* Tóm tắt */}
         <aside className="bg-white rounded-xl border border-black/5 p-5 lg:sticky lg:top-28 space-y-4">
           <h2 className="font-medium text-ink">Tóm tắt</h2>
-          <div className="flex gap-2">
-            <input value={voucher} onChange={(e) => setVoucher(e.target.value.toUpperCase())} placeholder="Mã giảm giá" className="flex-1 border border-black/10 rounded-lg px-3 py-2 text-sm uppercase" />
-            <button onClick={doApplyVoucher} className="bg-ink text-white rounded-lg px-3 text-sm">Áp dụng</button>
-          </div>
-          {voucherMsg && <p className="text-xs text-red-500">{voucherMsg}</p>}
-          {applied && <div className="flex items-center justify-between text-sm bg-brand-light rounded-lg px-3 py-2"><span className="text-brand font-medium">{applied.code}</span><button onClick={() => setApplied(null)} className="text-xs text-gray-500">Bỏ</button></div>}
+
+          {/* Voucher kiểu Shopee: 1 mã giảm giá + 1 mã vận chuyển */}
+          <button onClick={() => setShowVoucher(true)} className="w-full flex items-center justify-between gap-2 border border-black/10 rounded-lg px-3 py-2.5 text-sm hover:border-brand transition-colors">
+            <span className="flex items-center gap-2 text-ink">🎟️ Mã khuyến mãi</span>
+            <span className="text-brand">{applied || appliedShip ? `${(applied ? 1 : 0) + (appliedShip ? 1 : 0)} mã đã chọn` : 'Chọn / nhập mã'} ›</span>
+          </button>
+          {applied && (
+            <div className="flex items-center justify-between text-sm bg-brand-light rounded-lg px-3 py-2">
+              <span className="text-brand font-medium">🏷️ {applied.code}</span><button onClick={() => setApplied(null)} className="text-xs text-gray-500">Bỏ</button>
+            </div>
+          )}
+          {appliedShip && (
+            <div className="flex items-center justify-between text-sm bg-emerald-50 rounded-lg px-3 py-2">
+              <span className="text-emerald-700 font-medium">🚚 {appliedShip.code}</span><button onClick={() => setAppliedShip(null)} className="text-xs text-gray-500">Bỏ</button>
+            </div>
+          )}
 
           <div className="border-t border-black/5 pt-3 space-y-1.5 text-sm">
             <div className="flex justify-between"><span className="text-gray-500">Tạm tính</span><span>{formatVND(subtotal)}</span></div>
             {discount > 0 && <div className="flex justify-between text-brand"><span>Giảm giá</span><span>−{formatVND(discount)}</span></div>}
             <div className="flex justify-between"><span className="text-gray-500">Vận chuyển</span><span>{shipFee === 0 ? 'Miễn phí' : formatVND(shipFee)}</span></div>
+            {shippingDiscount > 0 && <div className="flex justify-between text-emerald-600"><span>Giảm phí vận chuyển</span><span>−{formatVND(shippingDiscount)}</span></div>}
             <div className="flex justify-between font-semibold text-ink text-base pt-1"><span>Tổng cộng</span><span>{formatVND(total)}</span></div>
           </div>
 
@@ -220,6 +233,14 @@ export default function CheckoutPage() {
           <p className="text-[11px] text-gray-400 text-center">Nhấn Đặt hàng nghĩa là bạn đồng ý với điều khoản mua hàng của DressSense.</p>
         </aside>
       </div>
+
+      {showVoucher && (
+        <VoucherPicker
+          subtotal={subtotal} shipFee={shipFee}
+          applied={applied} appliedShip={appliedShip}
+          onApply={applyPicked} onClear={clearVoucher} onClose={() => setShowVoucher(false)}
+        />
+      )}
     </div>
   );
 }

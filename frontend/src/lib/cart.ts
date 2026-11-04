@@ -90,10 +90,12 @@ export async function wishlistToCart(productId: number, variantId: number | null
 }
 
 // ---- Voucher (UC8.3) ----
+export type VoucherKind = 'DISCOUNT' | 'SHIPPING'; // giảm giá đơn hàng | giảm phí vận chuyển (Shopee style)
 export interface Voucher {
   code: string;
   description: string | null;
   type: 'PERCENT' | 'FIXED';
+  kind: VoucherKind;
   value: number;
   minOrder: number;
   maxDiscount: number | null;
@@ -103,6 +105,7 @@ export interface VoucherResult { valid: boolean; message: string; discount: numb
 export async function listVouchers(): Promise<Voucher[]> {
   return (await api.get('/vouchers')).data.vouchers;
 }
-export async function applyVoucher(code: string, subtotal: number): Promise<VoucherResult> {
-  return (await api.post('/vouchers/apply', { code, subtotal })).data;
+// shipFee cần cho voucher vận chuyển (xem trước mức giảm phí ship)
+export async function applyVoucher(code: string, subtotal: number, shipFee?: number): Promise<VoucherResult> {
+  return (await api.post('/vouchers/apply', { code, subtotal, shipFee })).data;
 }

@@ -637,12 +637,14 @@ model Order {
   addressDetail String
 
   // Tiền (tính ở phía hệ thống - UC9.1 quy tắc nghiệp vụ)
-  subtotal       Int
-  discount       Int     @default(0)
-  voucherCode    String?
-  shippingMethod String  @default("STANDARD")
-  shippingFee    Int     @default(0)
-  total          Int
+  subtotal         Int
+  discount         Int     @default(0)
+  voucherCode      String?
+  shippingMethod   String  @default("STANDARD")
+  shippingFee      Int     @default(0)
+  shippingDiscount Int     @default(0) // giảm phí vận chuyển từ voucher SHIPPING (Shopee style)
+  shippingVoucherCode String? // mã voucher vận chuyển đã áp
+  total            Int
 
   // Backlog thuế - snapshot thuế suất + tiền thuế (đã gồm trong subtotal giá cuối) tại lúc đặt
   taxRate   Float @default(0) // % VAT áp dụng khi đặt (0 nếu tắt thuế)
@@ -937,11 +939,18 @@ enum VoucherType {
   FIXED // giảm số tiền cố định (value = VND)
 }
 
+// Phân loại voucher kiểu Shopee: giảm giá đơn hàng vs giảm phí vận chuyển
+enum VoucherKind {
+  DISCOUNT // giảm trên tiền hàng (tạm tính)
+  SHIPPING // giảm trên phí vận chuyển
+}
+
 model Voucher {
   id          Int         @id @default(autoincrement())
   code        String      @unique
   description String?
   type        VoucherType
+  kind        VoucherKind @default(DISCOUNT) // giảm giá đơn hàng hay giảm phí vận chuyển (Shopee style)
   value       Int // PERCENT: 0..100 | FIXED: số tiền VND
   minOrder    Int         @default(0) // đơn tối thiểu để áp dụng
   maxDiscount Int? // trần giảm cho loại PERCENT (null = không giới hạn)
