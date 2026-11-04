@@ -14,6 +14,7 @@ const STEPS: [string, string][] = [
   ['prisma/seed-banner.ts', 'Banner trang chủ'],
   ['prisma/seed-commission.ts', 'Chính sách hoa hồng + backfill'],
   ['prisma/seed-demo-media.ts', 'Ảnh demo thật + Flash Sale đang chạy'],
+  ['prisma/seed-activity.ts', 'Phân tích nhãn dáng + đơn hàng, đánh giá, hỏi đáp, chat, thông báo mẫu'],
 ];
 
 let failed = 0;
