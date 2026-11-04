@@ -4,6 +4,8 @@ import { prisma } from '../lib/prisma';
 import { vnpayEnabled } from '../config/env';
 import { feePerWeek, weeksBetween, bannerPayUrl, markBannerOrderPaid, ADV_PREFIX } from '../services/banner-order.service';
 import { notify } from '../services/notification.service';
+import { getVatConfig, taxPortionOfInclusive, getStringSetting } from '../services/settings.service';
+import { renderInvoiceHtml } from '../services/invoice-html';
 
 // ============================================================
 //  Backlog B.26/C.41 - Đơn đăng ký chạy banner quảng cáo.
@@ -25,6 +27,11 @@ const createSchema = z.object({
   startsAt: z.coerce.date(),
   endsAt: z.coerce.date(),
   paymentMethod: z.enum(['VNPAY', 'VISA']).default('VNPAY'),
+  // Thông tin xuất hóa đơn VAT (tuỳ chọn)
+  buyerName: z.string().trim().max(200).nullable().optional(),
+  buyerTaxCode: z.string().trim().max(50).nullable().optional(),
+  buyerAddress: z.string().trim().max(300).nullable().optional(),
+  buyerEmail: z.string().trim().email('Email hóa đơn không hợp lệ.').max(200).nullable().optional().or(z.literal('')),
 });
 
 // POST /api/seller/ad-orders - tạo đơn đăng ký (chờ thanh toán)
@@ -38,6 +45,8 @@ export async function createBannerOrder(req: Request, res: Response, next: NextF
 
     const weeks = weeksBetween(d.startsAt, d.endsAt);
     const amount = (await feePerWeek(d.position)) * weeks;
+    // Snapshot thuế VAT (phí QC đã gồm thuế) để xuất hóa đơn VAT
+    const vat = await getVatConfig();
 
     let code = randomCode();
     while (await prisma.bannerOrder.findUnique({ where: { code } })) code = randomCode();
@@ -49,6 +58,9 @@ export async function createBannerOrder(req: Request, res: Response, next: NextF
         position: d.position, linkType: d.linkType, linkValue: d.linkValue ?? null,
         startsAt: d.startsAt, endsAt: d.endsAt, weeks, amount,
         paymentMethod: d.paymentMethod, paymentStatus: 'UNPAID', status: 'PENDING_PAYMENT',
+        buyerName: d.buyerName || null, buyerTaxCode: d.buyerTaxCode || null,
+        buyerAddress: d.buyerAddress || null, buyerEmail: d.buyerEmail || null,
+        taxRate: vat.rate, taxAmount: taxPortionOfInclusive(amount, vat.rate),
       },
     });
     res.status(201).json({ order: bo });
@@ -83,6 +95,36 @@ export async function markPaidSandbox(req: Request, res: Response, next: NextFun
     if (bo.paymentStatus === 'PAID') return res.status(400).json({ message: 'Đơn đã được thanh toán.' });
     await markBannerOrderPaid(bo.code, 'SANDBOX');
     res.json({ ok: true });
+  } catch (err) { next(err); }
+}
+
+// GET /api/seller/ad-orders/:id/invoice - xuất hóa đơn VAT cho phí quảng cáo (HTML, in/lưu PDF)
+export async function issueBannerInvoice(req: Request, res: Response, next: NextFunction) {
+  try {
+    const bo = await prisma.bannerOrder.findFirst({ where: { id: Number(req.params.id), sellerId: req.user!.userId } });
+    if (!bo) return res.status(404).json({ message: 'Không tìm thấy đơn quảng cáo.' });
+    if (bo.paymentStatus !== 'PAID') return res.status(400).json({ message: 'Chỉ xuất hóa đơn cho đơn đã thanh toán phí.' });
+
+    const company = {
+      name: await getStringSetting('invoiceCompanyName', 'DressSense'),
+      taxCode: await getStringSetting('invoiceTaxCode', ''),
+      address: await getStringSetting('invoiceAddress', ''),
+    };
+    const invoice = {
+      buyerName: bo.buyerName || '(Chưa cung cấp)', buyerTaxCode: bo.buyerTaxCode,
+      buyerAddress: bo.buyerAddress || '', buyerEmail: bo.buyerEmail,
+      note: `Phí dịch vụ quảng cáo banner`, issueCount: 1, issuedAt: new Date(),
+    };
+    const breakdown = {
+      goodsBeforeTax: bo.amount - bo.taxAmount, taxRate: bo.taxRate, taxAmount: bo.taxAmount,
+      subtotal: bo.amount, discount: 0, shippingFee: 0, total: bo.amount,
+    };
+    const order = {
+      code: bo.code, createdAt: bo.paidAt ?? bo.createdAt, recipientName: bo.buyerName || '', phone: '',
+      items: [{ name: `Phí quảng cáo banner "${bo.name}"`, size: `${bo.weeks} tuần`, quantity: 1, price: bo.amount }],
+    };
+    await prisma.bannerOrder.update({ where: { id: bo.id }, data: { invoiceIssuedAt: new Date() } });
+    res.type('html').send(renderInvoiceHtml(company, invoice, breakdown, order));
   } catch (err) { next(err); }
 }
 

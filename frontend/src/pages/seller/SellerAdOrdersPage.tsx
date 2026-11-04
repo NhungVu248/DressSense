@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { formatVND } from '../../lib/products';
 import {
-  listMyAdOrders, createAdOrder, payAdOrder, markAdOrderPaid, cancelAdOrder,
+  listMyAdOrders, createAdOrder, payAdOrder, markAdOrderPaid, cancelAdOrder, openAdInvoice,
   AD_POSITION_LABEL, AD_STATUS_LABEL, type AdPosition, type CreateBannerOrderInput,
 } from '../../lib/ads';
 
@@ -25,6 +25,7 @@ const EMPTY: CreateBannerOrderInput = {
   name: '', imageUrl: '', title: '', subtitle: '',
   position: 'HOME_HERO', linkType: 'NONE', linkValue: '',
   startsAt: '', endsAt: '', paymentMethod: 'VNPAY',
+  buyerName: '', buyerTaxCode: '', buyerAddress: '', buyerEmail: '',
 };
 
 export default function SellerAdOrdersPage() {
@@ -140,6 +141,18 @@ export default function SellerAdOrdersPage() {
             </select>
           </label>
           {f.linkType !== 'NONE' && <label className="text-sm">Giá trị liên kết<input value={f.linkValue ?? ''} onChange={(e) => setF({ ...f, linkValue: e.target.value })} className={inp} /></label>}
+
+          {/* Thông tin xuất hóa đơn VAT (tuỳ chọn) cho phí quảng cáo */}
+          <div className="col-span-2 border-t border-brand/10 pt-3 mt-1">
+            <p className="text-sm font-medium text-ink/80 mb-2">Thông tin xuất hóa đơn <span className="text-ink/40 font-normal">(tuỳ chọn)</span></p>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-sm">Tên/Công ty<input value={f.buyerName ?? ''} onChange={(e) => setF({ ...f, buyerName: e.target.value })} className={inp} /></label>
+              <label className="text-sm">Mã số thuế<input value={f.buyerTaxCode ?? ''} onChange={(e) => setF({ ...f, buyerTaxCode: e.target.value })} className={inp} /></label>
+              <label className="text-sm col-span-2">Địa chỉ xuất hóa đơn<input value={f.buyerAddress ?? ''} onChange={(e) => setF({ ...f, buyerAddress: e.target.value })} className={inp} /></label>
+              <label className="text-sm col-span-2">Email nhận hóa đơn<input type="email" value={f.buyerEmail ?? ''} onChange={(e) => setF({ ...f, buyerEmail: e.target.value })} className={inp} /></label>
+            </div>
+          </div>
+
           <div className="col-span-2 flex items-center gap-3">
             <button onClick={() => createM.mutate()} disabled={createM.isPending || !f.name || !f.imageUrl || !f.startsAt || !f.endsAt} className="px-4 py-2 rounded-lg bg-brand text-white text-sm font-medium disabled:opacity-50">
               {createM.isPending ? 'Đang tạo…' : 'Tạo đơn (tính phí theo tuần)'}
@@ -172,6 +185,11 @@ export default function SellerAdOrdersPage() {
                   <button onClick={() => payM.mutate(o.id)} className="px-3 py-1.5 rounded-lg bg-brand text-white text-sm">Thanh toán VNPAY</button>
                   <button onClick={() => markM.mutate(o.id)} className="px-3 py-1.5 rounded-lg border border-brand/30 text-sm text-ink/70">Đánh dấu đã thanh toán (sandbox)</button>
                   <button onClick={() => cancelM.mutate(o.id)} className="px-3 py-1.5 rounded-lg text-sm text-red-500">Hủy đơn</button>
+                </div>
+              )}
+              {o.paymentStatus === 'PAID' && (
+                <div className="shrink-0">
+                  <button onClick={() => openAdInvoice(o.id).catch(() => setErr('Không xuất được hóa đơn.'))} className="px-3 py-1.5 rounded-lg border border-brand/30 text-sm text-brand hover:bg-brand/5">🧾 Xuất hóa đơn</button>
                 </div>
               )}
             </div>

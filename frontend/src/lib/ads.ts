@@ -54,6 +54,11 @@ export interface CreateBannerOrderInput {
   startsAt: string;
   endsAt: string;
   paymentMethod: 'VNPAY' | 'VISA';
+  // Thông tin xuất hóa đơn VAT (tuỳ chọn)
+  buyerName?: string | null;
+  buyerTaxCode?: string | null;
+  buyerAddress?: string | null;
+  buyerEmail?: string | null;
 }
 
 // ---- Người bán ----
@@ -62,6 +67,13 @@ export const createAdOrder = (data: CreateBannerOrderInput) => api.post<{ order:
 export const payAdOrder = (id: number) => api.post<{ payUrl: string }>(`/seller/ad-orders/${id}/pay`).then((r) => r.data.payUrl);
 export const markAdOrderPaid = (id: number) => api.post(`/seller/ad-orders/${id}/mark-paid`).then((r) => r.data);
 export const cancelAdOrder = (id: number) => api.delete(`/seller/ad-orders/${id}`).then((r) => r.data);
+// Xuất hóa đơn VAT (HTML) -> mở tab mới để in/lưu PDF
+export async function openAdInvoice(id: number) {
+  const res = await api.get(`/seller/ad-orders/${id}/invoice`, { responseType: 'blob' });
+  const url = URL.createObjectURL(res.data as Blob);
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
 
 // ---- Admin ----
 export const listAdminAdOrders = (status?: string) =>

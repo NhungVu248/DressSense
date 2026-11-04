@@ -1273,6 +1273,15 @@ model BannerOrder {
   paymentRef    String? // mã giao dịch VNPAY (vnp_TransactionNo)
   paidAt        DateTime?
 
+  // Thông tin xuất hóa đơn VAT cho phí quảng cáo (người bán nhập khi tạo đơn)
+  buyerName     String?
+  buyerTaxCode  String?
+  buyerAddress  String?
+  buyerEmail    String?
+  taxRate       Float     @default(0) // % VAT snapshot lúc tạo đơn
+  taxAmount     Int       @default(0) // phần thuế VAT nằm trong amount (đã gồm thuế)
+  invoiceIssuedAt DateTime? // lần xuất hóa đơn gần nhất
+
   // Duyệt (Admin)
   status       String    @default("PENDING_PAYMENT") // xem vòng đời ở trên
   reviewReason String?   @db.Text // lý do từ chối / ghi chú duyệt

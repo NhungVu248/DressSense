@@ -11,17 +11,31 @@ import { ADV_PREFIX, finalizeBannerPayment } from '../services/banner-order.serv
 //  UC9.3 - Lịch sử giao dịch.
 // ============================================================
 
+// Origin của frontend để điều hướng về sau thanh toán.
+// Khi chạy qua proxy công khai (ngrok), trình duyệt đang ở origin ngrok nhưng request
+// đến backend qua Vite proxy; ngrok đặt X-Forwarded-Host/Proto và đi xuyên proxy -> ưu tiên
+// dùng để quay về ĐÚNG origin khách đang đứng (giữ phiên đăng nhập), fallback CLIENT_ORIGIN.
+function clientBase(req: Request): string {
+  const fwdHost = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0]?.trim();
+  if (fwdHost) {
+    const proto = (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0]?.trim() || 'https';
+    return `${proto}://${fwdHost}`;
+  }
+  return env.clientOrigin;
+}
+
 // GET /api/payments/vnpay/return - VNPAY chuyển hướng trình duyệt khách về đây sau thanh toán.
 // Xác minh rồi điều hướng về trang kết quả của frontend.
 export async function vnpayReturn(req: Request, res: Response) {
   const q = req.query as Record<string, string>;
   const v = verifyReturn(q);
   const status = v.success ? 'success' : 'fail';
+  const base = clientBase(req);
 
   // Backlog B.26 - phí quảng cáo (txnRef prefix ADV): xử lý riêng, về trang đơn QC của người bán
   if (v.txnRef.startsWith(ADV_PREFIX)) {
     try { await finalizeBannerPayment(v); } catch { /* vẫn điều hướng */ }
-    return res.redirect(`${env.clientOrigin}/seller/ad-orders?status=${status}&code=${encodeURIComponent(v.responseCode)}`);
+    return res.redirect(`${base}/seller/ad-orders?status=${status}&code=${encodeURIComponent(v.responseCode)}`);
   }
   let orderId = '';
   try {
@@ -29,7 +43,7 @@ export async function vnpayReturn(req: Request, res: Response) {
     orderId = tx ? String(tx.orderId) : '';
     await finalizePayment(v); // idempotent
   } catch { /* vẫn điều hướng về trang kết quả */ }
-  return res.redirect(`${env.clientOrigin}/checkout/result?orderId=${orderId}&status=${status}&code=${encodeURIComponent(v.responseCode)}`);
+  return res.redirect(`${base}/checkout/result?orderId=${orderId}&status=${status}&code=${encodeURIComponent(v.responseCode)}`);
 }
 
 // GET /api/payments/vnpay/ipn - VNPAY gọi server-to-server (xác nhận thật). Trả JSON theo chuẩn VNPAY.

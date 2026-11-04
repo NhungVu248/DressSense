@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE `bannerorder` ADD COLUMN `buyerAddress` VARCHAR(191) NULL,
+    ADD COLUMN `buyerEmail` VARCHAR(191) NULL,
+    ADD COLUMN `buyerName` VARCHAR(191) NULL,
+    ADD COLUMN `buyerTaxCode` VARCHAR(191) NULL,
+    ADD COLUMN `invoiceIssuedAt` DATETIME(3) NULL,
+    ADD COLUMN `taxAmount` INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN `taxRate` DOUBLE NOT NULL DEFAULT 0;

@@ -13,7 +13,7 @@ import { getSellerFinance, listSellerCommissions, listSellerSettlements, updateS
 import { setMyShopStatus, lockMyAccount } from '../controllers/seller-account.controller';
 import { uploadMediaImages, listMediaImages, deleteMediaImage, uploadMediaVideos } from '../controllers/media.controller';
 import {
-  createBannerOrder, listMyBannerOrders, payBannerOrder, markPaidSandbox, cancelBannerOrder,
+  createBannerOrder, listMyBannerOrders, payBannerOrder, markPaidSandbox, cancelBannerOrder, issueBannerInvoice,
 } from '../controllers/banner-order.controller';
 import { listInventory, adjustStock, listStockMovements } from '../controllers/inventory.controller';
 import {
@@ -84,6 +84,7 @@ router.get('/ad-orders', listMyBannerOrders);
 router.post('/ad-orders', createBannerOrder);
 router.post('/ad-orders/:id/pay', payBannerOrder);
 router.post('/ad-orders/:id/mark-paid', markPaidSandbox);
+router.get('/ad-orders/:id/invoice', issueBannerInvoice);
 router.delete('/ad-orders/:id', cancelBannerOrder);
 
 // ERD 3.8/3.9 (Seller #4) - Quản lý tồn kho + lịch sử biến động

@@ -69,6 +69,9 @@ npm run dev        # Vite chạy ở 5173, đã cấu hình proxy /api + /upload
   *Authorized JavaScript origins* ở Google Cloud Console.
 - **VNPAY** (nếu bật): trong `backend/.env` đặt
   `VNP_RETURN_URL=https://ten-cua-ban.ngrok-free.app/api/payments/vnpay/return`.
+  Sau khi thanh toán, backend tự quay về đúng origin ngrok (đọc `X-Forwarded-Host`
+  do ngrok gửi) nên **không bị đăng nhập lại**. Nếu proxy không gửi header này, đặt thêm
+  `CLIENT_ORIGIN=https://ten-cua-ban.ngrok-free.app` để chắc chắn.
 - **Ổn định hơn cho demo**: có thể `npm run build && npm run preview` (preview cũng đã
   cấu hình proxy + allowedHosts) thay cho `npm run dev`.
 - Tài khoản mẫu (khi đã seed): quản trị viên `admin@dresssense.vn` / `Admin@123`.
