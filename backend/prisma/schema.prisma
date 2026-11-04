@@ -51,6 +51,8 @@ model User {
   gender      String? // Nam | Nữ | Khác
   dateOfBirth DateTime? // ngày sinh
   bio         String?   @db.Text // giới thiệu ngắn
+  idNumber    String? // CCCD/CMND (hồ sơ người bán)
+  address     String?   @db.Text // địa chỉ liên hệ cá nhân
 
   // UC3.1 - Đồng ý xử lý dữ liệu cơ thể (informed consent), null = chưa đồng ý
   bodyDataConsentAt DateTime?

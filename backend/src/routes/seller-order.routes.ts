@@ -10,6 +10,7 @@ import { listSellerQuestions, answerQuestion } from '../controllers/question.con
 import { getMyShop, updateMyShop, submitMyShop } from '../controllers/shop.controller';
 import { getSellerReport } from '../controllers/seller-report.controller';
 import { getSellerFinance, listSellerCommissions, listSellerSettlements, updateSellerBankInfo } from '../controllers/commission-seller.controller';
+import { setMyShopStatus, lockMyAccount } from '../controllers/seller-account.controller';
 import { uploadMediaImages, listMediaImages, deleteMediaImage, uploadMediaVideos } from '../controllers/media.controller';
 import {
   createBannerOrder, listMyBannerOrders, payBannerOrder, markPaidSandbox, cancelBannerOrder,
@@ -27,6 +28,10 @@ const router = Router();
 
 // UC10.4 / UC11 / UC14 - chỉ Người bán / Quản trị viên
 router.use(authenticate, authorize('SELLER', 'ADMIN'));
+
+// Cài đặt người bán - tự quản trạng thái gian hàng & tài khoản
+router.patch('/account/shop-status', setMyShopStatus);
+router.patch('/account/lock', lockMyAccount);
 
 // UC14.1 - quản lý hồ sơ gian hàng
 router.get('/shop', getMyShop);

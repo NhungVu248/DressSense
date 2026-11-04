@@ -12,6 +12,7 @@ function publicUser(u: any) {
     role: u.role, status: u.status, avatarUrl: u.avatarUrl, shopName: u.shopName,
     marketingOptIn: u.marketingOptIn, // UC13.3 - nhận thông báo khuyến mãi
     gender: u.gender, dateOfBirth: u.dateOfBirth, bio: u.bio, // Backlog B.29/C.44 - hồ sơ đầy đủ hơn
+    idNumber: u.idNumber, address: u.address, // CCCD + địa chỉ liên hệ
     provider: u.provider, createdAt: u.createdAt,
   };
 }
@@ -62,6 +63,8 @@ const updateSchema = z.object({
   gender: z.enum(['Nam', 'Nữ', 'Khác']).nullable().optional(),
   dateOfBirth: z.coerce.date().nullable().optional(),
   bio: z.string().max(500).nullable().optional(),
+  idNumber: z.string().max(20).nullable().optional(), // CCCD/CMND
+  address: z.string().max(255).nullable().optional(), // địa chỉ liên hệ
 });
 
 // PATCH /api/users/me - cập nhật các trường không nhạy cảm
@@ -77,6 +80,8 @@ export async function updateMyProfile(req: Request, res: Response, next: NextFun
     if (data.gender !== undefined) patch.gender = data.gender;
     if (data.dateOfBirth !== undefined) patch.dateOfBirth = data.dateOfBirth;
     if (data.bio !== undefined) patch.bio = data.bio;
+    if (data.idNumber !== undefined) patch.idNumber = data.idNumber;
+    if (data.address !== undefined) patch.address = data.address;
 
     // Khai báo SĐT lần đầu (chưa có) không cần OTP; đổi SĐT đã có -> dùng luồng OTP riêng (3b)
     if (data.phone !== undefined && !current.phone) {

@@ -85,6 +85,7 @@ import AdminCommissionPoliciesPage from './pages/admin/AdminCommissionPoliciesPa
 import AdminCommissionsPage from './pages/admin/AdminCommissionsPage';
 import AdminSettlementsPage from './pages/admin/AdminSettlementsPage';
 import SellerFinancePage from './pages/seller/SellerFinancePage';
+import SellerSettingsPage from './pages/seller/SellerSettingsPage';
 import AdminAdOrdersPage from './pages/admin/AdminAdOrdersPage';
 import AdminVoucherOrdersPage from './pages/admin/AdminVoucherOrdersPage';
 import AdminForgotPasswordPage from './pages/admin/AdminForgotPasswordPage';
@@ -245,6 +246,7 @@ export default function App() {
       <Route path="/seller/products/:id/edit" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><ProductFormPage basePath="/seller/products" /></SellerLayout></RequireAuth>} />
       <Route path="/seller/orders" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerOrdersPage /></SellerLayout></RequireAuth>} />{/* UC14.3 */}
       <Route path="/seller/finance" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerFinancePage /></SellerLayout></RequireAuth>} />{/* Mục 3 - Tài chính & doanh thu */}
+      <Route path="/seller/settings" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerSettingsPage /></SellerLayout></RequireAuth>} />{/* Cài đặt người bán (tab) */}
       <Route path="/seller/promotions" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><PromotionManagePage /></SellerLayout></RequireAuth>} />
       <Route path="/seller/ad-orders" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerAdOrdersPage /></SellerLayout></RequireAuth>} />{/* Backlog B.26 */}
       <Route path="/seller/voucher-orders" element={<RequireAuth roles={['SELLER', 'ADMIN']} loginPath="/seller/login"><SellerLayout><SellerVoucherOrdersPage /></SellerLayout></RequireAuth>} />{/* Backlog B.27 */}
