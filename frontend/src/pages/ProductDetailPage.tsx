@@ -181,6 +181,19 @@ export default function ProductDetailPage() {
             {ratingCount > 0 ? <span>{ratingAvg.toFixed(1)} ({ratingCount} đánh giá)</span> : <span className="text-gray-400">Chưa có đánh giá</span>}
           </div>
 
+          {/* Gian hàng: tên shop bấm vào để mở trang shop */}
+          {p.shop && (
+            <Link to={`/shop/${p.shop.sellerId}`} className="mt-3 inline-flex items-center gap-2 border border-black/10 rounded-full pl-1 pr-3 py-1 hover:border-brand transition-colors group/shop">
+              <span className="w-7 h-7 rounded-full overflow-hidden bg-brand-light grid place-items-center shrink-0">
+                {p.shop.logoUrl
+                  ? <img src={mediaUrl(p.shop.logoUrl)} alt="" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="text-gray-400"><path d="M3 9l1-5h16l1 5M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9M4 9h16" /></svg>}
+              </span>
+              <span className="text-sm text-ink group-hover/shop:text-brand transition-colors">{p.shop.name}</span>
+              <span className="text-xs text-gray-400">Xem shop →</span>
+            </Link>
+          )}
+
           {/* UC13.1 - giá Flash Sale có đếm ngược, hết giờ tự động về giá cũ */}
           {isFlashSaleActive ? (
             <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-red-50 via-orange-50/50 to-red-50 border border-red-200 shadow-xs">

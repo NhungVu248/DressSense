@@ -31,6 +31,7 @@ import messageRoutes from './message.routes';
 import publicSettingsRoutes from './public-settings.routes';
 import reportRoutes from './report.routes';
 import uploadRoutes from './upload.routes';
+import publicShopRoutes from './public-shop.routes';
 
 const router = Router();
 router.use('/auth', authRoutes);
@@ -65,5 +66,6 @@ router.use('/messages', messageRoutes); // Tin nhắn / Chăm sóc khách hàng
 router.use('/settings', publicSettingsRoutes); // Cấu hình công khai (thuế VAT…)
 router.use('/reports', reportRoutes);
 router.use('/upload', uploadRoutes); // ERD 3.19 - Người dùng gửi báo cáo vi phạm
+router.use('/shops', publicShopRoutes); // Trang gian hàng công khai (khách xem)
 
 export default router;

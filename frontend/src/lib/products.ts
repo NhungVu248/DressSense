@@ -49,6 +49,8 @@ export interface ProductDetail extends Omit<ProductCard, 'sizes' | 'ratingAvg' |
   salePrice?: number | null;
   onSale?: boolean;
   flashSale?: FlashSaleInfo | null; // UC13.1
+  sellerId: number;
+  shop?: { sellerId: number; name: string; logoUrl?: string | null } | null; // gian hàng (link trang shop)
 }
 
 export interface Facets {

@@ -200,6 +200,8 @@ export async function getProduct(req: Request, res: Response, next: NextFunction
         images: { orderBy: { sortOrder: 'asc' } }, videos: { orderBy: { sortOrder: 'asc' } }, variants: true, category: true, reviews: true,
         bodyFits: { orderBy: { score: 'desc' } }, // UC4 - điểm tương thích dáng (cao->thấp)
         analysis: true, // UC4.1 - nhãn thuộc tính đề xuất/đã xác nhận
+        // Gian hàng (chỉ lộ tên/logo khi đang hoạt động) để khách bấm vào trang shop
+        seller: { select: { shop: { select: { name: true, logoUrl: true, status: true } } } },
       },
     });
     if (!product || product.deletedAt || product.status !== 'ACTIVE') return res.status(404).json({ message: 'Không tìm thấy sản phẩm' }); // UC6 - chỉ hiện SP đang bán
@@ -212,7 +214,13 @@ export async function getProduct(req: Request, res: Response, next: NextFunction
     const flashSale = best && full
       ? { salePrice: best.salePrice, variantId: best.variantId, remaining: Math.max(0, best.quantity - best.soldCount), perUserLimit: best.perUserLimit, endsAt: full.endsAt }
       : null;
-    res.json({ product: { ...product, salePrice: flashSale ? flashSale.salePrice : null, onSale: !!flashSale }, flashSale });
+    // Gian hàng để khách bấm vào trang shop (chỉ khi đang hoạt động)
+    const { seller, ...prod } = product as typeof product & { seller?: { shop: { name: string; logoUrl: string | null; status: string } | null } };
+    const shopRel = seller?.shop;
+    const shop = shopRel && shopRel.status === 'ACTIVE'
+      ? { sellerId: product.sellerId, name: shopRel.name, logoUrl: shopRel.logoUrl }
+      : null;
+    res.json({ product: { ...prod, salePrice: flashSale ? flashSale.salePrice : null, onSale: !!flashSale, shop }, flashSale });
   } catch (err) {
     next(err);
   }

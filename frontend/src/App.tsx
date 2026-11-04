@@ -8,6 +8,7 @@ import HomePage from './pages/HomePage';
 import ProductsPage from './pages/ProductsPage';
 // UC7.4 - Xem chi tiết sản phẩm
 import ProductDetailPage from './pages/ProductDetailPage';
+import ShopPage from './pages/ShopPage';
 // UC8 - Giỏ hàng & Danh sách yêu thích
 import CartPage from './pages/CartPage';
 import WishlistPage from './pages/WishlistPage';
@@ -141,6 +142,7 @@ export default function App() {
       <Route path="/" element={<ShopLayout><HomePage /></ShopLayout>} />
       <Route path="/products" element={<ShopLayout><ProductsPage /></ShopLayout>} />
       <Route path="/products/:id" element={<ShopLayout><ProductDetailPage /></ShopLayout>} />
+      <Route path="/shop/:sellerId" element={<ShopLayout><ShopPage /></ShopLayout>} />{/* Trang gian hàng công khai */}
 
       {/* UC1 - Xác thực Khách hàng (toàn màn hình) */}
       <Route path="/login" element={<LoginPage />} />
