@@ -53,7 +53,6 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
           { to: '/admin/campaigns', label: 'Chiến dịch' },
           { to: '/admin/banners', label: 'Banner quảng cáo' },
           { to: '/admin/ad-orders', label: 'Duyệt đơn QC banner' }, // Backlog C.41
-          { to: '/admin/voucher-orders', label: 'Duyệt mua voucher' }, // Backlog C.45
           { to: '/admin/promotions', label: 'Khuyến mãi' },
         ],
       },

@@ -27,10 +27,10 @@ const NAV_GROUPS: { heading: string; items: NavItem[] }[] = [
       { to: '/seller/finance', label: 'Tài chính & doanh thu' }, // Mục 3 - hoa hồng, số dư, lịch sử thanh toán
       { to: '/seller/inventory', label: 'Tồn kho' }, // #4 Quản lý tồn kho
       {
-        to: '/seller/promotions', label: 'Khuyến mãi', // #8 Quản lý khuyến mãi + mua dịch vụ tiếp thị
+        to: '/seller/promotions', label: 'Khuyến mãi', // #8 Quản lý khuyến mãi
         sub: [
+          { to: '/seller/promotions', label: 'Tạo voucher & Flash Sale' }, // voucher do gian hàng tự tạo (tự chịu chi phí)
           { to: '/seller/ad-orders', label: 'Quảng cáo banner' }, // Backlog B.26
-          { to: '/seller/voucher-orders', label: 'Mua voucher' }, // Backlog B.27
         ],
       },
       { to: '/seller/reviews', label: 'Đánh giá' }, // #9 Quản lý đánh giá + Hỏi đáp

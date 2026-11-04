@@ -5,7 +5,6 @@ import { env, vnpayEnabled } from '../config/env';
 import { verifyReturn } from '../services/vnpay.service';
 import { finalizePayment, startOnlinePayment } from '../services/payment.service';
 import { ADV_PREFIX, finalizeBannerPayment } from '../services/banner-order.service';
-import { VCH_PREFIX, finalizeVoucherPayment } from '../services/voucher-order.service';
 
 // ============================================================
 //  UC9.2 - Xử lý callback VNPAY + thanh toán lại.
@@ -24,12 +23,6 @@ export async function vnpayReturn(req: Request, res: Response) {
     try { await finalizeBannerPayment(v); } catch { /* vẫn điều hướng */ }
     return res.redirect(`${env.clientOrigin}/seller/ad-orders?status=${status}&code=${encodeURIComponent(v.responseCode)}`);
   }
-  // Backlog B.27 - phí mua voucher (prefix VCH): về trang đơn mua voucher
-  if (v.txnRef.startsWith(VCH_PREFIX)) {
-    try { await finalizeVoucherPayment(v); } catch { /* vẫn điều hướng */ }
-    return res.redirect(`${env.clientOrigin}/seller/voucher-orders?status=${status}&code=${encodeURIComponent(v.responseCode)}`);
-  }
-
   let orderId = '';
   try {
     const tx = await prisma.paymentTransaction.findUnique({ where: { code: v.txnRef }, select: { orderId: true } });
@@ -43,13 +36,9 @@ export async function vnpayReturn(req: Request, res: Response) {
 export async function vnpayIpn(req: Request, res: Response) {
   const v = verifyReturn(req.query as Record<string, string>);
   if (!v.valid) return res.json({ RspCode: '97', Message: 'Invalid signature' });
-  // Backlog B.26/B.27 - phí quảng cáo (ADV) / mua voucher (VCH) xử lý riêng
+  // Backlog B.26 - phí quảng cáo (ADV) xử lý riêng
   if (v.txnRef.startsWith(ADV_PREFIX)) {
     await finalizeBannerPayment(v);
-    return res.json({ RspCode: '00', Message: 'Confirmed' });
-  }
-  if (v.txnRef.startsWith(VCH_PREFIX)) {
-    await finalizeVoucherPayment(v);
     return res.json({ RspCode: '00', Message: 'Confirmed' });
   }
   const r = await finalizePayment(v);

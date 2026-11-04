@@ -15,9 +15,6 @@ import { uploadMediaImages, listMediaImages, deleteMediaImage, uploadMediaVideos
 import {
   createBannerOrder, listMyBannerOrders, payBannerOrder, markPaidSandbox, cancelBannerOrder,
 } from '../controllers/banner-order.controller';
-import {
-  createVoucherOrder, listMyVoucherOrders, payVoucherOrder, markVoucherPaidSandbox, cancelVoucherOrder,
-} from '../controllers/voucher-order.controller';
 import { listInventory, adjustStock, listStockMovements } from '../controllers/inventory.controller';
 import {
   listShippingMethods, createShippingMethod, updateShippingMethod, deleteShippingMethod, toggleSystemMethod,
@@ -88,13 +85,6 @@ router.post('/ad-orders', createBannerOrder);
 router.post('/ad-orders/:id/pay', payBannerOrder);
 router.post('/ad-orders/:id/mark-paid', markPaidSandbox);
 router.delete('/ad-orders/:id', cancelBannerOrder);
-
-// Backlog B.27 - đơn mua gói voucher (gian hàng)
-router.get('/voucher-orders', listMyVoucherOrders);
-router.post('/voucher-orders', createVoucherOrder);
-router.post('/voucher-orders/:id/pay', payVoucherOrder);
-router.post('/voucher-orders/:id/mark-paid', markVoucherPaidSandbox);
-router.delete('/voucher-orders/:id', cancelVoucherOrder);
 
 // ERD 3.8/3.9 (Seller #4) - Quản lý tồn kho + lịch sử biến động
 router.get('/inventory', listInventory);
