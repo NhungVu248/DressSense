@@ -4,10 +4,13 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const VOUCHERS = [
-  { code: 'WELCOME50', description: 'Giảm 50.000₫ cho đơn từ 300.000₫', type: 'FIXED' as const, value: 50000, minOrder: 300000, maxDiscount: null },
-  { code: 'SALE10', description: 'Giảm 10%, tối đa 100.000₫', type: 'PERCENT' as const, value: 10, minOrder: 0, maxDiscount: 100000 },
-  { code: 'VIP20', description: 'Giảm 20% cho đơn từ 500.000₫, tối đa 200.000₫', type: 'PERCENT' as const, value: 20, minOrder: 500000, maxDiscount: 200000 },
-  { code: 'FLASH100', description: 'Giảm 100.000₫ cho đơn từ 800.000₫', type: 'FIXED' as const, value: 100000, minOrder: 800000, maxDiscount: null },
+  { code: 'WELCOME50', description: 'Giảm 50.000₫ cho đơn từ 300.000₫', type: 'FIXED' as const, kind: 'DISCOUNT' as const, value: 50000, minOrder: 300000, maxDiscount: null },
+  { code: 'SALE10', description: 'Giảm 10%, tối đa 100.000₫', type: 'PERCENT' as const, kind: 'DISCOUNT' as const, value: 10, minOrder: 0, maxDiscount: 100000 },
+  { code: 'VIP20', description: 'Giảm 20% cho đơn từ 500.000₫, tối đa 200.000₫', type: 'PERCENT' as const, kind: 'DISCOUNT' as const, value: 20, minOrder: 500000, maxDiscount: 200000 },
+  { code: 'FLASH100', description: 'Giảm 100.000₫ cho đơn từ 800.000₫', type: 'FIXED' as const, kind: 'DISCOUNT' as const, value: 100000, minOrder: 800000, maxDiscount: null },
+  // Voucher VẬN CHUYỂN (Shopee style) - giảm trên phí ship
+  { code: 'FREESHIP', description: 'Miễn phí vận chuyển đến 30.000₫ cho đơn từ 150.000₫', type: 'FIXED' as const, kind: 'SHIPPING' as const, value: 30000, minOrder: 150000, maxDiscount: null },
+  { code: 'FREESHIP50', description: 'Giảm 50% phí vận chuyển, tối đa 25.000₫', type: 'PERCENT' as const, kind: 'SHIPPING' as const, value: 50, minOrder: 0, maxDiscount: 25000 },
 ];
 
 async function main() {
@@ -15,7 +18,7 @@ async function main() {
     await prisma.voucher.upsert({
       where: { code: v.code },
       // UC13.1 - voucher toàn hệ thống đang hiệu lực (status RUNNING, scope ALL)
-      update: { description: v.description, type: v.type, value: v.value, minOrder: v.minOrder, maxDiscount: v.maxDiscount, active: true, status: 'RUNNING' },
+      update: { description: v.description, type: v.type, kind: v.kind, value: v.value, minOrder: v.minOrder, maxDiscount: v.maxDiscount, active: true, status: 'RUNNING' },
       create: { ...v, active: true, status: 'RUNNING' },
     });
   }
