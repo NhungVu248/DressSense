@@ -9,6 +9,8 @@ const addressSchema = z.object({
   district: z.string().min(1, 'Vui lòng chọn quận/huyện'),
   ward: z.string().min(1, 'Vui lòng chọn phường/xã'),
   detail: z.string().min(1, 'Vui lòng nhập địa chỉ chi tiết'),
+  lat: z.coerce.number().min(-90).max(90).nullable().optional(), // ghim bản đồ (Grab/Be style)
+  lng: z.coerce.number().min(-180).max(180).nullable().optional(),
 });
 
 const MAX_ADDRESSES = 20; // 4dE: giới hạn số lượng địa chỉ

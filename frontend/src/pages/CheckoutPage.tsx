@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { formatVND } from '../lib/products';
 import VoucherPicker, { type AppliedVoucher } from '../components/VoucherPicker';
+import AddressMapPicker from '../components/AddressMapPicker';
 import {
   getCheckoutInfo, placeOrder, createAddress,
   PAYMENT_METHOD_LABEL, type PaymentMethod, type Address,
@@ -246,9 +247,9 @@ export default function CheckoutPage() {
 }
 
 function AddressForm({ onDone }: { onDone: () => void }) {
-  const [f, setF] = useState({ recipientName: '', phone: '', province: '', district: '', ward: '', detail: '' });
+  const [f, setF] = useState({ recipientName: '', phone: '', province: '', district: '', ward: '', detail: '', lat: null as number | null, lng: null as number | null });
   const [busy, setBusy] = useState(false);
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((v) => ({ ...v, [k]: e.target.value }));
+  const set = (k: 'recipientName' | 'phone' | 'province' | 'district' | 'ward' | 'detail') => (e: React.ChangeEvent<HTMLInputElement>) => setF((v) => ({ ...v, [k]: e.target.value }));
   async function save() {
     if (!f.recipientName || !f.phone || !f.province || !f.district || !f.ward || !f.detail) { alert('Vui lòng điền đầy đủ thông tin địa chỉ.'); return; }
     setBusy(true);
@@ -258,6 +259,16 @@ function AddressForm({ onDone }: { onDone: () => void }) {
   }
   return (
     <div className="mt-3 border-t border-black/5 pt-3 grid grid-cols-2 gap-2">
+      <div className="col-span-2">
+        <AddressMapPicker
+          value={{ lat: f.lat, lng: f.lng }}
+          onPick={(a) => setF((v) => ({
+            ...v, lat: a.lat, lng: a.lng,
+            province: a.province || v.province, district: a.district || v.district,
+            ward: a.ward || v.ward, detail: a.detail || v.detail,
+          }))}
+        />
+      </div>
       <input value={f.recipientName} onChange={set('recipientName')} placeholder="Họ tên người nhận" className="border border-black/10 rounded-lg px-3 py-2 text-sm" />
       <input value={f.phone} onChange={set('phone')} placeholder="Số điện thoại" className="border border-black/10 rounded-lg px-3 py-2 text-sm" />
       <input value={f.province} onChange={set('province')} placeholder="Tỉnh/Thành phố" className="border border-black/10 rounded-lg px-3 py-2 text-sm" />

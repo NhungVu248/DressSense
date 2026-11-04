@@ -4,6 +4,7 @@ import api from './api';
 export interface Address {
   id: number; recipientName: string; phone: string;
   province: string; district: string; ward: string; detail: string; isDefault: boolean;
+  lat?: number | null; lng?: number | null; // ghim bản đồ (Grab/Be style)
 }
 export interface ShippingMethod { code: string; label: string; fee: number; eta: string; intl?: boolean }
 export interface ShippingConfig { threshold: number; surcharge: number; remoteProvinces: string[] }

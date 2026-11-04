@@ -197,6 +197,8 @@ model Address {
   district      String // quận/huyện
   ward          String // phường/xã
   detail        String // địa chỉ chi tiết
+  lat           Float? // toạ độ ghim trên bản đồ (chọn địa chỉ kiểu Grab/Be)
+  lng           Float?
   isDefault     Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

@@ -32,6 +32,7 @@ import publicSettingsRoutes from './public-settings.routes';
 import reportRoutes from './report.routes';
 import uploadRoutes from './upload.routes';
 import publicShopRoutes from './public-shop.routes';
+import geoRoutes from './geo.routes';
 
 const router = Router();
 router.use('/auth', authRoutes);
@@ -67,5 +68,6 @@ router.use('/settings', publicSettingsRoutes); // Cấu hình công khai (thuế
 router.use('/reports', reportRoutes);
 router.use('/upload', uploadRoutes); // ERD 3.19 - Người dùng gửi báo cáo vi phạm
 router.use('/shops', publicShopRoutes); // Trang gian hàng công khai (khách xem)
+router.use('/geo', geoRoutes); // Proxy geocode (bản đồ chọn địa chỉ)
 
 export default router;

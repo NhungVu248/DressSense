@@ -3,13 +3,15 @@ import { confirmDialog } from '../../components/Dialog';
 import { Link } from 'react-router-dom';
 import api, { getErrorMessage } from '../../lib/api';
 import { Field, PrimaryButton, SecondaryButton, ErrorBox, SuccessBox } from '../../components/ui';
+import AddressMapPicker from '../../components/AddressMapPicker';
 
 interface Address {
   id: number; recipientName: string; phone: string;
   province: string; district: string; ward: string; detail: string; isDefault: boolean;
+  lat?: number | null; lng?: number | null;
 }
 
-const emptyForm = { recipientName: '', phone: '', province: '', district: '', ward: '', detail: '' };
+const emptyForm = { recipientName: '', phone: '', province: '', district: '', ward: '', detail: '', lat: null as number | null, lng: null as number | null };
 
 // UC1.6 - Quản lý sổ địa chỉ
 export default function AddressBookPage() {
@@ -33,7 +35,7 @@ export default function AddressBookPage() {
   }
   function openEdit(a: Address) {
     setEditingId(a.id);
-    setForm({ recipientName: a.recipientName, phone: a.phone, province: a.province, district: a.district, ward: a.ward, detail: a.detail });
+    setForm({ recipientName: a.recipientName, phone: a.phone, province: a.province, district: a.district, ward: a.ward, detail: a.detail, lat: a.lat ?? null, lng: a.lng ?? null });
     setShowForm(true); setError(''); setSuccess('');
   }
 
@@ -89,6 +91,20 @@ export default function AddressBookPage() {
       {showForm && (
         <form onSubmit={submitForm} className="bg-white rounded-xl border p-6 mb-5">
           <h3 className="font-medium mb-4">{editingId ? 'Chỉnh sửa địa chỉ' : 'Thêm địa chỉ mới'}</h3>
+
+          {/* Chọn trên bản đồ (Grab/Be style): tự điền tỉnh/quận/phường + chi tiết */}
+          <div className="mb-4">
+            <p className="text-sm text-gray-600 mb-1.5">Chọn vị trí trên bản đồ</p>
+            <AddressMapPicker
+              value={{ lat: form.lat, lng: form.lng }}
+              onPick={(a) => setForm((f) => ({
+                ...f, lat: a.lat, lng: a.lng,
+                province: a.province || f.province, district: a.district || f.district,
+                ward: a.ward || f.ward, detail: a.detail || f.detail,
+              }))}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-x-4">
             <Field label="Họ tên người nhận" value={form.recipientName} onChange={set('recipientName')} required />
             <Field label="Số điện thoại" value={form.phone} onChange={set('phone')} required />
