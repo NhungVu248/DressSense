@@ -12,6 +12,7 @@ import { PRODUCT_PLACEHOLDER } from '../../lib/placeholder';
 interface ManagedProduct {
   id: number; name: string; price: number; category: string;
   image: string | null; status: string; stock: number; outOfStock: boolean; analysisStatus: string | null;
+  featured: boolean;
 }
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: 'Nháp', PENDING: 'Chờ duyệt', ACTIVE: 'Đang bán', HIDDEN: 'Đã ẩn', ARCHIVED: 'Lưu trữ',
@@ -52,6 +53,15 @@ export default function ProductManagePage({ basePath = '/manage/products' }: { b
       await api.patch(`/products/${p.id}`, { status: newStatus });
       setSuccess(`Đã chuyển "${p.name}" sang ${STATUS_LABEL[newStatus]}.`);
       load();
+    } catch (e) { setError(getErrorMessage(e)); }
+  }
+
+  // Người bán tích/bỏ tích SP nổi bật -> hiện ở khu "Sản phẩm nổi bật" trên trang gian hàng
+  async function toggleFeatured(p: ManagedProduct) {
+    setError(''); setSuccess('');
+    try {
+      await api.patch(`/products/${p.id}`, { featured: !p.featured });
+      setItems((list) => list.map((x) => (x.id === p.id ? { ...x, featured: !x.featured } : x)));
     } catch (e) { setError(getErrorMessage(e)); }
   }
 
@@ -125,6 +135,7 @@ export default function ProductManagePage({ basePath = '/manage/products' }: { b
                 <th className="text-left px-3 py-2">Danh mục</th>
                 <th className="text-right px-3 py-2">Giá</th>
                 <th className="text-center px-3 py-2">Tồn</th>
+                <th className="text-center px-3 py-2">Nổi bật</th>
                 <th className="text-center px-3 py-2">Trạng thái</th>
                 <th className="text-center px-3 py-2">Nhãn AI</th>
                 <th className="px-3 py-2"></th>
@@ -142,6 +153,12 @@ export default function ProductManagePage({ basePath = '/manage/products' }: { b
                   <td className="px-3 py-2 text-gray-500">{p.category}</td>
                   <td className="px-3 py-2 text-right">{p.price.toLocaleString('vi-VN')}₫</td>
                   <td className={`px-3 py-2 text-center ${p.outOfStock ? 'text-red-500 font-medium' : ''}`}>{p.outOfStock ? 'Hết' : p.stock}</td>
+                  <td className="px-3 py-2 text-center">
+                    <button onClick={() => toggleFeatured(p)} title={p.featured ? 'Bỏ nổi bật' : 'Đánh dấu nổi bật'}
+                      className={`text-lg leading-none ${p.featured ? 'text-amber-500' : 'text-gray-300 hover:text-amber-400'}`}>
+                      {p.featured ? '★' : '☆'}
+                    </button>
+                  </td>
                   <td className="px-3 py-2 text-center"><span className={`text-xs rounded-full px-2 py-0.5 ${STATUS_COLOR[p.status]}`}>{STATUS_LABEL[p.status]}</span></td>
                   <td className="px-3 py-2 text-center text-xs text-gray-500">{p.analysisStatus === 'CONFIRMED' ? '✓ Đã xác nhận' : p.analysisStatus === 'UNCONFIRMED' ? 'Chờ xác nhận' : p.analysisStatus ?? '—'}</td>
                   <td className="px-3 py-2">

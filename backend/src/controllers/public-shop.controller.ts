@@ -16,6 +16,7 @@ function toCard(p: any, salePrice: number | null) {
   const { reviews, _count, variants, ...rest } = p;
   return {
     ...rest,
+    featured: p.featured,
     sizes: [...new Set(p.variants.map((v: any) => v.size))],
     ratingAvg: Math.round(ratingAvg * 10) / 10,
     ratingCount,
@@ -60,8 +61,9 @@ export async function getPublicShop(req: Request, res: Response, next: NextFunct
     }
     const categories = [...catCount.values()].sort((a, b) => b.count - a.count);
 
-    // Sản phẩm nổi bật: bán chạy nhất (fallback: mới nhất)
-    const featured = [...products].sort((a, b) => b.soldCount - a.soldCount).slice(0, 8);
+    // Sản phẩm nổi bật: ưu tiên SP người bán tự tích; nếu chưa tích thì fallback bán chạy
+    const picked = products.filter((p) => p.featured);
+    const featured = (picked.length ? picked : [...products].sort((a, b) => b.soldCount - a.soldCount)).slice(0, 8);
 
     // Thống kê hiển thị
     const ratingCountTotal = products.reduce((a, p) => a + p.ratingCount, 0);

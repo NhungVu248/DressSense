@@ -269,6 +269,8 @@ const createSchema = z.object({
   origin: z.string().optional(),
   careInstructions: z.string().optional(),
   warranty: z.string().optional(),
+  // Người bán tích SP nổi bật (hiện lên trang gian hàng)
+  featured: z.boolean().optional(),
   // UC6.3 - trạng thái + biến thể (size + tồn kho ban đầu, không âm)
   status: z.enum(['DRAFT', 'PENDING', 'ACTIVE', 'HIDDEN']).optional(),
   variants: z.array(z.object({ size: z.string().min(1), stock: z.coerce.number().int().min(0) })).optional(),
@@ -419,6 +421,7 @@ export async function listManagedProducts(req: Request, res: Response, next: Nex
         id: p.id, name: p.name, price: p.price, category: p.category.name,
         image: p.images[0]?.url ?? null, status: p.status, stock,
         outOfStock: stock === 0, analysisStatus: p.analysis?.status ?? null,
+        featured: p.featured,
       };
     });
     if (q.lowStock === 'true') mapped = mapped.filter((m) => m.stock <= 5); // tồn kho thấp (ngưỡng mặc định)

@@ -434,6 +434,9 @@ model Product {
   status    ProductStatus @default(ACTIVE)
   deletedAt DateTime? // UC6.5 - xóa mềm/lưu trữ (giữ dữ liệu đơn hàng)
 
+  // Người bán tự tích SP nổi bật -> ưu tiên hiện ở khu "Sản phẩm nổi bật" trên trang gian hàng
+  featured  Boolean @default(false)
+
   color    String?
   pattern  String?
   material String?
