@@ -8,6 +8,7 @@ const STEPS: [string, string][] = [
   ['prisma/seed-shop.ts', 'Hồ sơ gian hàng cho người bán'],
   ['prisma/seed-seller2.ts', 'Người bán thứ 2 + sản phẩm (đa gian hàng)'],
   ['prisma/seed-shop.ts', 'Hồ sơ gian hàng cho người bán 2'],
+  ['prisma/seed-sellers.ts', 'Đa dạng người bán/gian hàng (đủ trạng thái) + sản phẩm + khách'],
   ['prisma/seed-voucher.ts', 'Voucher mẫu'],
   ['prisma/seed-promotion.ts', 'Khuyến mãi: voucher danh mục + Flash Sale'],
   ['prisma/seed-banner.ts', 'Banner trang chủ'],
